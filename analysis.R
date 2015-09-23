@@ -24,7 +24,7 @@ measures$Date <- as.Date(measures$Date, '%m/%d/%Y')
 
 measures$tomorrow <- measures$Date + 1
 
-measures <- merge(measures, measures,
+measures <- merge(measures, measures[, !(names(measures) %in% c("Date"))],
                   by.x=c('Beach', 'Date'),
                   by.y=c('Beach', 'tomorrow'))
 
@@ -36,13 +36,15 @@ names(measures) <- c("beach", "date", "reading", "prediction", "status",
 true_ban_days <- measures$reading > 1000
 
 plot(c(0,1), c(0,1), type="n")
-#prCurve(true_ban_days,  measures$yesterday_reading)
+
+prCurve(true_ban_days,  measures$yesterday_reading)
+
 prCurve(true_ban_days,  measures$prediction)
 
 model.naive <- glm(reading ~ yesterday_reading*beach + weekdays(date)*beach, measures, family='poisson')
 summary(model.naive)
 
-#prCurve(true_ban_days,  exp(predict(model.naive)))
+prCurve(true_ban_days,  exp(predict(model.naive)))
 
 model.forecast <- glm(reading ~ prediction*beach + weekdays(date)*beach + months(date), measures, family='poisson')
 summary(model.forecast)
