@@ -1,11 +1,10 @@
 prCurve <- function(truth, predicted_values) {
     recalls = c()
     precisions = c()
-    for (i in 0:20) {
-        recalls[i+1] = recall(truth, predicted_values >= i * 100)
-        precisions[i+1] = precision(truth, predicted_values >= i * 100)
+    for (threshold in seq(0, 500, 20)) {
+        recalls = c(recalls, recall(truth, predicted_values >= threshold))
+        precisions = c(precisions, precision(truth, predicted_values >= threshold))
     }
-    
     lines(recalls ~ precisions)
 }
 
@@ -18,7 +17,7 @@ precision <- function(truth, predict) {
     return(sum(predict[truth])/sum(predict))
 }
 
-measures <- read.csv('data/daily_summaries_drekb.csv')
+measures <- read.csv('data/DrekBeach/daily_summaries_drekb.csv')
 
 measures$Date <- as.Date(measures$Date, '%m/%d/%Y')
 
@@ -33,22 +32,22 @@ measures <- measures[,c(1,2,3,4,5,8,9)]
 names(measures) <- c("beach", "date", "reading", "prediction", "status",
                      "yesterday_reading", "yesterday_prediction")
 
-true_ban_days <- measures$reading > 1000
+true_advisory_days <- measures$reading > 235
 
 plot(c(0,1), c(0,1), type="n")
 
-prCurve(true_ban_days,  measures$yesterday_reading)
+prCurve(true_advisory_days,  measures$yesterday_reading)
 
-prCurve(true_ban_days,  measures$prediction)
+prCurve(true_advisory_days,  measures$prediction)
 
 model.naive <- glm(reading ~ yesterday_reading*beach + weekdays(date)*beach, measures, family='poisson')
 summary(model.naive)
 
-prCurve(true_ban_days,  exp(predict(model.naive)))
+prCurve(true_advisory_days,  exp(predict(model.naive)))
 
 model.forecast <- glm(reading ~ prediction*beach + weekdays(date)*beach + months(date), measures, family='poisson')
 summary(model.forecast)
 
-prCurve(true_ban_days,  exp(predict(model.forecast)))
+prCurve(true_advisory_days,  exp(predict(model.forecast)))
 
 
