@@ -1,8 +1,8 @@
 #Chicago Park District Raw Data Cleaning
-library(readxl)  
+library(readxl)
+library(plyr)
 
 #Slow way, but with dates -- 2006 through 2015 (except 2013)
-library(plyr)
 clean <- function(x) {
       ifelse(ncol(as.data.frame(x[1]))>30, x <- x[2:length(x)], x <- x[1:length(x)])  #get's rid of summary or master sheet 
       df <- ldply(x, data.frame) #puts all dfs from the list into one df
