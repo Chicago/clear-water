@@ -1,12 +1,16 @@
 # e-coli-beach-predictions
 [![Stories in Ready](https://badge.waffle.io/Chicago/e-coli-beach-predictions.svg?label=ready&title=Ready)](http://waffle.io/Chicago/e-coli-beach-predictions) [![MIT License project](https://img.shields.io/github/license/mashape/apistatus.svg)](https://opensource.org/licenses/MIT)
 
-Attempting to predict e. coli readings at Chicago beaches
+Attempting to predict e. coli readings at Chicago beaches. The project should be reproducible, relying on scripts and avoid any manual steps.
 
 * Repository: https://github.com/Chicago/e-coli-beach-predictions 
 * Issue tracker: https://github.com/Chicago/e-coli-beach-predictions/issues 
 * Project management board: https://waffle.io/Chicago/e-coli-beach-predictions 
 * Documentation and notes: https://github.com/Chicago/e-coli-beach-predictions/wiki 
+
+# Required software
+
+This project uses a mix of [R](www.r-project.org), [Python](www.python.org), and [CSVkit](http://csvkit.readthedocs.org/en/stable/).
 
 # LICENSE
 
