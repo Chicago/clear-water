@@ -1,13 +1,16 @@
 #Chicago Park District Raw Data Cleaning
-library(readxl)
-library(plyr)
 
-#Slow way, but with dates -- 2006 through 2015 (except 2013)
+
+#Slow way, but with dates -- 2006 through 2015
+library(plyr)
+library(readxl)  
+library(psych)
+library(dplyr)
+
 clean <- function(x) {
       ifelse(ncol(as.data.frame(x[1]))>30, x <- x[2:length(x)], x <- x[1:length(x)])  #get's rid of summary or master sheet 
       df <- ldply(x, data.frame) #puts all dfs from the list into one df
       df <- df[which(!is.na(df$Client.ID)),] #get's ride of extra rows and explainer text that appears in the sheets
-      names(df)
       df <- df[1:8]
 }
 
@@ -53,17 +56,89 @@ df=clean(mysheets)
 df2012 <- df
 df2012$year <- 2012
 
+mysheets <- read_excel_allsheets("./2013 Lab Results.xls")
+ifelse(ncol(as.data.frame(mysheets[1]))>30, mysheets <- mysheets[2:length(mysheets)], mysheets <- mysheets[1:length(mysheets)])
+mysheets <- lapply(mysheets, function(x) x[,1:7, drop=FALSE]) #subset out the posix column causing trouble -- there is a mismatch of types of data (numeric / Date) between columns of the same name.
+df <- ldply(mysheets, data.frame)
+df <- df[which(!is.na(df$Client.ID)),] #get's ride of extra rows and explainer text that appears in the sheets
+df2013 <- df
+df2013$year <- 2013
+
 mysheets <- read_excel_allsheets("./2014 Lab Results.xls")
 df=clean(mysheets)
 df2014 <- df
 df2014$year <- 2014
 
+mysheets <- read_excel_allsheets("./2015 Lab Results.xls")
+df=clean(mysheets)
+df2015 <- df
+df2015$year <- 2015
+names(df2015)[names(df2015) == 'Sample.1'] <- 'Reading.1'
+names(df2015)[names(df2015) == 'Sample.2'] <- 'Reading.2'
+
 #merge into one data frame
-final <- rbind(df2006, df2007, df2008, df2009, df2010, df2011, df2012, df2014) #2013, 2015 not working
+final <- rbind(df2006, df2007, df2008, df2009, df2010, df2011, df2012, df2013, df2014, df2015)  
 names(final)
 final <- final[c(9,1:8)]
 names(final)[names(final) == '.id'] <- 'Date'
-final[5:7]<-lapply(final[5:7], as.numeric)
+
+
+#Remove leading < or > in reading and e.coli columns
+remember <- function (x) { #first create column to remember which values were > or <
+      ifelse(grepl(">",x),"right censoring", ifelse(grepl("<",x), "left censoring", NA))  
+}
+
+final$Reading.1.Removed=remember(final$Reading.1)
+final$Reading.2.Removed=remember(final$Reading.2)
+final$E.coli.Removed=remember(final$Escherichia.coli)
+
+#Remove all less than and greater than signs
+from <- c('>','<')
+to <- c("", "")
+
+gsub2 <- function(pattern, replacement, x, ...) { 
+      for(i in 1:length(pattern))
+            x <- gsub(pattern[i], replacement[i], x, ...)
+      x
+}
+
+final$Reading.1=gsub2(from, to, final$Reading.1) #this makes <1 a 1 and >2419.6 a 2419.60 
+final$Reading.2=gsub2(from, to, final$Reading.2)
+final$Escherichia.coli=gsub2(from, to, final$Escherichia.coli)
+final[5:7]<-lapply(final[5:7], as.numeric) #NOTE: many of the Escherichia.coli values are off by 1, because read_excel_allsheets() truncates instead of rounding
+
+
+#create geometric mean of Reading.1 and Reading.2
+final$e.coli.geomean=round(apply(final[,c(5,6)],1,geometric.mean, na.rm=T), 1) 
+final=final[c(1:7, 13, 8:12)]
+ 
+#TO add the e.coli values where there are NO READINGS -- note these are TRUNCATED so values may be slightly off (not rounded)
+final[which(!is.na(final[7]) & is.na(final[8])),][8] <- final[which(!is.na(final[7]) & is.na(final[8])),][7] 
+final=final[c(1:6,8:13)]
+
+#create 1/0 for advisory at or over 235
+final$advisory<-ifelse(final$e.coli.geomean>=235, 1, 0)
+
+
+#clean the PM dates (June 16 2015; July 1 2014/2015)
+PM <- function (x) {  
+      ifelse(grepl("PM",x),"PM", NA)  
+}
+
+final$Date.PM.Removed=PM(final$Date) #to remember which readings were PM specific
+from.1 <- c(' \\(PM\\)',' PM')
+to.1 <- c("", "")
+final$Date=gsub2(from.1, to.1, final$Date) #get rid of the PMs
+
+#make Dates easier to use
+final=unite_(final, "newdate", c("Date", "year"), sep=" ", remove=F)
+final$Full_date <- as.Date(final$newdate, format="%B %d %Y") #now dates are sortable
+final$Weekday <- weekdays(final$Full_date) #add day of week
+final$Month <- format(final$Full_date,"%B")
+final$Day <- format(final$Full_date, "%d")
+final=final[c(16, 2, 17:19,15, 4:8, 14, 9:13)]
 
 
 write.csv(final, "lab_results.csv", row.names=FALSE)
+ 
+
