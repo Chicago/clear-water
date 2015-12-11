@@ -139,6 +139,7 @@ final$Month <- format(final$Full_date,"%B")
 final$Day <- format(final$Full_date, "%d")
 final=final[c(16, 2, 17:19,15, 4:8, 14, 9:13)]
 
+
 #Clean Beach Names
 
 
