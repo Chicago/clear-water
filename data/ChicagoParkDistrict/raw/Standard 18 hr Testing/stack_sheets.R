@@ -6,17 +6,22 @@ library(plyr)
 library(readxl)  
 library(psych)
 library(dplyr)
+library(tidyr)
 
-clean <- function(x) {
-      ifelse(ncol(as.data.frame(x[1]))>30, x <- x[2:length(x)], x <- x[1:length(x)])  #get's rid of summary or master sheet 
-      df <- ldply(x, data.frame) #puts all dfs from the list into one df
-      df <- df[which(!is.na(df$Client.ID)),] #get's ride of extra rows and explainer text that appears in the sheets
+col.names=c(".id","Laboratory.ID","Client.ID","Reading.1","Reading.2","Escherichia.coli","Units","Sample.Collection.Time")                 
+
+clean <- function(j) {
+      ifelse(ncol(as.data.frame(j[1]))>30, j <- j[2:length(j)], j <- j[1:length(j)])  #get's rid of summary or master sheet 
+      j <- lapply(j, function(x) x[-1,, drop=FALSE]) #remove column names due to some errors (especially in 2014 file)
+      df <- ldply(j, data.frame) #puts all dfs from the list into one df
       df <- df[1:8]
+      names(df)=col.names #add column names in
+      df <- df[which(!is.na(df$Client.ID)),] #get's ride of extra rows and ejplainer tejt that appears in the sheets
 }
 
-read_excel_allsheets <- function(filename) {  
+read_excel_allsheets<- function(filename) {  
       sheets <- readxl::excel_sheets(filename)
-      x <-    lapply(sheets, function(X) readxl::read_excel(filename, sheet = X))
+      x <-    lapply(sheets, function(X) readxl::read_excel(filename, sheet = X, col_names = F))
       names(x) <- sheets
       x
 }
@@ -57,10 +62,7 @@ df2012 <- df
 df2012$year <- 2012
 
 mysheets <- read_excel_allsheets("./2013 Lab Results.xls")
-ifelse(ncol(as.data.frame(mysheets[1]))>30, mysheets <- mysheets[2:length(mysheets)], mysheets <- mysheets[1:length(mysheets)])
-mysheets <- lapply(mysheets, function(x) x[,1:7, drop=FALSE]) #subset out the posix column causing trouble -- there is a mismatch of types of data (numeric / Date) between columns of the same name.
-df <- ldply(mysheets, data.frame)
-df <- df[which(!is.na(df$Client.ID)),] #get's ride of extra rows and explainer text that appears in the sheets
+df=clean(mysheets)
 df2013 <- df
 df2013$year <- 2013
 
@@ -69,12 +71,11 @@ df=clean(mysheets)
 df2014 <- df
 df2014$year <- 2014
 
-mysheets <- read_excel_allsheets("./2015 Lab Results.xls")
+mysheets <- read_excel_allsheets("./2015 Lab Results.xlsx")  
 df=clean(mysheets)
 df2015 <- df
 df2015$year <- 2015
-names(df2015)[names(df2015) == 'Sample.1'] <- 'Reading.1'
-names(df2015)[names(df2015) == 'Sample.2'] <- 'Reading.2'
+
 
 #merge into one data frame
 final <- rbind(df2006, df2007, df2008, df2009, df2010, df2011, df2012, df2013, df2014, df2015)  
@@ -137,6 +138,9 @@ final$Weekday <- weekdays(final$Full_date) #add day of week
 final$Month <- format(final$Full_date,"%B")
 final$Day <- format(final$Full_date, "%d")
 final=final[c(16, 2, 17:19,15, 4:8, 14, 9:13)]
+
+#Clean Beach Names
+
 
 
 write.csv(final, "lab_results.csv", row.names=FALSE)
