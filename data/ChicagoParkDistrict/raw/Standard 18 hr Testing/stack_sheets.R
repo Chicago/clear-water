@@ -26,52 +26,52 @@ read_excel_allsheets<- function(filename) {
       x
 }
 
-mysheets <- read_excel_allsheets("./2006 Lab Results.xls")
+mysheets <- read_excel_allsheets("data/ChicagoParkDistrict/raw/Standard 18 hr Testing/2006 Lab Results.xls")
 df=clean(mysheets)
 df2006 <- df
 df2006$year <- 2006
 
-mysheets <- read_excel_allsheets("./2007 Lab Results.xls")
+mysheets <- read_excel_allsheets("data/ChicagoParkDistrict/raw/Standard 18 hr Testing/2007 Lab Results.xls")
 df=clean(mysheets)
 df2007 <- df
 df2007$year <- 2007
 
-mysheets <- read_excel_allsheets("./2008 Lab Results.xls")
+mysheets <- read_excel_allsheets("data/ChicagoParkDistrict/raw/Standard 18 hr Testing/2008 Lab Results.xls")
 df=clean(mysheets)
 df2008 <- df
 df2008$year <- 2008
 
-mysheets <- read_excel_allsheets("./2009 Lab Results.xls")
+mysheets <- read_excel_allsheets("data/ChicagoParkDistrict/raw/Standard 18 hr Testing/2009 Lab Results.xls")
 df=clean(mysheets)
 df2009 <- df
 df2009$year <- 2009
 
-mysheets <- read_excel_allsheets("./2010 Lab Results.xls")
+mysheets <- read_excel_allsheets("data/ChicagoParkDistrict/raw/Standard 18 hr Testing/2010 Lab Results.xls")
 df=clean(mysheets)
 df2010 <- df
 df2010$year <- 2010
 
-mysheets <- read_excel_allsheets("./2011 Lab Results.xls")
+mysheets <- read_excel_allsheets("data/ChicagoParkDistrict/raw/Standard 18 hr Testing/2011 Lab Results.xls")
 df=clean(mysheets)
 df2011 <- df
 df2011$year <- 2011
 
-mysheets <- read_excel_allsheets("./2012 Lab Results.xls")
+mysheets <- read_excel_allsheets("data/ChicagoParkDistrict/raw/Standard 18 hr Testing/2012 Lab Results.xls")
 df=clean(mysheets)
 df2012 <- df
 df2012$year <- 2012
 
-mysheets <- read_excel_allsheets("./2013 Lab Results.xls")
+mysheets <- read_excel_allsheets("data/ChicagoParkDistrict/raw/Standard 18 hr Testing/2013 Lab Results.xls")
 df=clean(mysheets)
 df2013 <- df
 df2013$year <- 2013
 
-mysheets <- read_excel_allsheets("./2014 Lab Results.xls")
+mysheets <- read_excel_allsheets("data/ChicagoParkDistrict/raw/Standard 18 hr Testing/2014 Lab Results.xls")
 df=clean(mysheets)
 df2014 <- df
 df2014$year <- 2014
 
-mysheets <- read_excel_allsheets("./2015 Lab Results.xlsx")  
+mysheets <- read_excel_allsheets("data/ChicagoParkDistrict/raw/Standard 18 hr Testing/2015 Lab Results.xlsx")  
 df=clean(mysheets)
 df2015 <- df
 df2015$year <- 2015
