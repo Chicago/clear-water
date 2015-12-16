@@ -1,5 +1,6 @@
 #Chicago Park District Raw Data Cleaning
 
+#set working directory
 
 #Slow way, but with dates -- 2006 through 2015
 library(plyr)
@@ -140,7 +141,13 @@ final$Day <- format(final$Full_date, "%d")
 final=final[c(16, 2, 17:19,15, 4:8, 14, 9:13)]
 
 
+#Remove problematic dates
+final <- final[-which(d$Full_date %in% c(as.Date("2006-07-06"), as.Date("2006-07-08"), as.Date("2006-07-09"))),]
+
+
 #Clean Beach Names
+
+#Remove outlier with 6488.0 value
 
 
 
