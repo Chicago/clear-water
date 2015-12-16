@@ -1,5 +1,7 @@
 #Chicago Park District Raw Data Cleaning
 
+#set working directory
+
 
 #Slow way, but with dates -- 2006 through 2015
 library(plyr)
@@ -106,7 +108,7 @@ gsub2 <- function(pattern, replacement, x, ...) {
 final$Reading.1=gsub2(from, to, final$Reading.1) #this makes <1 a 1 and >2419.6 a 2419.60 
 final$Reading.2=gsub2(from, to, final$Reading.2)
 final$Escherichia.coli=gsub2(from, to, final$Escherichia.coli)
-final[5:7]<-lapply(final[5:7], as.numeric) #NOTE: many of the Escherichia.coli values are off by 1, because read_excel_allsheets() truncates instead of rounding
+final[5:7]<-lapply(final[5:7], as.numeric) 
 
 
 #create geometric mean of Reading.1 and Reading.2
@@ -140,7 +142,13 @@ final$Day <- format(final$Full_date, "%d")
 final=final[c(16, 2, 17:19,15, 4:8, 14, 9:13)]
 
 
+#Remove problematic dates
+final <- final[-which(final$Full_date %in% c(as.Date("2006-07-06"), as.Date("2006-07-08"), as.Date("2006-07-09"))),]
+
+
 #Clean Beach Names
+
+#Remove outlier with 6488.0 value
 
 
 
