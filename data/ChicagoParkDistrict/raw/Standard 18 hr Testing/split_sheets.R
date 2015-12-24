@@ -28,4 +28,3 @@ split_sheets <- function(filename, year){
   names(df)[names(df) == '.id'] <- 'Date'
   return(df)
 }
-
