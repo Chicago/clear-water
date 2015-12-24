@@ -30,21 +30,19 @@ beach_readings$Weekday <- weekdays(beach_readings$Full_date) #add day of week
 beach_readings$Month <- format(beach_readings$Full_date,"%B")
 beach_readings$Day <- format(beach_readings$Full_date, "%d")
 
+#Remove problematic dates
+beach_readings <- beach_readings[-which(beach_readings$Full_date %in% c(as.Date("2006-07-06"), as.Date("2006-07-08"), as.Date("2006-07-09"))),]
 
-# The code below can be activated once all of the numeric data is cleaned-up
 ### Change readings to numeric data
-# beach_readings$Reading.1 <- as.numeric(beach_readings$Reading.1)
-# beach_readings$Reading.2 <- as.numeric(beach_readings$Reading.2)
-# beach_readings$Escherichia.coli <- as.numeric(beach_readings$Escherichia.coli)
+beach_readings$Reading.1 <- as.numeric(as.character(beach_readings$Reading.1))
+beach_readings$Reading.2 <- as.numeric(as.character(beach_readings$Reading.2))
+beach_readings$Escherichia.coli <- as.numeric(as.character(beach_readings$Escherichia.coli))
 
 # Create measure variables
-# beach_readings$e.coli.geomean <- round(apply(cbind(beach_readings$Reading.1,beach_readings$Reading.2), 1, geometric.mean, na.rm=T), 1) 
-
-# Create measure variables
-# beach_readings$e.coli.geomean <- round(apply(cbind(beach_readings$Reading.1,beach_readings$Reading.2), 1, geometric.mean, na.rm=T), 1) 
+beach_readings$e.coli.geomean <- round(apply(cbind(beach_readings$Reading.1,beach_readings$Reading.2), 1, geometric.mean, na.rm=T), 1) 
 
 #create 1/0 for advisory at or over 235
-# beach_readings$elevated_levels <- ifelse(beach_readings$e.coli.geomean >= 235, 1, 0)
+beach_readings$elevated_levels <- ifelse(beach_readings$e.coli.geomean >= 235, 1, 0)
 
 # Analytics functions
 prCurve <- function(truth, predicted_values) {
