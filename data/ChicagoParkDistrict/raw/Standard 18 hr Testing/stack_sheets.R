@@ -1,14 +1,13 @@
 #Chicago Park District Raw Data Cleaning
 
-#set working directory
+#remember to set working directory
 
 
-#Slow way, but with dates -- 2006 through 2015
 library(plyr)
 library(readxl)  
 library(psych)
-library(dplyr)
 library(tidyr)
+library(reshape2)
 
 col.names=c(".id","Laboratory.ID","Client.ID","Reading.1","Reading.2","Escherichia.coli","Units","Sample.Collection.Time")                 
 
@@ -149,7 +148,21 @@ final <- final[-which(final$Full_date %in% c(as.Date("2006-07-06"), as.Date("200
 #Clean Beach Names
 
 #Remove outlier with 6488.0 value
+final <- final[-which(final$Reading.2==6488.0),]
 
+#Merge Drek Data
+drekdata <- read.csv("data/DrekBeach/daily_summaries_drekb.csv", stringsAsFactors = F)
+drekdata$Date=as.Date(drekdata$Date, "%m/%d/%Y")
+drekdata<-drekdata[-which(drekdata$Beach=="North-Shore-Beach"),]
+drekdata[6:7] <- colsplit(drekdata$Beach,"-",c("beach","discard"))
+drekdata=drekdata[c(6,2:5)]
+drekdata[drekdata$beach=="Fargo", "beach"] = "Jarvis/Fargo"
+drekdata[drekdata$beach=="63rd", "beach"] = "Jackson/63rd"
+drekdata[drekdata$beach=="Osterman", "beach"] = "Hollywood/Osterman"
+drekdata[drekdata$beach=="South", "beach"] = "South Shore"
+drekdata[drekdata$beach=="North", "beach"] = "North Ave"
+final$Client.ID=sapply(final$Client.ID, function (x) gsub("^\\s+|\\s+$", "", x))
+final=merge(final, drekdata, by.x = c("Client.ID", "Full_date"), by.y = c("beach", "Date"), all.x=T)
 
 
 write.csv(final, "lab_results.csv", row.names=FALSE)
