@@ -62,7 +62,47 @@ beach_readings$e_coli_geomean_actual_calculated <- round(apply(cbind(beach_readi
 
 #create 1/0 for advisory at or over 235
 beach_readings$elevated_levels_actual_calculated <- ifelse(beach_readings$e_coli_geomean_actual_calculated >= 235, 1, 0)
+beach_readings$Drek_elevated_levels_predicted_calculated <- ifelse(beach_readings$Drek_Prediction >= 235, 1, 0)
 
+# Calculate confusion matrix in 2015
+
+beach_readings_2015 <- beach_readings[beach_readings$Year==2015 & 
+                                         !is.na(beach_readings$Reading.1) & 
+                                         !is.na(beach_readings$Reading.2) &
+                                         !is.na(beach_readings$Drek_Prediction)
+                                       , ]
+
+###@ Analyze the relationship between Reading.1 and Reading.2 in 2015
+plot(beach_readings_2015$Reading.1, beach_readings_2015$Reading.2)
+
+#### True positive -- correctly identifying elevated levels
+actual_positive <- sum(beach_readings_2015$elevated_levels_actual_calculated)
+true_positive <- beach_readings_2015[beach_readings_2015$Drek_elevated_levels_predicted_calculated == 1 &
+                                       beach_readings_2015$elevated_levels_actual_calculated == 1, ]$Drek_elevated_levels_predicted_calculated
+true_positive_perc <- sum(true_positive) / actual_positive
+
+#### True negative -- correctly identifying non-elevated levels
+actual_negative <- nrow(beach_readings_2015) - sum(actual_positive)
+true_negative <- beach_readings_2015[beach_readings_2015$Drek_elevated_levels_predicted_calculated == 0 &
+                                       beach_readings_2015$elevated_levels_actual_calculated == 0, ]$Drek_elevated_levels_predicted_calculated
+true_negative_perc <- length(true_negative) / actual_negative
+
+#### False negative -- failing to predict elevated levels
+false_negative <- beach_readings_2015[beach_readings_2015$Drek_elevated_levels_predicted_calculated == 0 &
+                                        beach_readings_2015$elevated_levels_actual_calculated == 1, ]$Drek_elevated_levels_predicted_calculated
+false_negative_perc <- length(false_negative) / actual_negative # Exposing those to e coli
+
+#### False positive -- incorrectly identifying elevated levels
+false_positive <- beach_readings_2015[beach_readings_2015$Drek_elevated_levels_predicted_calculated == 1 &
+                                        beach_readings_2015$elevated_levels_actual_calculated == 0, ]$Drek_elevated_levels_predicted_calculated
+false_positive_perc <- length(false_positive) / actual_positive # Ruins the fun for the day
+
+confusion_matrix <- table(true_positive_perc, true_negative_perc, false_positive_perc, false_negative_perc)
+
+# Residual Analysis
+resid <- beach_readings_2015$Drek_Prediction - beach_readings_2015$e_coli_geomean_actual_calculated
+hist(resid, breaks = 30, main="Difference between predicted value and actual \n (negative denotes underestimate)")
+summary(resid)
 
 # Analytics functions
 prCurve <- function(truth, predicted_values) {
