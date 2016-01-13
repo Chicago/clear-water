@@ -41,6 +41,7 @@ beach_readings$Client.ID <- changenames[beach_readings$Client.ID]
 
 ##Clean Drek Data so they match beach_readings$Client.ID
 drekdata <- read.csv("data/DrekBeach/daily_summaries_drekb.csv", stringsAsFactors = F)
+names(drekdata) <- c("Beach", "Date", "Drek_Reading", "Drek_Prediction", "Drek_Worst_Swim_Status")
 drekdata$Date <- as.Date(drekdata$Date, "%m/%d/%Y")
 drekdata$Beach <- sapply(drekdata$Beach, function (x) gsub("^\\s+|\\s+$", "", x))
 drekdata$Beach <- changenames[drekdata$Beach] 
@@ -57,10 +58,11 @@ beach_readings$Escherichia.coli <- as.numeric(as.character(beach_readings$Escher
 beach_readings <- beach_readings[-which(beach_readings$Reading.2==6488.0),]
 
 # Create measure variables
-beach_readings$e.coli.geomean <- round(apply(cbind(beach_readings$Reading.1,beach_readings$Reading.2), 1, geometric.mean, na.rm=T), 1) 
+beach_readings$e_coli_geomean_actual_calculated <- round(apply(cbind(beach_readings$Reading.1,beach_readings$Reading.2), 1, geometric.mean, na.rm=T), 1) 
 
 #create 1/0 for advisory at or over 235
-beach_readings$elevated_levels <- ifelse(beach_readings$e.coli.geomean >= 235, 1, 0)
+beach_readings$elevated_levels_actual_calculated <- ifelse(beach_readings$e_coli_geomean_actual_calculated >= 235, 1, 0)
+
 
 # Analytics functions
 prCurve <- function(truth, predicted_values) {
