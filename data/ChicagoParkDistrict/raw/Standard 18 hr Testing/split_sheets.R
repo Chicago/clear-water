@@ -13,9 +13,21 @@ clean <- function(j, col.names = c(".id","Laboratory.ID","Client.ID","Reading.1"
   df <- df[which(!is.na(df$Client.ID)),] #get's ride of extra rows and ejplainer tejt that appears in the sheets
 }
 
-read_excel_allsheets<- function(filename) {  
-  sheets <- readxl::excel_sheets(filename)
-  x <-    lapply(sheets, function(X) readxl::read_excel(filename, sheet = X, col_names = F))
+read_excel_allsheets<- function(filename) {
+  if (Sys.info()["sysname"] == "Windows") {
+    null_file = "NUL"
+  } else {
+    null_file = "/dev/null"
+  }
+  
+  capture.output(sheets <- readxl::excel_sheets(filename),
+                 file = null_file)
+  
+  capture.output(x <- lapply(sheets, function(X) readxl::read_excel(filename,
+                                                                    sheet = X,
+                                                                    col_names = F)),
+                 file = null_file)
+  
   names(x) <- sheets
   x
 }
