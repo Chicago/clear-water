@@ -15,6 +15,8 @@ the R dataframe code exactly.
 # TODO: plot toggle
 # TODO: use multi-level index on date/beach
 # TODO: standardize on inplace=True or not inplace
+# TODO: how much consistency do we want between python columns
+#       and the R columns?
 
 TO_PLOT = True
 
@@ -150,6 +152,7 @@ def read_data():
     df['Full_date'] = date_lookup(df['Full_date'])
     days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
     df['Weekday'] = df['Full_date'].map(lambda x: days[x.dayofweek])
+    # TODO: R code creates month/day columns too, do we need that?
 
     # Some header rows were duplicated
     df = df[df['Laboratory.ID'] != u'Laboratory ID']
@@ -192,6 +195,10 @@ def read_data():
     # False if there is a NaN.
     df = df[~((df['Reading.1'] > 2500) | (df['Reading.2'] > 2500))]
 
+    # R code creates a calculated geometric mean column b/c it didn't
+    # import the column correctly (it truncated the value). Pandas did
+    # import correctly, so no need to create that.
+
     return df
 
 if __name__ == '__main__':
@@ -203,20 +210,15 @@ if __name__ == '__main__':
             df['Reading.1'] + df['Reading.2'] >= 235.0 * 2) & (
             (df['Reading.1'] * df['Reading.2']) ** 0.5 < 235
         )
-        print(sum(arith_not_geo))
         geo = (df['Reading.1'] * df['Reading.2']) ** 0.5 >= 235
 
-        plt.plot(df.ix[normal, 'Reading.1'],
-                 df.ix[normal, 'Reading.2'], '.')
-        plt.hold(True)
-        plt.plot(df.ix[arith_not_geo, 'Reading.1'],
-                 df.ix[arith_not_geo, 'Reading.2'], '.',
-                 color=(1, .64, 0))
-        plt.plot(df.ix[geo, 'Reading.1'],
-                 df.ix[geo, 'Reading.2'], '.',
-                 color=(.9, .05, .05))
-        plt.title('Reading 1 vs. Reading\nComparing arithmetic and geometric means')
-
-        plt.gca().set_aspect('equal', 'datalim')
+        ax = df[normal].plot(kind='scatter', x='Reading.1', y='Reading.2',
+                             label='< 235 PPM',alpha=.5)
+        df[arith_not_geo].plot(kind='scatter', x='Reading.1', y='Reading.2',
+                               label='arith >= 235 PPM, geo < 235 PPM',
+                               color=(1, .64, 0), ax=ax, alpha=.5)
+        df[geo].plot(kind='scatter', x='Reading.1', y='Reading.2',
+                     label='geo, arith >= 235 PPM',
+                     color=(.9, .05, .05), ax=ax, alpha=.5)
 
         plt.show()
