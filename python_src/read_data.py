@@ -1,7 +1,6 @@
 from __future__ import print_function
 import pandas as pd
 import os
-import matplotlib.pyplot as plt
 
 '''
 This file reads in data related E. coli levels
@@ -17,8 +16,6 @@ the R dataframe code exactly.
 # TODO: standardize on inplace=True or not inplace
 # TODO: how much consistency do we want between python columns
 #       and the R columns?
-
-TO_PLOT = True
 
 
 def split_sheets(file_name, year):
@@ -207,21 +204,4 @@ def read_data():
 if __name__ == '__main__':
     df = read_data()
 
-    if TO_PLOT:
-        normal = df['Reading.1'] + df['Reading.2'] < 235.0 * 2
-        arith_not_geo = (
-            df['Reading.1'] + df['Reading.2'] >= 235.0 * 2) & (
-            (df['Reading.1'] * df['Reading.2']) ** 0.5 < 235
-        )
-        geo = (df['Reading.1'] * df['Reading.2']) ** 0.5 >= 235
-
-        ax = df[normal].plot(kind='scatter', x='Reading.1', y='Reading.2',
-                             label='< 235 PPM',alpha=.5)
-        df[arith_not_geo].plot(kind='scatter', x='Reading.1', y='Reading.2',
-                               label='arith >= 235 PPM, geo < 235 PPM',
-                               color=(1, .64, 0), ax=ax, alpha=.5)
-        df[geo].plot(kind='scatter', x='Reading.1', y='Reading.2',
-                     label='geo, arith >= 235 PPM',
-                     color=(.9, .05, .05), ax=ax, alpha=.5)
-
-        plt.show()
+    # TODO: add support for a "-o" argument to save as CSV
