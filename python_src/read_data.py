@@ -1,6 +1,8 @@
 from __future__ import print_function
 import pandas as pd
 import os
+import logging
+import argparse
 
 '''
 This file reads in data related E. coli levels
@@ -11,14 +13,13 @@ the R dataframe code exactly.
 '''
 
 # TODO: verbose
-# TODO: plot toggle
 # TODO: use multi-level index on date/beach
 # TODO: standardize on inplace=True or not inplace
 # TODO: how much consistency do we want between python columns
 #       and the R columns?
 
 
-def split_sheets(file_name, year):
+def split_sheets(file_name, year, verbose=False):
     '''
     Reads in all sheets of an excel workbook, concatenating
     all of the information into a single dataframe.
@@ -37,11 +38,15 @@ def split_sheets(file_name, year):
         if not xls.book.sheet_by_name(sheet_name).nrows:
             # Older versions of ExcelFile.parse threw an error if the sheet
             # was empty, explicitly check for this condition.
+            logging.debug('sheet "{0}" from {1} is empty'.format(sheet_name,
+                                                                 year))
             continue
         df = xls.parse(sheet_name)
 
         if i == 0 and len(df.columns) > 30:
             # This is the master/summary sheet
+            logging.debug('ignoring sheet "{0}" from {1}'.format(sheet_name,
+                                                                 year))
             continue
 
         if df.index.dtype == 'object':
@@ -51,6 +56,9 @@ def split_sheets(file_name, year):
             # days when the first column is missing the typical label
             # of 'Laboratory ID'. In this case, peel that index off
             # and set its name.
+            msg = '1st column in sheet "{0}" from {1} is missing title'.format(
+                sheet_name, year)
+            logging.debug(msg)
             df.reset_index(inplace=True)
             df.columns = ['Laboratory ID'] + df.columns.tolist()[1:]
 
@@ -60,6 +68,9 @@ def split_sheets(file_name, year):
         for c in df.columns.tolist():
             if 'Reading' in c:
                 # There are about 10 days that have >2 readings for some reason
+                logging.debug('sheet "{0}" from {1} has >2 readings'.format(
+                    sheet_name, year)
+                )
                 if int(c[8:]) > 2:
                     df.drop(c, 1, inplace=True)
 
@@ -75,6 +86,7 @@ def split_sheets(file_name, year):
 
     df.insert(0, u'Year', str(year))
 
+    logging.debug('Removing data with missing Client ID')
     df.dropna(subset=['Client.ID'], inplace=True)
 
     return df
@@ -89,7 +101,7 @@ def print_full(x):
     pd.reset_option('display.max_rows')
 
 
-def date_lookup(s):
+def date_lookup(s, verbose=False):
     '''
     This is an extremely fast approach to datetime parsing.
     For large data, the same dates are often repeated. Rather than
@@ -102,12 +114,13 @@ def date_lookup(s):
     dates = {date:pd.to_datetime(date, errors='ignore') for date in s.unique()}
     for date, parsed in dates.iteritems():
         if type(parsed) is not pd.tslib.Timestamp:
+            logging.debug('Non-regular date format "{0}"'.format(date))
             fmt = '%B %d (%p) %Y'
             dates[date] = pd.to_datetime(date,format=fmt)
     return s.apply(lambda v: dates[v])
 
 
-def read_data():
+def read_data(verbose=False):
     '''
     Read in the excel files for years 2006-2015 found in
     'data/ChicagoParkDistrict/raw/Standard 18 hr Testing'
@@ -142,6 +155,9 @@ def read_data():
                     df.ix[i, col] = float(val)
                 except ValueError:
                     # Sometimes strings are things like 'Sample Not Received'
+                    logging.debug('Trying to cast "{0}" to numeric'.format(
+                        df.ix[i, col]
+                    ))
                     df.ix[i, col] = float('nan')
         df[col] = df[col].astype('float64')
 
@@ -202,6 +218,19 @@ def read_data():
     return df
 
 if __name__ == '__main__':
-    df = read_data()
+    parser = argparse.ArgumentParser(description='Process beach data.')
+    parser.add_argument('-o', '--outfile', nargs=1, type=str,
+                        metavar='outfile', help='output CSV filename')
+    parser.add_argument('-v', '--verbose', action='count')
 
-    # TODO: add support for a "-o" argument to save as CSV
+    args = parser.parse_args()
+
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
+    df = read_data(args.verbose)
+
+    if args.outfile is not None:
+        df.to_csv(args.outfile[0])
