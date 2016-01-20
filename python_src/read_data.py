@@ -20,6 +20,7 @@ the R dataframe code exactly.
 
 TO_PLOT = True
 
+
 def split_sheets(file_name, year):
     '''
     Reads in all sheets of an excel workbook, concatenating
@@ -31,9 +32,9 @@ def split_sheets(file_name, year):
     xls = pd.ExcelFile(file_name)
     dfs = []
     standardized_col_names = [
-        'Date', 'Laboratory.ID', 'Client.ID','Reading.1',
+        'Date', 'Laboratory.ID', 'Client.ID', 'Reading.1',
         'Reading.2', 'Escherichia.coli', 'Units', 'Sample.Collection.Time'
-        ]
+    ]
 
     for i, sheet_name in enumerate(xls.sheet_names):
         if not xls.book.sheet_by_name(sheet_name).nrows:
@@ -90,6 +91,7 @@ def print_full(x):
     print(x)
     pd.reset_option('display.max_rows')
 
+
 def date_lookup(s):
     '''
     This is an extremely fast approach to datetime parsing.
@@ -124,7 +126,7 @@ def read_data():
     dfs = []
 
     for yr in range(2006,2015):
-        dfs.append(split_sheets(data_path + str(yr) +' Lab Results.xls', yr))
+        dfs.append(split_sheets(data_path + str(yr) + ' Lab Results.xls', yr))
     dfs.append(split_sheets(data_path + '2015 Lab Results.xlsx', 2015))
 
     df = pd.concat(dfs)
@@ -150,7 +152,8 @@ def read_data():
     df.insert(0, 'Full_date',
               df[['Date', 'Year']].apply(lambda x: ' '.join(x), axis=1))
     df['Full_date'] = date_lookup(df['Full_date'])
-    days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+    days = ['Monday','Tuesday','Wednesday',
+            'Thursday','Friday','Saturday','Sunday']
     df['Weekday'] = df['Full_date'].map(lambda x: days[x.dayofweek])
     # TODO: R code creates month/day columns too, do we need that?
 
@@ -171,7 +174,7 @@ def read_data():
     drek_data_path = os.path.join(os.path.dirname(__file__), drek_data_path)
     drekdata = pd.read_csv(drek_data_path + 'daily_summaries_drekb.csv')
     drekdata.columns = ['Beach', 'Date', 'Drek_Reading',
-                         'Drek_Prediction', 'Drek_Worst_Swim_Status']
+                        'Drek_Prediction', 'Drek_Worst_Swim_Status']
     drekdata['Date'] = date_lookup(drekdata['Date'])
     drekdata['Beach'] = drekdata['Beach'].map(lambda x: x.strip())
     drekdata['Beach'] = drekdata['Beach'].map(lambda x: cleanbeachnames[x])
