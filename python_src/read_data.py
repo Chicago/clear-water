@@ -13,7 +13,7 @@ the R dataframe code exactly.
 '''
 
 # TODO: verbose
-# TODO: use multi-level index on date/beach
+# TODO: use multi-level index on date/beach ?
 # TODO: standardize on inplace=True or not inplace
 # TODO: how much consistency do we want between python columns
 #       and the R columns?
@@ -68,10 +68,10 @@ def split_sheets(file_name, year, verbose=False):
         for c in df.columns.tolist():
             if 'Reading' in c:
                 # There are about 10 days that have >2 readings for some reason
-                logging.debug('sheet "{0}" from {1} has >2 readings'.format(
-                    sheet_name, year)
-                )
                 if int(c[8:]) > 2:
+                    logging.info('sheet "{0}" from {1} has >2 readings'.format(
+                        sheet_name, year)
+                    )
                     df.drop(c, 1, inplace=True)
 
         # Only take the first 8 columns, some sheets erroneously have >8 cols
@@ -86,8 +86,130 @@ def split_sheets(file_name, year, verbose=False):
 
     df.insert(0, u'Year', str(year))
 
-    logging.debug('Removing data with missing Client ID')
+    logging.info('Removing data with missing Client ID')
     df.dropna(subset=['Client.ID'], inplace=True)
+
+    return df
+
+
+def read_holiday_data(file_name, verbose=False):
+    df = pd.read_csv(file_name)
+    df['Date'] = pd.to_datetime(df['Date'])
+    print_full(df)
+    print(df.dtypes)
+    return df
+
+
+def read_water_sensor_data(verbose=False):
+    '''
+    Downloads and reads water sensor data from the Chicago data
+    portal. Downsamples the readings into the min, mean, and max
+    for each day and for each sensor. Each day only has one row,
+    with many columns (one column each per sensor per reading per
+    type of down-sampling process)
+    '''
+    url = 'https://data.cityofchicago.org/api/views/qmqz-2xku/rows.csv?accessType=DOWNLOAD'
+    water_sensors = pd.read_csv(url)
+    url = 'https://data.cityofchicago.org/api/views/g3ip-u8rb/rows.csv?accessType=DOWNLOAD'
+    sensor_locations = pd.read_csv(url)
+
+    df = pd.merge(water_sensors, sensor_locations,
+                  left_on='Beach Name', right_on='Sensor Name')
+
+    df.drop(['Sensor Type', 'Location'], 1, inplace=True)
+
+    # TODO: map sensor to beach ???
+
+    df['Beach Name'] = df['Beach Name'].apply(lambda x: x[0:-6])
+
+    df['Measurement Timestamp'] = pd.to_datetime(df['Measurement Timestamp'])
+    df['Date'] = pd.DatetimeIndex(df['Measurement Timestamp']).normalize()
+    df.drop(['Battery Life', 'Measurement Timestamp', 'Measurement Timestamp Label',
+             'Measurement ID', 'Sensor Name'], axis=1, inplace=True)
+
+    df_mins = df.groupby(['Beach Name', 'Date'], as_index=False).min()
+    df_means = df.groupby(['Beach Name', 'Date'], as_index=False).mean()
+    df_maxes = df.groupby(['Beach Name', 'Date'], as_index=False).max()
+
+    cols = df_mins.columns.tolist()
+
+    def rename_columns(cols, aggregation_type):
+        cols = map(lambda x: x.replace(' ', '.'), cols)
+        for i in range(2,7):
+            cols[i] = cols[i] + '.' + aggregation_type
+        return cols
+
+    df_mins.columns = rename_columns(cols, 'Min')
+    df_means.columns = rename_columns(cols, 'Mean')
+    df_maxes.columns = rename_columns(cols, 'Max')
+
+    df = pd.merge(df_mins, df_means, on=['Beach.Name', 'Date'])
+    df = pd.merge(df, df_maxes, on=['Beach.Name', 'Date'])
+    df.drop(['Latitude_x', 'Latitude_y', 'Longitude_x', 'Longitude_y'],
+            axis=1, inplace=True)
+
+    df = df.pivot(index='Date', columns='Beach.Name')
+    df.columns = ['.'.join(col[::-1]).strip() for col in df.columns.values]
+    df.reset_index(inplace=True)
+    df.columns = ['Full_date'] + map(lambda x: x.replace(' ', '.'),
+                                     df.columns.tolist()[1:])
+
+    return df
+
+
+def read_weather_station_data(verbose=False):
+    '''
+    Downloads and reads weather sensor data from the Chicago data
+    portal. Downsamples the readings into the min, mean, and max
+    for each day and for each sensor. Each day only has one row,
+    with many columns (one column each per sensor per reading per
+    type of down-sampling process)
+    '''
+    url = 'https://data.cityofchicago.org/api/views/k7hf-8y75/rows.csv?accessType=DOWNLOAD'
+    weather_sensors = pd.read_csv(url)
+    url = 'https://data.cityofchicago.org/api/views/g3ip-u8rb/rows.csv?accessType=DOWNLOAD'
+    sensor_locations = pd.read_csv(url)
+
+    weather_sensors.columns = map(lambda x: x.replace(' ', '.'),
+                                  weather_sensors.columns.tolist())
+    sensor_locations.columns = map(lambda x: x.replace(' ', '.'),
+                                   sensor_locations.columns.tolist())
+    sensor_locations.columns = ['Station.Name'] + sensor_locations.columns.tolist()[1:]
+
+    df = pd.merge(weather_sensors, sensor_locations, on='Station.Name')
+
+    df['Date'] = pd.DatetimeIndex(df['Measurement.Timestamp']).normalize()
+
+    df.drop(['Measurement.Timestamp.Label', 'Measurement.Timestamp',
+             'Sensor.Type', 'Location', 'Measurement.ID', 'Battery.Life'],
+            axis=1, inplace=True)
+
+    df_mins = df.groupby(['Station.Name', 'Date'], as_index=False).min()
+    df_means = df.groupby(['Station.Name', 'Date'], as_index=False).mean()
+    df_maxes = df.groupby(['Station.Name', 'Date'], as_index=False).max()
+
+    cols = df_mins.columns.tolist()
+
+    def rename_columns(cols, aggregation_type):
+        cols = map(lambda x: x.replace(' ', '.'), cols)
+        for i in range(2,15):
+            cols[i] = cols[i] + '.' + aggregation_type
+        return cols
+
+    df_mins.columns = rename_columns(cols, 'Min')
+    df_means.columns = rename_columns(cols, 'Mean')
+    df_maxes.columns = rename_columns(cols, 'Max')
+
+    df = pd.merge(df_mins, df_means, on=['Station.Name', 'Date'])
+    df = pd.merge(df, df_maxes, on=['Station.Name', 'Date'])
+    df.drop(['Latitude_x', 'Latitude_y', 'Longitude_x', 'Longitude_y'],
+            axis=1, inplace=True)
+
+    df = df.pivot(index='Date', columns='Station.Name')
+    df.columns = ['.'.join(col[::-1]).strip() for col in df.columns.values]
+    df.reset_index(inplace=True)
+    df.columns = ['Full_date'] + map(lambda x: x.replace(' ', '.'),
+                                     df.columns.tolist()[1:])
 
     return df
 
@@ -130,14 +252,14 @@ def read_data(verbose=False):
     found in analysis.R
     '''
 
-    data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
-    data_path = os.path.join(os.path.dirname(__file__), data_path)
+    cpd_data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
+    cpd_data_path = os.path.join(os.path.dirname(__file__), cpd_data_path)
 
     dfs = []
 
     for yr in range(2006,2015):
-        dfs.append(split_sheets(data_path + str(yr) + ' Lab Results.xls', yr))
-    dfs.append(split_sheets(data_path + '2015 Lab Results.xlsx', 2015))
+        dfs.append(split_sheets(cpd_data_path + str(yr) + ' Lab Results.xls', yr))
+    dfs.append(split_sheets(cpd_data_path + '2015 Lab Results.xlsx', 2015))
 
     df = pd.concat(dfs)
 
@@ -155,9 +277,14 @@ def read_data(verbose=False):
                     df.ix[i, col] = float(val)
                 except ValueError:
                     # Sometimes strings are things like 'Sample Not Received'
-                    logging.debug('Trying to cast "{0}" to numeric'.format(
-                        df.ix[i, col]
-                    ))
+                    if 'sample' in df.ix[i, col].lower():
+                        logging.debug('Trying to cast "{0}" to numeric'.format(
+                            df.ix[i, col]
+                        ))
+                    else:
+                        logging.info('Trying to cast "{0}" to numeric'.format(
+                            df.ix[i, col]
+                        ))
                     df.ix[i, col] = float('nan')
         df[col] = df[col].astype('float64')
 
@@ -175,7 +302,7 @@ def read_data(verbose=False):
 
     # Normalize the beach names
     df['Client.ID'] = df['Client.ID'].map(lambda x: x.strip())
-    cleanbeachnames = pd.read_csv(data_path + 'cleanbeachnames.csv')
+    cleanbeachnames = pd.read_csv(cpd_data_path + 'cleanbeachnames.csv')
     cleanbeachnames = dict(zip(cleanbeachnames['Old'], cleanbeachnames['New']))
     # There is one observation that does not have a beach name in the
     # Client.ID column, remove it.
@@ -195,8 +322,7 @@ def read_data(verbose=False):
     # Merge the data
     df = pd.merge(df, drekdata,
                   left_on=['Client.ID', 'Full_date'],
-                  right_on=['Beach', 'Date'],
-                  how='left')
+                  right_on=['Beach', 'Date'])
     # Both dataframes had a Date column, they got replaced
     # by Date_x and Date_y, drop the drek date and re-name Date_x.
     df.drop('Date_y', 1, inplace=True)
@@ -215,6 +341,19 @@ def read_data(verbose=False):
     # import the column correctly (it truncated the value). Pandas did
     # import correctly, so no need to create that.
 
+    external_data_path = '../data/ExternalData/'
+    external_data_path = os.path.join(os.path.dirname(__file__),
+                                      external_data_path)
+
+    holidaydata = read_holiday_data(external_data_path + 'Holidays.csv', verbose)
+    # TODO: merge holiday data
+
+    watersensordata = read_water_sensor_data(verbose)
+    df = pd.merge(df, watersensordata, on='Full_date')
+
+    weatherstationdata = read_weather_station_data(verbose)
+    df = pd.merge(df, weatherstationdata, on='Full_date')
+
     return df
 
 if __name__ == '__main__':
@@ -225,12 +364,14 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if args.verbose:
+    if args.verbose >= 2:
         logging.basicConfig(level=logging.DEBUG)
-    else:
+    elif args.verbose == 1:
         logging.basicConfig(level=logging.INFO)
+    else:
+        logging.basicConfig(level=logging.WARNING)
 
     df = read_data(args.verbose)
 
     if args.outfile is not None:
-        df.to_csv(args.outfile[0])
+        df.to_csv(args.outfile[0], index=False)
