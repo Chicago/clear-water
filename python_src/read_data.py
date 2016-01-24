@@ -17,6 +17,8 @@ the R dataframe code exactly.
 # TODO: standardize on inplace=True or not inplace
 # TODO: how much consistency do we want between python columns
 #       and the R columns?
+# TODO: create better docstrings
+# TODO: remove print statements and the import
 
 
 def split_sheets(file_name, year, verbose=False):
@@ -95,8 +97,6 @@ def split_sheets(file_name, year, verbose=False):
 def read_holiday_data(file_name, verbose=False):
     df = pd.read_csv(file_name)
     df['Date'] = pd.to_datetime(df['Date'])
-    print_full(df)
-    print(df.dtypes)
     return df
 
 
@@ -287,7 +287,6 @@ def read_data(verbose=False):
                         ))
                     df.ix[i, col] = float('nan')
         df[col] = df[col].astype('float64')
-
     # Massage dates, create weekday column
     df.insert(0, 'Full_date',
               df[['Date', 'Year']].apply(lambda x: ' '.join(x), axis=1))
@@ -299,7 +298,6 @@ def read_data(verbose=False):
 
     # Some header rows were duplicated
     df = df[df['Laboratory.ID'] != u'Laboratory ID']
-
     # Normalize the beach names
     df['Client.ID'] = df['Client.ID'].map(lambda x: x.strip())
     cleanbeachnames = pd.read_csv(cpd_data_path + 'cleanbeachnames.csv')
@@ -318,9 +316,8 @@ def read_data(verbose=False):
     drekdata['Date'] = date_lookup(drekdata['Date'])
     drekdata['Beach'] = drekdata['Beach'].map(lambda x: x.strip())
     drekdata['Beach'] = drekdata['Beach'].map(lambda x: cleanbeachnames[x])
-
     # Merge the data
-    df = pd.merge(df, drekdata,
+    df = pd.merge(df, drekdata, how='outer',
                   left_on=['Client.ID', 'Full_date'],
                   right_on=['Beach', 'Date'])
     # Both dataframes had a Date column, they got replaced
@@ -329,7 +326,6 @@ def read_data(verbose=False):
     c = df.columns.tolist()
     c[c.index('Date_x')] = 'Date'
     df.columns = c
-
     # There was an anamolous reading, the max possible value from the test
     # is around 2420, but one reading was 6488.
     # We need to do the ~(reading 1 > 2500 | reading 2 > 2500) instead of
@@ -349,10 +345,10 @@ def read_data(verbose=False):
     # TODO: merge holiday data
 
     watersensordata = read_water_sensor_data(verbose)
-    df = pd.merge(df, watersensordata, on='Full_date')
+    df = pd.merge(df, watersensordata, on='Full_date', how='outer')
 
     weatherstationdata = read_weather_station_data(verbose)
-    df = pd.merge(df, weatherstationdata, on='Full_date')
+    df = pd.merge(df, weatherstationdata, on='Full_date', how='outer')
 
     return df
 
