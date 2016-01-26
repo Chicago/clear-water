@@ -19,6 +19,10 @@ the R dataframe code exactly.
 #       and the R columns?
 # TODO: create better docstrings
 # TODO: remove print statements and the import
+# TODO: loyola/leone the same?
+# TODO: repeats on 2015-06-16 ?
+#       and some of 2012?
+#       Just check for these everywhere, why is it happening?
 
 
 def split_sheets(file_name, year, verbose=False):
@@ -214,6 +218,11 @@ def read_weather_station_data(verbose=False):
     return df
 
 
+def read_locations(file_name, verbose=False):
+    locations = pd.read_csv(file_name)
+    return locations
+
+
 def print_full(x):
     '''
     Helper function to plot the *full* dataframe.
@@ -349,6 +358,9 @@ def read_data(verbose=False):
 
     weatherstationdata = read_weather_station_data(verbose)
     df = pd.merge(df, weatherstationdata, on='Full_date', how='outer')
+
+    # TODO: discuss this
+    df.set_index('Full_date', drop=True, inplace=True)
 
     return df
 
