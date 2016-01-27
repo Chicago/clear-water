@@ -64,6 +64,62 @@ beach_readings$e_coli_geomean_actual_calculated <- round(apply(cbind(beach_readi
 beach_readings$elevated_levels_actual_calculated <- ifelse(beach_readings$e_coli_geomean_actual_calculated >= 235, 1, 0)
 beach_readings$Drek_elevated_levels_predicted_calculated <- ifelse(beach_readings$Drek_Prediction >= 235, 1, 0)
 
+
+# Bring in water sensor data (only available for last couple of years)
+source("data/ExternalData/merge_water_sensor_data.r")
+
+# Bring in weather sensor data (only available for last couple of years)
+source("data/ExternalData/merge_weather_sensor_data.r")
+
+# Bring in holiday data (only summer holidays)
+source("data/ExternalData/merge_holiday_data.r")
+
+
+# --------- Build naive logit model ---------
+
+beach_readings <- beach_readings[!is.na(beach_readings$Client.ID),]
+beach_readings <- beach_readings[order(beach_readings$Client.ID, beach_readings$Full_date),]
+
+# create "yesterday's readings" columns
+library(useful)
+temp <- split(beach_readings, beach_readings$Client.ID)
+for (i in 1:length(temp)) {
+  temp[[i]] <- shift.column(temp[[i]], columns=c("Reading.1","Reading.2"), newNames=c("Yesterday.Reading.1", "Yesterday.Reading.2"), len=1L, up=FALSE)
+}
+beach_readings <- do.call("rbind", temp)
+
+# use only records without NAs in predictors or response
+beach_readings_mod <- beach_readings[!is.na(beach_readings$Yesterday.Reading.1) & !is.na(beach_readings$Yesterday.Reading.2) & !is.na(beach_readings$elevated_levels_actual_calculated),]
+
+# get train and test set
+set.seed(12345)
+smp_size <- floor(0.75 * nrow(beach_readings_mod))
+train_ind <- sample(seq_len(nrow(beach_readings_mod)), size = smp_size)
+train <- beach_readings_mod[train_ind, ]
+test <- beach_readings_mod[-train_ind, ]
+
+# fit naive logit model to training set
+fit <- glm(elevated_levels_actual_calculated ~ Yesterday.Reading.1 + Yesterday.Reading.2, data=train, family=binomial())
+summary(fit)
+
+# evaluate model on test set
+pred.prob=predict(fit, newdata=test, type="response")
+pred.elevated <- rep(0,nrow(test))
+pred.elevated[pred.prob>.5]=1
+test$prediction <- pred.elevated
+confmatrix=table(pred.elevated,test$elevated_levels_actual_calculated)
+confmatrix
+Recall=confmatrix[2,2]/(confmatrix[2,2]+confmatrix[1,2])
+Recall # 3%
+Precision=confmatrix[2,2]/(confmatrix[2,2]+confmatrix[2,1])
+Precision # 37%
+Fscore=(2*Precision*Recall)/(Precision+Recall)
+Fscore # 0.05
+Misclassification=1-(sum(diag(confmatrix))/nrow(test))
+Misclassification # 15%
+
+# -------------------------------------------
+
 # Calculate confusion matrix in 2015
 
 beach_readings_2015 <- beach_readings[beach_readings$Year==2015 & 
