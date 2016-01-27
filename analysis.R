@@ -64,6 +64,17 @@ beach_readings$e_coli_geomean_actual_calculated <- round(apply(cbind(beach_readi
 beach_readings$elevated_levels_actual_calculated <- ifelse(beach_readings$e_coli_geomean_actual_calculated >= 235, 1, 0)
 beach_readings$Drek_elevated_levels_predicted_calculated <- ifelse(beach_readings$Drek_Prediction >= 235, 1, 0)
 
+
+# Bring in water sensor data (only available for last couple of years)
+source("data/ExternalData/merge_water_sensor_data.r")
+
+# Bring in weather sensor data (only available for last couple of years)
+source("data/ExternalData/merge_weather_sensor_data.r")
+
+# Bring in holiday data (only summer holidays)
+source("data/ExternalData/merge_holiday_data.r")
+
+
 # Calculate confusion matrix in 2015
 
 beach_readings_2015 <- beach_readings[beach_readings$Year==2015 & 
