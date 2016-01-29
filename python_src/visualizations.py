@@ -5,6 +5,62 @@ import numpy as np
 import pandas as pd
 
 
+def beach_hist(col='Escherichia.coli', beaches=None,
+               subplots=False, transform=lambda x: x, df=None):
+    '''
+    TODO: docstring
+    '''
+
+    if df is None:
+        df = read_data.read_data()
+
+    if beaches is None:
+        beaches = df['Client.ID'].dropna().unique().tolist()
+
+    if subplots:
+        try:
+            if len(subplots) != 2:
+                raise ValueError('subplots must have exactly 2 elements')
+        except TypeError:
+            raise TypeError('subplots must be an iterable with 2 elements')
+
+        if subplots[0] * subplots[1] < len(beaches):
+            raise ValueError('not enough subplots for each beach')
+
+        min_x = np.inf
+        max_x = -np.inf
+        for b in beaches:
+            data = df[df['Client.ID'] == b][col].map(transform)
+            if data.min() < min_x and not np.isinf(data.min()):
+                min_x = data.min()
+            if data.max() > max_x and not np.isinf(data.min()):
+                max_x = data.max()
+
+        fig, ax = plt.subplots(subplots[0], subplots[1],
+                               sharex=True, sharey=True)
+        ax = ax.flatten()
+
+        for i, b in enumerate(beaches):
+            df[df['Client.ID'] == b][col].map(transform).hist(
+                normed=1, ax=ax[i], bins=np.linspace(min_x, max_x, 11)
+            )
+            ax[i].set_ylabel(b)
+            ax[i].set_yticklabels([])
+
+        for i in range(len(beaches) + 1, len(ax)):
+            ax[i].set_yticklabels([])
+
+    else:
+        fig, ax = plt.subplots(1)
+        for b in beaches:
+            df[df['Client.ID'] == b][col].map(transform).hist(
+                normed=1, alpha=.5, ax=ax
+            )
+        ax.legend(beaches)
+
+    plt.show()
+
+
 def movie(compare_column, df=None):
     '''
     TODO: docstring
@@ -15,8 +71,8 @@ def movie(compare_column, df=None):
 
     compare_min = df[compare_column].dropna().min()
     compare_max = df[compare_column].dropna().max()
-    bg_min_color = np.array([75. / 100, 50. / 100, 20. / 100])
-    bg_max_color = np.array([1., 1., 90. / 100])
+    bg_min_color = np.array([.75, .5, .2])
+    bg_max_color = np.array([.999, .999, 0.9])
 
     file_name = '../data/ExternalData/Beach_Locations.csv'
     beach_locs = read_data.read_locations(file_name)
