@@ -2,45 +2,58 @@ import read_data
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
+import pandas as pd
 
 
-def movie(data_column, lat_longs, df=None):
+def movie(compare_column, df=None):
+    '''
+    TODO: docstring
+    '''
 
     if df is None:
         df = read_data.read_data()
 
+    compare_min = df[compare_column].dropna().min()
+    compare_max = df[compare_column].dropna().max()
+    bg_min_color = np.array([75. / 100, 50. / 100, 20. / 100])
+    bg_max_color = np.array([1., 1., 90. / 100])
+
     file_name = '../data/ExternalData/Beach_Locations.csv'
     beach_locs = read_data.read_locations(file_name)
 
+    # compute Mercator projection of lat/longs
     phi = 0.730191653
 
     beach_locs['Latitude'] = beach_locs['Latitude'] * 110574.0
     beach_locs['Longitude'] = beach_locs['Longitude'] * 111320.0 * np.cos(phi)
 
-    # lat_longs = np.array(lat_longs)
-    # lat_longs[:,0] = lat_longs[:,0] * 110574.0
-    # lat_longs[:,1] = lat_longs[:,1] * 111320.0 * np.cos(phi)
-
-    # fig = plt.gcf()
-    # ax = fig.gca()
     lat_min = beach_locs['Latitude'].min()
     lat_max = beach_locs['Latitude'].max()
     lat_rng = lat_max - lat_min
     lon_min = beach_locs['Longitude'].min()
     lon_max = beach_locs['Longitude'].max()
     lon_rng = lon_max - lon_min
-    # ax.set_xlim([lon_min - lon_rng * 0.1, lon_max + lon_rng * 0.1])
-    # ax.set_ylim([lat_min - lat_rng * 0.1, lat_max + lat_rng * 0.1])
-    # ax.set_aspect('equal')
 
     def generate_index():
         for timestamp in df.index.unique():
             readings = df.ix[timestamp, 'Escherichia.coli']
+            compare = df.ix[timestamp, compare_column]
+            if type(compare) is pd.Series:
+                compare = compare.dropna().mean()
+            if np.isnan(compare):
+                continue
             if ((type(readings) is np.float64 and not np.isnan(readings)) or
                     (type(readings) is not np.float64 and readings.count())):
-                yield timestamp
+                yield timestamp, compare
 
-    def animate(timestamp):
+    def animate(timestamp_and_compare):
+        timestamp = timestamp_and_compare[0]
+        compare = timestamp_and_compare[1]
+
+        compare = (compare - compare_min) / compare_max
+        bg_color = bg_min_color * compare + bg_max_color * (1. - compare)
+        ax.set_axis_bgcolor(bg_color)
+
         for i, b in enumerate(beach_locs['Beach']):
             beach_filt = df.ix[timestamp, 'Client.ID'] == b
             beach_skipped = False
@@ -61,19 +74,23 @@ def movie(data_column, lat_longs, df=None):
             if b in circle_indexes:
                 ax.artists[circle_indexes[b]].set_radius(r)
                 if ecoli >= 235:
-                    ax.artists[circle_indexes[b]].set_facecolor((0.862, 0.357, 0.276, 0.8))
+                    ax.artists[circle_indexes[b]].set_facecolor(
+                        (0.301, 0, 1, 0.75))
                 else:
-                    ax.artists[circle_indexes[b]].set_facecolor((0.262, 0.357, 0.576, 0.8))
+                    ax.artists[circle_indexes[b]].set_facecolor(
+                        (0, 0.682, 1, 0.75))
             else:
                 circ = plt.Circle((beach_locs.ix[i,'Longitude'],
                                    beach_locs.ix[i,'Latitude']),
-                                  radius=r)
+                                  radius=r, edgecolor='none')
                 ax.add_artist(circ)
                 circle_indexes[b] = len(ax.artists) - 1
                 if ecoli >= 235:
-                    ax.artists[circle_indexes[b]].set_facecolor((0.862, 0.357, 0.276, 0.8))
+                    ax.artists[circle_indexes[b]].set_facecolor(
+                        (0.301, 0, 1, 0.75))
                 else:
-                    ax.artists[circle_indexes[b]].set_facecolor((0.262, 0.357, 0.576, 0.8))
+                    ax.artists[circle_indexes[b]].set_facecolor(
+                        (0, 0.682, 1, 0.75))
         ax.title.set_text(timestamp.strftime('%d %B %Y'))
         return ax
 
@@ -85,9 +102,7 @@ def movie(data_column, lat_longs, df=None):
     circle_indexes = {}
 
     anim = animation.FuncAnimation(fig, animate, generate_index, repeat=False)
-
-    mywriter = animation.FFMpegWriter(fps=30)
-    anim.save('test.mp4', writer=mywriter)
+    plt.show()
 
     return anim
 
