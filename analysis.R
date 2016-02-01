@@ -74,6 +74,9 @@ source("data/ExternalData/merge_weather_sensor_data.r")
 # Bring in holiday data (only summer holidays)
 source("data/ExternalData/merge_holiday_data.r")
 
+# Bring in lock opening data
+source("data/ExternalData/merge_lock_data.r")
+
 
 # Calculate confusion matrix in 2015
 
