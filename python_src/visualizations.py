@@ -4,6 +4,8 @@ import matplotlib.animation as animation
 import numpy as np
 import pandas as pd
 
+TO_BLOCK = True
+
 
 def roc(scores, labels):
     '''
@@ -25,33 +27,18 @@ def roc(scores, labels):
 
     Example
     -------
-    import read_data as rd
-    df = rd.read_data()
-    scores = df[['Reading.1', 'Escherichia.coli']].dropna()['Reading.1']
-    labels = df[['Reading.1', 'Escherichia.coli']].dropna()['Escherichia.coli']
-    labels = labels >= 235.0
-    roc(scores, labels)
-    # Warning! This will perform very well b/c it's predcting today
-    # using today's data, this is not a viable model!
+    >>> import read_data as rd
+    >>> import visualizations as viz
+    >>> df = rd.read_data()
+    >>> scores = df[['Reading.1', 'Escherichia.coli']].dropna()['Reading.1']
+    >>> labels = df[['Reading.1', 'Escherichia.coli']].dropna()['Escherichia.coli']
+    >>> labels = labels >= 235.0
+    >>> viz.roc(scores, labels)
+    >>> # Warning! This will perform very well b/c it's predcting today
+    >>> # using today's data, this is not a viable model!
     '''
-    scores = np.array(scores)
-    labels = np.array(labels)
 
-    sort_inds = np.argsort(scores)[::-1]
-    scores = scores[sort_inds]
-    labels = labels[sort_inds]
-
-    labels = labels.astype('bool')
-
-    # Adapted from sklearn.metrics._binary_clf_curve:
-    # scores typically has many tied values. Here we extract
-    # the indices associated with the distinct values. We also
-    # concatenate a value for the end of the curve.
-    # We need to use isclose to avoid spurious repeated thresholds
-    # stemming from floating point roundoff errors.
-    distinct_value_indices = np.where(np.logical_not(np.abs(
-        np.diff(scores)) < 0.00001))[0]
-    threshold_idxs = np.r_[distinct_value_indices, labels.size - 1]
+    scores, labels, threshold_idxs = _massage_scores_labels(scores, labels)
 
     # accumulate the true positives with decreasing threshold
     tps = labels.cumsum()[threshold_idxs]
@@ -68,7 +55,7 @@ def roc(scores, labels):
     ax.set_ylabel('True Positive Rate')
     ax.set_title('ROC curve')
 
-    plt.show()
+    plt.show(block=TO_BLOCK)
 
     return fpr, tpr, scores[threshold_idxs]
 
@@ -93,33 +80,18 @@ def precision_recall(scores, labels):
 
     Example
     -------
-    import read_data as rd
-    df = rd.read_data()
-    scores = df[['Reading.1', 'Escherichia.coli']].dropna()['Reading.1']
-    labels = df[['Reading.1', 'Escherichia.coli']].dropna()['Escherichia.coli']
-    labels = labels >= 235.0
-    precision_recall(scores, labels)
-    # Warning! This will perform very well b/c it's predcting today
-    # using today's data, this is not a viable model!
+    >>> import read_data as rd
+    >>> import visualizations as viz
+    >>> df = rd.read_data()
+    >>> scores = df[['Reading.1', 'Escherichia.coli']].dropna()['Reading.1']
+    >>> labels = df[['Reading.1', 'Escherichia.coli']].dropna()['Escherichia.coli']
+    >>> labels = labels >= 235.0
+    >>> viz.precision_recall(scores, labels)
+    >>> # Warning! This will perform very well b/c it's predcting today
+    >>> # using today's data, this is not a viable model!
     '''
-    scores = np.array(scores)
-    labels = np.array(labels)
 
-    sort_inds = np.argsort(scores)[::-1]
-    scores = scores[sort_inds]
-    labels = labels[sort_inds]
-
-    labels = labels.astype('bool')
-
-    # Adapted from sklearn.metrics._binary_clf_curve:
-    # scores typically has many tied values. Here we extract
-    # the indices associated with the distinct values. We also
-    # concatenate a value for the end of the curve.
-    # We need to use isclose to avoid spurious repeated thresholds
-    # stemming from floating point roundoff errors.
-    distinct_value_indices = np.where(np.logical_not(
-        np.abs(np.diff(scores)) < 0.00001))[0]
-    threshold_idxs = np.r_[distinct_value_indices, labels.size - 1]
+    scores, labels, threshold_idxs = _massage_scores_labels(scores, labels)
 
     ppv = np.zeros(threshold_idxs.size)
     tpr = np.zeros(threshold_idxs.size)
@@ -137,7 +109,7 @@ def precision_recall(scores, labels):
     ax.set_ylabel('Positive Predictive Value')
     ax.set_title('PR curve')
 
-    plt.show()
+    plt.show(block=TO_BLOCK)
 
     return tpr, ppv, scores[threshold_idxs]
 
@@ -145,7 +117,33 @@ def precision_recall(scores, labels):
 def beach_hist(col='Escherichia.coli', beaches=None,
                subplots=False, transform=lambda x: x, df=None):
     '''
-    TODO: docstring
+    Plots histograms of a specified column for the specified beaches.
+
+    Inputs
+    ------
+    col       : Column name or index of the column to be histogrammed
+    beaches   : List of beach names to generate histograms for, None indicates
+                that all beaches should be used.
+    subplots  : False to have each beach's histogram be plotted on the same
+                axis. Otherwise, subplots is a list with two elements specifying
+                the dimensions of the subplot array. For example, [8, 4] will
+                create an 8x4 grid of subplots. There must be at least as many
+                subplot axes as beaches.
+    transform : A function to trasform the data, can be useful to log scale
+                the E. coli readings to make the histogram more spread out.
+    df        : The dataframe containing the data. If None, the data will be
+                read in using read_data.
+
+    Example
+    -------
+    >>> import read_data as rd
+    >>> import visualizations as viz
+    >>> import numpy as np
+    >>> df = rd.read_data()
+    >>> # Will be very messy, you should only plot on the same axis when there
+    >>> # are only a few beaches to plot
+    >>> viz.beach_hist(transform=lambda x: np.log(x+1), df=df)
+    >>> viz.beach_hist(transform=lambda x: np.log(x+1), df=df, subplots=[7, 4])
     '''
 
     if df is None:
@@ -195,21 +193,51 @@ def beach_hist(col='Escherichia.coli', beaches=None,
             )
         ax.legend(beaches)
 
-    plt.show()
+    plt.show(block=TO_BLOCK)
 
 
-def movie(compare_column, df=None):
+def movie(compare_column=None, df=None):
     '''
-    TODO: docstring
+    Creates an animation of the beaches E. coli levels represented as circles.
+    The circle's radius is proportional to the log of the E. coli levels.
+    Additionally, when the E. coli level is above the threshold of 235 PPM,
+    the circle color changes from blue to purple. You can optionally choose
+    to vary the background color of the animation with another column of data,
+    however, this does not seem like a great way to visualize the relationship
+    between E. coli levels and another data-stream.
+
+    Inputs
+    ------
+    compare_column : The name or index of the column that will be used to vary
+                     the background color. If compare_column is None, then the
+                     background color will remain static.
+    df             : The dataframe to use. If None, then the dataframe will be
+                     read in using read_data.
+
+    Returns
+    -------
+    anim : The animation object.
+
+    Example
+    -------
+    >>> import read_data as rd
+    >>> import visualizations as viz
+    >>> df = rd.read_data()
+    >>> viz.movie(df=df)
     '''
 
     if df is None:
         df = read_data.read_data()
+    if compare_column is None:
+        to_compare = False
+    else:
+        to_compare = True
 
-    compare_min = df[compare_column].dropna().min()
-    compare_max = df[compare_column].dropna().max()
-    bg_min_color = np.array([.75, .5, .2])
-    bg_max_color = np.array([.999, .999, 0.9])
+    if to_compare:
+        compare_min = df[compare_column].dropna().min()
+        compare_max = df[compare_column].dropna().max()
+        bg_min_color = np.array([.75, .5, .2])
+        bg_max_color = np.array([.999, .999, 0.9])
 
     file_name = '../data/ExternalData/Beach_Locations.csv'
     beach_locs = read_data.read_locations(file_name)
@@ -230,22 +258,26 @@ def movie(compare_column, df=None):
     def generate_index():
         for timestamp in df.index.unique():
             readings = df.ix[timestamp, 'Escherichia.coli']
-            compare = df.ix[timestamp, compare_column]
-            if type(compare) is pd.Series:
-                compare = compare.dropna().mean()
-            if np.isnan(compare):
-                continue
+            if to_compare:
+                compare = df.ix[timestamp, compare_column]
+                if type(compare) is pd.Series:
+                    compare = compare.dropna().mean()
+                if np.isnan(compare):
+                    continue
             if ((type(readings) is np.float64 and not np.isnan(readings)) or
                     (type(readings) is not np.float64 and readings.count())):
+                if not to_compare:
+                    compare = None
                 yield timestamp, compare
 
     def animate(timestamp_and_compare):
         timestamp = timestamp_and_compare[0]
         compare = timestamp_and_compare[1]
 
-        compare = (compare - compare_min) / compare_max
-        bg_color = bg_min_color * compare + bg_max_color * (1. - compare)
-        ax.set_axis_bgcolor(bg_color)
+        if to_compare:
+            compare = (compare - compare_min) / compare_max
+            bg_color = bg_min_color * compare + bg_max_color * (1. - compare)
+            ax.set_axis_bgcolor(bg_color)
 
         for i, b in enumerate(beach_locs['Beach']):
             beach_filt = df.ix[timestamp, 'Client.ID'] == b
@@ -295,14 +327,42 @@ def movie(compare_column, df=None):
     circle_indexes = {}
 
     anim = animation.FuncAnimation(fig, animate, generate_index, repeat=False)
-    plt.show()
+    plt.show(block=TO_BLOCK)
 
     return anim
 
 
 def plot_beach(columns, df=None, beaches=None, separate_beaches=False, **kwds):
     '''
-    TODO: docstring
+    Plots the specified column of data for the specified beaches.
+
+    Inputs
+    ------
+    columns          : One or more column names/indexes of data to plot.
+    df               : The dataframe of data. If None, then the dataframe
+                       will be read in using read_data.
+    beaches          : Name or list of names of beaches to plot. If None, all
+                       beaches will be used.
+    separate_beaches : If False, each beach will be plotted on the same axis.
+                       Otherwise, each beach will be plotted on its own axis.
+
+    keyword arguments
+    -----------------
+    Other keyword arguments will be past to the plot routine.
+
+    Returns
+    fig : The figure object.
+    ax  : If separate_beaches is false, then this is the axis object.
+          Otherwise, it is the array of axis objects.
+
+    Example
+    -------
+    >>> import read_data as rd
+    >>> import visualizations as viz
+    >>> df = rd.read_data()
+    >>> beaches = ['Juneway', 'Rogers', 'Howard']
+    >>> col = 'Escherichia.coli'
+    >>> viz.plot_beach(col, df=df, beaches=beaches, separate_beaches=True)
     '''
     if df is None:
         df = read_data.read_data()
@@ -327,12 +387,41 @@ def plot_beach(columns, df=None, beaches=None, separate_beaches=False, **kwds):
             for txt in ax.legend().get_texts()[l:]:
                 txt.set_text(beach + ': ' + txt.get_text())
 
-    plt.show()
+    plt.show(block=TO_BLOCK)
 
     return fig, ax
 
 
+def _massage_scores_labels(scores, labels):
+    '''
+    Adjusts the scores and labels, and gets the indexes of the distinct
+    thresholds in the scores array.
+    '''
+    scores = np.array(scores)
+    labels = np.array(labels)
+
+    sort_inds = np.argsort(scores)[::-1]
+    scores = scores[sort_inds]
+    labels = labels[sort_inds]
+
+    labels = labels.astype('bool')
+
+    # Adapted from sklearn.metrics._binary_clf_curve:
+    # scores typically has many tied values. Here we extract
+    # the indices associated with the distinct values. We also
+    # concatenate a value for the end of the curve.
+    # We need to use isclose to avoid spurious repeated thresholds
+    # stemming from floating point roundoff errors.
+    distinct_value_indices = np.where(np.logical_not(np.abs(
+        np.diff(scores)) < 0.00001))[0]
+    threshold_idxs = np.r_[distinct_value_indices, labels.size - 1]
+
+    return scores, labels, threshold_idxs
+
 if __name__ == '__main__':
+
+    TO_BLOCK = False
+
     df = read_data.read_data()
 
     scores = df[['Reading.1', 'Escherichia.coli']].dropna()['Reading.1']
@@ -340,3 +429,9 @@ if __name__ == '__main__':
     labels = labels >= 235.0
     roc(scores, labels)
     precision_recall(scores, labels)
+
+    beach_hist(transform=lambda x: np.log(x + 1), df=df, subplots=[7, 4])
+
+    movie(df=df)
+
+    plt.show()
