@@ -5,6 +5,143 @@ import numpy as np
 import pandas as pd
 
 
+def roc(scores, labels):
+    '''
+    Plots the Receiver Operator Characteristic (ROC) curve of the results
+    from a binary classification system.
+
+    Inputs
+    ------
+    scores : Nx1 array of (usually continuous) outputs of a classification
+             system, for example, predicted E. coli levels
+    labels : Nx1 boolean array of true classes
+
+    Returns
+    -------
+    fpr      : Mx1 array of false positive rates
+    tpr      : Mx1 array of true positive rates
+    threshes : Mx1 array of the thresholds on the scores variable
+               used to create the corresponding fpr and tpr values.
+
+    Example
+    -------
+    import read_data as rd
+    df = rd.read_data()
+    scores = df[['Reading.1', 'Escherichia.coli']].dropna()['Reading.1']
+    labels = df[['Reading.1', 'Escherichia.coli']].dropna()['Escherichia.coli']
+    labels = labels >= 235.0
+    roc(scores, labels)
+    # Warning! This will perform very well b/c it's predcting today
+    # using today's data, this is not a viable model!
+    '''
+    scores = np.array(scores)
+    labels = np.array(labels)
+
+    sort_inds = np.argsort(scores)[::-1]
+    scores = scores[sort_inds]
+    labels = labels[sort_inds]
+
+    labels = labels.astype('bool')
+
+    # Adapted from sklearn.metrics._binary_clf_curve:
+    # scores typically has many tied values. Here we extract
+    # the indices associated with the distinct values. We also
+    # concatenate a value for the end of the curve.
+    # We need to use isclose to avoid spurious repeated thresholds
+    # stemming from floating point roundoff errors.
+    distinct_value_indices = np.where(np.logical_not(np.abs(
+        np.diff(scores)) < 0.00001))[0]
+    threshold_idxs = np.r_[distinct_value_indices, labels.size - 1]
+
+    # accumulate the true positives with decreasing threshold
+    tps = labels.cumsum()[threshold_idxs]
+    fps = 1 + threshold_idxs - tps
+
+    tpr = tps / float(tps[-1])
+    fpr = fps / float(fps[-1])
+
+    fig, ax = plt.subplots(1)
+    ax.plot(fpr, tpr)
+    ax.hold(True)
+    ax.plot([0, 1], [0, 1], 'r--')
+    ax.set_xlabel('False Positive Rate')
+    ax.set_ylabel('True Positive Rate')
+    ax.set_title('ROC curve')
+
+    plt.show()
+
+    return fpr, tpr, scores[threshold_idxs]
+
+
+def precision_recall(scores, labels):
+    '''
+    Plots the Precision Recall (PR) curve of the results
+    from a binary classification system.
+
+    Inputs
+    ------
+    scores : Nx1 array of (usually continuous) outputs of a classification
+             system, for example, predicted E. coli levels
+    labels : Nx1 boolean array of true classes
+
+    Returns
+    -------
+    tpr      : Mx1 array of true positive rates
+    ppv      : Mx1 array of positive predictive values
+    threshes : Mx1 array of the thresholds on the scores variable
+               used to create the corresponding ppv and tpr values.
+
+    Example
+    -------
+    import read_data as rd
+    df = rd.read_data()
+    scores = df[['Reading.1', 'Escherichia.coli']].dropna()['Reading.1']
+    labels = df[['Reading.1', 'Escherichia.coli']].dropna()['Escherichia.coli']
+    labels = labels >= 235.0
+    precision_recall(scores, labels)
+    # Warning! This will perform very well b/c it's predcting today
+    # using today's data, this is not a viable model!
+    '''
+    scores = np.array(scores)
+    labels = np.array(labels)
+
+    sort_inds = np.argsort(scores)[::-1]
+    scores = scores[sort_inds]
+    labels = labels[sort_inds]
+
+    labels = labels.astype('bool')
+
+    # Adapted from sklearn.metrics._binary_clf_curve:
+    # scores typically has many tied values. Here we extract
+    # the indices associated with the distinct values. We also
+    # concatenate a value for the end of the curve.
+    # We need to use isclose to avoid spurious repeated thresholds
+    # stemming from floating point roundoff errors.
+    distinct_value_indices = np.where(np.logical_not(
+        np.abs(np.diff(scores)) < 0.00001))[0]
+    threshold_idxs = np.r_[distinct_value_indices, labels.size - 1]
+
+    ppv = np.zeros(threshold_idxs.size)
+    tpr = np.zeros(threshold_idxs.size)
+    for i, thresh in enumerate(scores[threshold_idxs]):
+        predict_pos = (scores >= thresh)
+        ppv[i] = (predict_pos & labels).sum() / float(predict_pos.sum())
+        tpr[i] = (predict_pos & labels).sum() / float(labels.sum())
+
+    fig, ax = plt.subplots(1)
+    ax.plot(tpr, ppv)
+    ax.hold(True)
+    ax.plot([0, 1], [float(labels.sum()) / labels.size,
+                     float(labels.sum()) / labels.size], 'r--')
+    ax.set_xlabel('True Positive Rate')
+    ax.set_ylabel('Positive Predictive Value')
+    ax.set_title('PR curve')
+
+    plt.show()
+
+    return tpr, ppv, scores[threshold_idxs]
+
+
 def beach_hist(col='Escherichia.coli', beaches=None,
                subplots=False, transform=lambda x: x, df=None):
     '''
@@ -189,10 +326,17 @@ def plot_beach(columns, df=None, beaches=None, separate_beaches=False, **kwds):
             df[filt].plot(y=columns, ax=ax, **kwds)
             for txt in ax.legend().get_texts()[l:]:
                 txt.set_text(beach + ': ' + txt.get_text())
+
+    plt.show()
+
     return fig, ax
 
 
 if __name__ == '__main__':
     df = read_data.read_data()
 
-    plt.show()
+    scores = df[['Reading.1', 'Escherichia.coli']].dropna()['Reading.1']
+    labels = df[['Reading.1', 'Escherichia.coli']].dropna()['Escherichia.coli']
+    labels = labels >= 235.0
+    roc(scores, labels)
+    precision_recall(scores, labels)
