@@ -75,21 +75,26 @@ source("data/ExternalData/merge_weather_sensor_data.r")
 source("data/ExternalData/merge_holiday_data.r")
 
 
-# --------- Build naive logit model ---------
+# Build naive logit model 
+# -----------------------------------------------------------
 
 beach_readings <- beach_readings[!is.na(beach_readings$Client.ID),]
 beach_readings <- beach_readings[order(beach_readings$Client.ID, beach_readings$Full_date),]
 
-# create "yesterday's readings" columns
+# create "high reading" and "low reading"
+beach_readings$High.Reading <- mapply(max, beach_readings$Reading.1, beach_readings$Reading.2)
+beach_readings$Low.Reading <- mapply(min, beach_readings$Reading.1, beach_readings$Reading.2)
+
+# create columns for previous readings
 library(useful)
 temp <- split(beach_readings, beach_readings$Client.ID)
 for (i in 1:length(temp)) {
-  temp[[i]] <- shift.column(temp[[i]], columns=c("Reading.1","Reading.2"), newNames=c("Yesterday.Reading.1", "Yesterday.Reading.2"), len=1L, up=FALSE)
+  temp[[i]] <- shift.column(temp[[i]], columns=c("High.Reading","Low.Reading","e_coli_geomean_actual_calculated"), newNames=c("Previous.High.Reading", "Previous.Low.Reading", "Previous.Geomean"), len=1L, up=FALSE)
 }
 beach_readings <- do.call("rbind", temp)
 
 # use only records without NAs in predictors or response
-beach_readings_mod <- beach_readings[!is.na(beach_readings$Yesterday.Reading.1) & !is.na(beach_readings$Yesterday.Reading.2) & !is.na(beach_readings$elevated_levels_actual_calculated),]
+beach_readings_mod <- beach_readings[!is.na(beach_readings$Previous.High.Reading) & !is.na(beach_readings$Previous.Low.Reading) & !is.na(beach_readings$Previous.Geomean)& !is.na(beach_readings$elevated_levels_actual_calculated),]
 
 # get train and test set
 set.seed(12345)
@@ -99,7 +104,8 @@ train <- beach_readings_mod[train_ind, ]
 test <- beach_readings_mod[-train_ind, ]
 
 # fit naive logit model to training set
-fit <- glm(elevated_levels_actual_calculated ~ Yesterday.Reading.1 + Yesterday.Reading.2, data=train, family=binomial())
+#fit <- glm(elevated_levels_actual_calculated ~ Previous.High.Reading + Previous.Low.Reading, data=train, family=binomial())
+fit <- glm(elevated_levels_actual_calculated ~ Previous.Geomean, data=train, family=binomial())
 summary(fit)
 
 # evaluate model on test set
@@ -118,9 +124,10 @@ Fscore # 0.05
 Misclassification=1-(sum(diag(confmatrix))/nrow(test))
 Misclassification # 15%
 
-# -------------------------------------------
+# -----------------------------------------------------------
 
-# Calculate confusion matrix in 2015
+
+# Calculate confusion matrix for 2015 (EPA model)
 
 beach_readings_2015 <- beach_readings[beach_readings$Year==2015 & 
                                          !is.na(beach_readings$Reading.1) & 
