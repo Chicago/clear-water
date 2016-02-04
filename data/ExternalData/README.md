@@ -26,3 +26,9 @@
 * Holiday (e.g. Father's Day, Independence Day, etc.)
 * Holiday flag (1 or 0)
 * Days since last holiday
+
+**Lock Opening Data** - for CRCW and Wilmette locks
+
+* Lock open indicator
+* Volume of water released
+
