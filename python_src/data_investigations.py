@@ -7,7 +7,30 @@ import numpy as np
 
 def check_sample_times(df=None, to_plot=False):
     '''
-    TODO: docstring
+    Investigates whether there is a relationship between the time a
+    sample was taken and the E. coli reading. A possible hypothesis
+    being that samples taken later in the day might tend to read be
+    higher.
+
+    The conclusions from this function seem to indicate that there
+    is not a subtantial relationship between sample time and E.
+    coli reading.
+
+    Inputs
+    ------
+    df      : Dataframe object, should contain at least the columns
+              'Client.ID', 'Escherichia.coli', 'Sample.Collection.Time',
+              if df is None, then it will be read in from read_data.
+    to_plot : Boolean, if true, the results will be printed and
+              plotted. Otherwise, just the cleansed dataframe will
+              be returned.
+
+    Returns
+    -------
+    ct : Dataframe of collection times and E. coli readings.
+         The column 'Sample.Collection.Time' is the fraction of the day,
+         for example, a value of 0.50 indicates the collection happened
+         at noon, a value of 0.25 would indicate 6:00 AM, etc.
     '''
     if df is None:
         df = rd.read_data()
