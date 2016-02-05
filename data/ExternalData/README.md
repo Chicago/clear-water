@@ -32,3 +32,14 @@
 * Lock open indicator
 * Volume of water released
 
+**Daily Weather Data from Forecast.io** 
+
+* Temperature (max, min)
+* Apparent temperature (max, min)
+* Precipitation intensity
+* Precipitation probability
+* Wind speed
+* Dew point
+* Visibility
+* Cloud cover
+* etc. 

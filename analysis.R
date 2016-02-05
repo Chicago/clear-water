@@ -77,6 +77,12 @@ source("data/ExternalData/merge_holiday_data.r")
 # Bring in lock opening data
 source("data/ExternalData/merge_lock_data.r")
 
+# Bring in forecast.io daily weather data
+forecast_daily <- read.csv("data/ExternalData/forecastio_daily_weather.csv", stringsAsFactors = FALSE, row.names=NULL, header = T)
+forecast_daily <- unique(forecast_daily)
+beach_readings <- merge(x=beach_readings, y=forecast_daily, by.x=c("Client.ID", "Full_date"), by.y=c("beach", "time"), all.x=T)
+
+
 
 # Calculate confusion matrix in 2015
 
