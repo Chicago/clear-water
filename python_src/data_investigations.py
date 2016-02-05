@@ -3,6 +3,7 @@ import datetime as dt
 import visualizations as viz
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.stats
 
 
 def check_sample_times(df=None, to_plot=False):
@@ -66,15 +67,59 @@ def check_sample_times(df=None, to_plot=False):
     ct = ct[(ct['Sample.Collection.Time'] > .125) & (ct['Sample.Collection.Time'] < .83)]
 
     if to_plot:
+        # t-test
+        ct_low = ct[ct['Escherichia.coli'] < 235]
+        ct_high = ct[ct['Escherichia.coli'] >= 235]
+        ttest = scipy.stats.ttest_ind(ct_low['Sample.Collection.Time'],
+                                      ct_high['Sample.Collection.Time'])
+
+        print('test comparing below threshold to above threshold:')
+        print('\tt-statistic: {0}\n\tp-value    : {1}'.format(ttest[0], ttest[1]))
+        low_mean = ct_low['Sample.Collection.Time'].mean()
+        low_mean_hr = int(low_mean * 24)
+        low_mean_min = str(int((low_mean * 24 - low_mean_hr) * 60))
+        if len(low_mean_min) < 2:
+            low_mean_min = '0' + low_mean_min
+        print('\tbelow thresh mean: {0} ({1})'.format(
+            low_mean, str(low_mean_hr) + ':' + low_mean_min
+        ))
+        high_mean = ct_high['Sample.Collection.Time'].mean()
+        high_mean_hr = int(high_mean * 24)
+        high_mean_min = str(int((high_mean * 24 - high_mean_hr) * 60))
+        if len(high_mean_min) < 2:
+            high_mean_min = '0' + high_mean_min
+        print('\tbelow thresh mean: {0} ({1})'.format(
+            high_mean, str(high_mean_hr) + ':' + high_mean_min
+        ))
+
+        # qq-plot
+        x = []
+        y = []
+        for p in np.linspace(0,1,1000):
+            x.append(ct_low['Sample.Collection.Time'].quantile(p))
+            y.append(ct_high['Sample.Collection.Time'].quantile(p))
+        ax = plt.subplots(1)[1]
+        ax.plot([.1, .8], [.1, .8], 'r--')
+        ax.hold(True)
+        ax.plot(x, y)
+        ax.set_xlabel('Below Threshold Quantiles')
+        ax.set_ylabel('Above Threshold Quantiles')
+        ax.set_aspect('equal')
+
+        # set e coli to log scale
         ct['Escherichia.coli'] = ct['Escherichia.coli'].map(lambda x: np.log(x + 1.))
-        print('Pearson correlation : ' + str(ct.corr(method='pearson').ix[0,1]))
-        print('Spearman correlation: ' + str(ct.corr(method='spearman').ix[0,1]))
-        ct.plot(x='Escherichia.coli', y='Sample.Collection.Time', style='.')
-        ax = plt.gca()
-        ax.set_xlim([ct['Escherichia.coli'].min(), ct['Escherichia.coli'].max()])
+
+        # correlations
+        print('Correlations between log(E. coli) and Sample collection time:')
+        print('\tPearson correlation : ' + str(ct.corr(method='pearson').ix[0,1]))
+        print('\tSpearman correlation: ' + str(ct.corr(method='spearman').ix[0,1]))
+
+        # scatter plot
         ct.plot(y='Escherichia.coli', x='Sample.Collection.Time', style='.')
         ax = plt.gca()
         ax.set_xlim([ct['Sample.Collection.Time'].min(), ct['Sample.Collection.Time'].max()])
+
+        # histograms
         tb = viz.TO_BLOCK
         viz.TO_BLOCK = False
         fig, ax = viz.plot_beach(columns='Sample.Collection.Time', df=ct)
