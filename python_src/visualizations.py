@@ -4,6 +4,7 @@ import matplotlib.animation as animation
 import numpy as np
 import pandas as pd
 
+# Should we block the matplotlib plots?
 TO_BLOCK = True
 
 
@@ -177,7 +178,7 @@ def beach_hist(col='Escherichia.coli', beaches=None,
 
         for i, b in enumerate(beaches):
             df[df['Client.ID'] == b][col].map(transform).hist(
-                normed=1, ax=ax[i], bins=np.linspace(min_x, max_x, 11)
+                normed=1, ax=ax[i], bins=np.linspace(min_x, max_x, 15)
             )
             ax[i].set_ylabel(b)
             ax[i].set_yticklabels([])
@@ -189,7 +190,7 @@ def beach_hist(col='Escherichia.coli', beaches=None,
         fig, ax = plt.subplots(1)
         for b in beaches:
             df[df['Client.ID'] == b][col].map(transform).hist(
-                normed=1, alpha=.5, ax=ax
+                normed=True, alpha=.5, ax=ax
             )
         ax.legend(beaches)
 
@@ -380,10 +381,14 @@ def plot_beach(columns, df=None, beaches=None, separate_beaches=False, **kwds):
             ax[i].set_title(beach)
     else:
         fig, ax = plt.subplots(1,1)
-        l = len(ax.legend().get_texts())
-        for beach in beaches:
+        for i, beach in enumerate(beaches):
+            if type(columns) is str:
+                l = i
+            else:
+                l = i * len(columns)
             filt = df['Client.ID'] == beach
             df[filt].plot(y=columns, ax=ax, **kwds)
+            # TODO: cannot get this legend stuff to work...
             for txt in ax.legend().get_texts()[l:]:
                 txt.set_text(beach + ': ' + txt.get_text())
 
