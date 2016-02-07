@@ -350,7 +350,7 @@ def read_data(verbose=False):
     external_data_path = os.path.join(os.path.dirname(__file__),
                                       external_data_path)
 
-    holidaydata = read_holiday_data(external_data_path + 'Holidays.csv', verbose)
+    # holidaydata = read_holiday_data(external_data_path + 'Holidays.csv', verbose)
     # TODO: merge holiday data
 
     watersensordata = read_water_sensor_data(verbose)
