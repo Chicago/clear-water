@@ -64,6 +64,9 @@ def check_sample_times(df=None, to_plot=False):
         lambda x: x.hour / 24. + x.minute / (24. * 60.)
     )
     # Filter out those samples which came before 4:00 AM or after 8:00 PM
+    # It seems like most of the ones that come from before 4:00 AM might
+    # actually be occuring in the afternoon. I've tried taking these and manually
+    # changing them to the afternoon and there was no significant change in results.
     ct = ct[(ct['Sample.Collection.Time'] > .125) & (ct['Sample.Collection.Time'] < .83)]
 
     if to_plot:
@@ -72,9 +75,10 @@ def check_sample_times(df=None, to_plot=False):
         ct_high = ct[ct['Escherichia.coli'] >= 235]
         ttest = scipy.stats.ttest_ind(ct_low['Sample.Collection.Time'],
                                       ct_high['Sample.Collection.Time'])
-
-        print('test comparing below threshold to above threshold:')
+        print('tests comparing below threshold to above threshold:')
+        print('\tOVERALL:')
         print('\tt-statistic: {0}\n\tp-value    : {1}'.format(ttest[0], ttest[1]))
+
         low_mean = ct_low['Sample.Collection.Time'].mean()
         low_mean_hr = int(low_mean * 24)
         low_mean_min = str(int((low_mean * 24 - low_mean_hr) * 60))
@@ -92,6 +96,17 @@ def check_sample_times(df=None, to_plot=False):
             high_mean, str(high_mean_hr) + ':' + high_mean_min
         ))
 
+        ttests = []
+        for b in ct['Client.ID'].dropna().unique().tolist():
+            xl = ct_low[ct_low['Client.ID'] == b]
+            xh = ct_high[ct_high['Client.ID'] == b]
+            ttests.append(scipy.stats.ttest_ind(xl['Sample.Collection.Time'],
+                                                xh['Sample.Collection.Time']))
+            ttest = ttests[-1]
+            print('\t' + b)
+            print('\t\tt-statistic: {0}\n\t\tp-value    : {1}'.format(ttest[0], ttest[1]))
+        plt.hist(map(lambda x: x[1], ttests))
+
         # qq-plot
         x = []
         y = []
@@ -99,7 +114,7 @@ def check_sample_times(df=None, to_plot=False):
             x.append(ct_low['Sample.Collection.Time'].quantile(p))
             y.append(ct_high['Sample.Collection.Time'].quantile(p))
         ax = plt.subplots(1)[1]
-        ax.plot([.1, .8], [.1, .8], 'r--')
+        ax.plot([0, 1], [0, 1], 'r--')
         ax.hold(True)
         ax.plot(x, y)
         ax.set_xlabel('Below Threshold Quantiles')
