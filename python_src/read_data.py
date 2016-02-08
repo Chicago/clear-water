@@ -99,8 +99,36 @@ def split_sheets(file_name, year, verbose=False):
 
 
 def read_holiday_data(file_name, verbose=False):
+    '''
+    Reads in holiday CSV file.
+    '''
     df = pd.read_csv(file_name)
     df['Date'] = pd.to_datetime(df['Date'])
+    df.columns = ['Full_date', 'Holiday']
+    return df
+
+
+def days_since_holiday(df):
+    '''
+    Creates a column that describes the number of days since last
+    summer holiday, which could have happened last year resulting
+    in numbers 300 and above.
+    '''
+    df['Holiday.Flag'] = ~df['Holiday'].isnull()
+
+    holiday_dates = df.ix[df['Holiday.Flag'], 'Full_date'].unique()
+    holiday_dates = pd.Series(holiday_dates)
+
+    def day_count(d):
+        less_than_date = holiday_dates.map(lambda x: x <= d)
+        if not less_than_date.any():
+            return float('nan')
+        holiday_date = holiday_dates[less_than_date[less_than_date].index[-1]]
+        delta = d - holiday_date
+        return delta.days
+
+    df['Days.Since.Last.Holiday'] = df['Full_date'].map(day_count)
+
     return df
 
 
@@ -346,12 +374,15 @@ def read_data(verbose=False):
     # import the column correctly (it truncated the value). Pandas did
     # import correctly, so no need to create that.
 
+    df = df.sort(['Full_date', 'Client.ID'])
+
     external_data_path = '../data/ExternalData/'
     external_data_path = os.path.join(os.path.dirname(__file__),
                                       external_data_path)
 
-    # holidaydata = read_holiday_data(external_data_path + 'Holidays.csv', verbose)
-    # TODO: merge holiday data
+    holidaydata = read_holiday_data(external_data_path + 'Holidays.csv', verbose)
+    df = pd.merge(df, holidaydata, on='Full_date', how='outer')
+    df = days_since_holiday(df)
 
     watersensordata = read_water_sensor_data(verbose)
     df = pd.merge(df, watersensordata, on='Full_date', how='outer')
@@ -361,6 +392,8 @@ def read_data(verbose=False):
 
     # TODO: discuss this
     df.set_index('Full_date', drop=True, inplace=True)
+
+    df = df.dropna(subset=['Client.ID'])
 
     return df
 
