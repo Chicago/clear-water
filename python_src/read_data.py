@@ -12,17 +12,16 @@ such that the dataframe loaded here will match
 the R dataframe code exactly.
 '''
 
-# TODO: verbose
 # TODO: use multi-level index on date/beach ?
 # TODO: standardize on inplace=True or not inplace
 # TODO: how much consistency do we want between python columns
 #       and the R columns?
 # TODO: create better docstrings
-# TODO: remove print statements and the import
-# TODO: loyola/leone the same?
 # TODO: repeats on 2015-06-16 ?
 #       and some of 2012?
 #       Just check for these everywhere, why is it happening?
+#       follow-up 2015-06-16 has two samples in Excel, one
+#       labeled as a "PM" sample...
 
 
 def split_sheets(file_name, year, verbose=False):
@@ -99,8 +98,55 @@ def split_sheets(file_name, year, verbose=False):
 
 
 def read_holiday_data(file_name, verbose=False):
+    '''
+    Reads in holiday CSV file.
+    '''
+    # TODO: verbose ?
     df = pd.read_csv(file_name)
     df['Date'] = pd.to_datetime(df['Date'])
+    df.columns = ['Full_date', 'Holiday']
+    return df
+
+
+def days_since_holiday(df, verbose=False):
+    '''
+    Creates a column that describes the number of days since last
+    summer holiday, which could have happened last year resulting
+    in numbers 300 and above.
+    '''
+    # TODO: verbose ?
+    df['Holiday.Flag'] = ~df['Holiday'].isnull()
+
+    holiday_dates = df.ix[df['Holiday.Flag'], 'Full_date'].unique()
+    holiday_dates = pd.Series(holiday_dates)
+
+    def day_count(d):
+        less_than_date = holiday_dates.map(lambda x: x <= d)
+        if not less_than_date.any():
+            return float('nan')
+        holiday_date = holiday_dates[less_than_date[less_than_date].index[-1]]
+        delta = d - holiday_date
+        return delta.days
+
+    df['Days.Since.Last.Holiday'] = df['Full_date'].map(day_count)
+
+    return df
+
+
+def read_forecast_data(filename, verbose=False):
+    '''
+    Read in forecast.io historical weather data.
+    '''
+    # TODO: verbose ?
+
+    df = pd.read_csv(filename)
+    df = df.drop_duplicates()
+    cols = df.columns.tolist()
+    cols[cols.index('beach')] = 'Client.ID'
+    cols[cols.index('time')] = 'Full_date'
+    df.columns = cols
+    df['Full_date'] = pd.to_datetime(df['Full_date'])
+
     return df
 
 
@@ -346,12 +392,18 @@ def read_data(verbose=False):
     # import the column correctly (it truncated the value). Pandas did
     # import correctly, so no need to create that.
 
+    df = df.sort(['Full_date', 'Client.ID'])
+
     external_data_path = '../data/ExternalData/'
     external_data_path = os.path.join(os.path.dirname(__file__),
                                       external_data_path)
 
-    # holidaydata = read_holiday_data(external_data_path + 'Holidays.csv', verbose)
-    # TODO: merge holiday data
+    holidaydata = read_holiday_data(external_data_path + 'Holidays.csv', verbose)
+    df = pd.merge(df, holidaydata, on='Full_date', how='outer')
+    df = days_since_holiday(df)
+
+    forecast_daily = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
+    df = pd.merge(df, forecast_daily, on=['Full_date', 'Client.ID'])
 
     watersensordata = read_water_sensor_data(verbose)
     df = pd.merge(df, watersensordata, on='Full_date', how='outer')
@@ -361,6 +413,8 @@ def read_data(verbose=False):
 
     # TODO: discuss this
     df.set_index('Full_date', drop=True, inplace=True)
+
+    df = df.dropna(subset=['Client.ID'])
 
     return df
 
