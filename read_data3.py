@@ -12,16 +12,28 @@ such that the dataframe loaded here will match
 the R dataframe code exactly.
 '''
 
+# This is an adaptation of previous read_data.py so that it runs on Python3
+# Some variable names changed. Notably, Client.ID is now Beach
+# Added day of week and month variables
+# Also adds columns to dataframe:
+#   YesterdayEcoli          :  prior days reading
+#   DayBeforeYesterdayEcoli :  two days prior reading
+#   actual_elevated         :  where Escherichia_coli >=235
+#   predicted_elevated      :  where Drek_Prediction  >=235
+#  
+
+
+# TODO: verbose
 # TODO: use multi-level index on date/beach ?
 # TODO: standardize on inplace=True or not inplace
 # TODO: how much consistency do we want between python columns
 #       and the R columns?
 # TODO: create better docstrings
+# TODO: remove print statements and the import
+# TODO: loyola/leone the same?
 # TODO: repeats on 2015-06-16 ?
 #       and some of 2012?
 #       Just check for these everywhere, why is it happening?
-#       follow-up 2015-06-16 has two samples in Excel, one
-#       labeled as a "PM" sample...
 
 
 def split_sheets(file_name, year, verbose=False):
@@ -35,8 +47,8 @@ def split_sheets(file_name, year, verbose=False):
     xls = pd.ExcelFile(file_name)
     dfs = []
     standardized_col_names = [
-        'Date', 'Laboratory.ID', 'Client.ID', 'Reading.1',
-        'Reading.2', 'Escherichia.coli', 'Units', 'Sample.Collection.Time'
+        'Date', 'Laboratory_ID', 'Beach', 'Reading1',
+        'Reading2', 'Escherichia_coli', 'Units', 'Sample_Collection_Time'
     ]
 
     for i, sheet_name in enumerate(xls.sheet_names):
@@ -92,61 +104,14 @@ def split_sheets(file_name, year, verbose=False):
     df.insert(0, u'Year', str(year))
 
     logging.info('Removing data with missing Client ID')
-    df.dropna(subset=['Client.ID'], inplace=True)
+    df.dropna(subset=['Beach'], inplace=True)
 
     return df
 
 
 def read_holiday_data(file_name, verbose=False):
-    '''
-    Reads in holiday CSV file.
-    '''
-    # TODO: verbose ?
     df = pd.read_csv(file_name)
     df['Date'] = pd.to_datetime(df['Date'])
-    df.columns = ['Full_date', 'Holiday']
-    return df
-
-
-def days_since_holiday(df, verbose=False):
-    '''
-    Creates a column that describes the number of days since last
-    summer holiday, which could have happened last year resulting
-    in numbers 300 and above.
-    '''
-    # TODO: verbose ?
-    df['Holiday.Flag'] = ~df['Holiday'].isnull()
-
-    holiday_dates = df.ix[df['Holiday.Flag'], 'Full_date'].unique()
-    holiday_dates = pd.Series(holiday_dates)
-
-    def day_count(d):
-        less_than_date = holiday_dates.map(lambda x: x <= d)
-        if not less_than_date.any():
-            return float('nan')
-        holiday_date = holiday_dates[less_than_date[less_than_date].index[-1]]
-        delta = d - holiday_date
-        return delta.days
-
-    df['Days.Since.Last.Holiday'] = df['Full_date'].map(day_count)
-
-    return df
-
-
-def read_forecast_data(filename, verbose=False):
-    '''
-    Read in forecast.io historical weather data.
-    '''
-    # TODO: verbose ?
-
-    df = pd.read_csv(filename)
-    df = df.drop_duplicates()
-    cols = df.columns.tolist()
-    cols[cols.index('beach')] = 'Client.ID'
-    cols[cols.index('time')] = 'Full_date'
-    df.columns = cols
-    df['Full_date'] = pd.to_datetime(df['Full_date'])
-
     return df
 
 
@@ -180,29 +145,32 @@ def read_water_sensor_data(verbose=False):
     df_mins = df.groupby(['Beach Name', 'Date'], as_index=False).min()
     df_means = df.groupby(['Beach Name', 'Date'], as_index=False).mean()
     df_maxes = df.groupby(['Beach Name', 'Date'], as_index=False).max()
+    df_mins.drop(['Latitude','Longitude'],1,inplace=True)
+    df_means.drop(['Latitude','Longitude'],1,inplace=True)
+    df_maxes.drop(['Latitude','Longitude'],1,inplace=True)
 
     cols = df_mins.columns.tolist()
 
     def rename_columns(cols, aggregation_type):
-        cols = map(lambda x: x.replace(' ', '.'), cols)
+        cols = list(map(lambda x: x.replace(' ', '_'), cols))
         for i in range(2,7):
-            cols[i] = cols[i] + '.' + aggregation_type
+            cols[i] = cols[i] + '_' + aggregation_type
         return cols
 
     df_mins.columns = rename_columns(cols, 'Min')
     df_means.columns = rename_columns(cols, 'Mean')
     df_maxes.columns = rename_columns(cols, 'Max')
 
-    df = pd.merge(df_mins, df_means, on=['Beach.Name', 'Date'])
-    df = pd.merge(df, df_maxes, on=['Beach.Name', 'Date'])
-    df.drop(['Latitude_x', 'Latitude_y', 'Longitude_x', 'Longitude_y'],
-            axis=1, inplace=True)
+    df = pd.merge(df_mins, df_means, on=['Beach_Name', 'Date'])
+    df = pd.merge(df, df_maxes, on=['Beach_Name', 'Date'])
 
-    df = df.pivot(index='Date', columns='Beach.Name')
+    df = df.pivot(index='Date', columns='Beach_Name')
     df.columns = ['.'.join(col[::-1]).strip() for col in df.columns.values]
     df.reset_index(inplace=True)
-    df.columns = ['Full_date'] + map(lambda x: x.replace(' ', '.'),
-                                     df.columns.tolist()[1:])
+    df.columns = ['Full_date'] + list( map(lambda x: x.replace(' ', '_'), df.columns.tolist()[1:]))
+    c = df.columns.tolist()
+    c[c.index('Full_date')] = 'Date'
+    df.columns = c
 
     return df
 
@@ -220,46 +188,50 @@ def read_weather_station_data(verbose=False):
     url = 'https://data.cityofchicago.org/api/views/g3ip-u8rb/rows.csv?accessType=DOWNLOAD'
     sensor_locations = pd.read_csv(url)
 
-    weather_sensors.columns = map(lambda x: x.replace(' ', '.'),
+    weather_sensors.columns = map(lambda x: x.replace(' ', '_'),
                                   weather_sensors.columns.tolist())
-    sensor_locations.columns = map(lambda x: x.replace(' ', '.'),
+    sensor_locations.columns = map(lambda x: x.replace(' ', '_'),
                                    sensor_locations.columns.tolist())
-    sensor_locations.columns = ['Station.Name'] + sensor_locations.columns.tolist()[1:]
+    sensor_locations.columns = ['Station_Name'] + sensor_locations.columns.tolist()[1:]
 
-    df = pd.merge(weather_sensors, sensor_locations, on='Station.Name')
+    df = pd.merge(weather_sensors, sensor_locations, on='Station_Name')
 
-    df['Date'] = pd.DatetimeIndex(df['Measurement.Timestamp']).normalize()
+    df['Beach'] = df['Station_Name']
 
-    df.drop(['Measurement.Timestamp.Label', 'Measurement.Timestamp',
-             'Sensor.Type', 'Location', 'Measurement.ID', 'Battery.Life'],
+    df['Date'] = pd.DatetimeIndex(df['Measurement_Timestamp']).normalize()
+
+    df.drop(['Measurement_Timestamp_Label', 'Measurement_Timestamp',
+             'Sensor_Type', 'Location', 'Measurement_ID', 'Battery_Life','Station_Name'],
             axis=1, inplace=True)
 
-    df_mins = df.groupby(['Station.Name', 'Date'], as_index=False).min()
-    df_means = df.groupby(['Station.Name', 'Date'], as_index=False).mean()
-    df_maxes = df.groupby(['Station.Name', 'Date'], as_index=False).max()
+    df_mins = df.groupby(['Beach', 'Date'], as_index=False).min()
+    df_means = df.groupby(['Beach', 'Date'], as_index=False).mean()
+    df_maxes = df.groupby(['Beach', 'Date'], as_index=False).max()
 
     cols = df_mins.columns.tolist()
 
     def rename_columns(cols, aggregation_type):
-        cols = map(lambda x: x.replace(' ', '.'), cols)
+        cols = list(map(lambda x: x.replace(' ', '_'), cols))
         for i in range(2,15):
-            cols[i] = cols[i] + '.' + aggregation_type
+            cols[i] = cols[i] + '_' + aggregation_type
         return cols
 
     df_mins.columns = rename_columns(cols, 'Min')
     df_means.columns = rename_columns(cols, 'Mean')
     df_maxes.columns = rename_columns(cols, 'Max')
 
-    df = pd.merge(df_mins, df_means, on=['Station.Name', 'Date'])
-    df = pd.merge(df, df_maxes, on=['Station.Name', 'Date'])
-    df.drop(['Latitude_x', 'Latitude_y', 'Longitude_x', 'Longitude_y'],
-            axis=1, inplace=True)
 
-    df = df.pivot(index='Date', columns='Station.Name')
+    df = pd.merge(df_mins, df_means, on=['Beach', 'Date'])
+    df = pd.merge(df, df_maxes, on=['Beach', 'Date'])
+    df.drop(['Latitude_x', 'Latitude_y', 'Longitude_x', 'Longitude_y'], axis=1, inplace=True)
+
+    df = df.pivot(index='Date', columns='Beach')
     df.columns = ['.'.join(col[::-1]).strip() for col in df.columns.values]
     df.reset_index(inplace=True)
-    df.columns = ['Full_date'] + map(lambda x: x.replace(' ', '.'),
-                                     df.columns.tolist()[1:])
+    df.columns = ['Full_date'] + list( map(lambda x: x.replace(' ', '_'), df.columns.tolist()[1:]))
+    c = df.columns.tolist()
+    c[c.index('Full_date')] = 'Date'
+    df.columns = c
 
     return df
 
@@ -289,7 +261,7 @@ def date_lookup(s, verbose=False):
     http://stackoverflow.com/questions/29882573
     '''
     dates = {date:pd.to_datetime(date, errors='ignore') for date in s.unique()}
-    for date, parsed in dates.iteritems():
+    for date, parsed in dates.items():
         if type(parsed) is not pd.tslib.Timestamp:
             logging.debug('Non-regular date format "{0}"'.format(date))
             fmt = '%B %d (%p) %Y'
@@ -307,8 +279,8 @@ def read_data(verbose=False):
     found in analysis.R
     '''
 
-    cpd_data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
-    cpd_data_path = os.path.join(os.path.dirname(__file__), cpd_data_path)
+    cpd_data_path = './data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
+    #cpd_data_path = os.path.join(os.path.dirname(__file__), cpd_data_path)
 
     dfs = []
 
@@ -324,9 +296,9 @@ def read_data(verbose=False):
     # Some records are of the form <1 or >2440
     # Remove the operator and treat the remaining string as the value.
     # Also convert string to float, if possible
-    for col in ['Reading.1', 'Reading.2', 'Escherichia.coli']:
+    for col in ['Reading1', 'Reading2', 'Escherichia_coli']:
         for i, val in enumerate(df[col].tolist()):
-            if isinstance(val, basestring):
+            if isinstance(val, (str,bytes)):
                 val = val.replace('<', '').replace('>', '')
                 try:
                     df.ix[i, col] = float(val)
@@ -343,97 +315,113 @@ def read_data(verbose=False):
                     df.ix[i, col] = float('nan')
         df[col] = df[col].astype('float64')
     # Massage dates, create weekday column
-    df.insert(0, 'Full_date',
-              df[['Date', 'Year']].apply(lambda x: ' '.join(x), axis=1))
+    df.insert(0, 'Full_date', df[['Date', 'Year']].apply(lambda x: ' '.join(x), axis=1).apply(lambda x: x.replace(' (PM)', '') ))
     df['Full_date'] = date_lookup(df['Full_date'])
-    days = ['Monday','Tuesday','Wednesday',
-            'Thursday','Friday','Saturday','Sunday']
-    df['Weekday'] = df['Full_date'].map(lambda x: days[x.dayofweek])
-    # TODO: R code creates month/day columns too, do we need that?
+    df.insert(0, 'Timestamp', pd.to_datetime(df['Full_date'],  errors='coerce') )
+    months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    df.insert(0, 'Month', df['Timestamp'].dt.month.apply(lambda x: months[int(x)-1]) )
+    days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+    df.insert(0, 'Weekday', df['Timestamp'].dt.dayofweek.apply(lambda x: days[int(x)]) )
+    df.drop(['Date','Timestamp'], axis=1,inplace=True )
 
     # Some header rows were duplicated
-    df = df[df['Laboratory.ID'] != u'Laboratory ID']
+    df = df[df['Laboratory_ID'] != u'Laboratory ID']
     # Normalize the beach names
-    df['Client.ID'] = df['Client.ID'].map(lambda x: x.strip())
+    df['Beach'] = df['Beach'].map(lambda x: x.strip())
     cleanbeachnames = pd.read_csv(cpd_data_path + 'cleanbeachnames.csv')
     cleanbeachnames = dict(zip(cleanbeachnames['Old'], cleanbeachnames['New']))
     # There is one observation that does not have a beach name in the
-    # Client.ID column, remove it.
-    df = df[df['Client.ID'].map(lambda x: x in cleanbeachnames)]
-    df['Client.ID'] = df['Client.ID'].map(lambda x: cleanbeachnames[x])
+    # Beach column, remove it.
+    df = df[df['Beach'].map(lambda x: x in cleanbeachnames)]
+    df['Beach'] = df['Beach'].map(lambda x: cleanbeachnames[x])
 
     # Read in drek beach data
-    drek_data_path = '../data/DrekBeach/'
-    drek_data_path = os.path.join(os.path.dirname(__file__), drek_data_path)
+    drek_data_path = './data/DrekBeach/'
     drekdata = pd.read_csv(drek_data_path + 'daily_summaries_drekb.csv')
-    drekdata.columns = ['Beach', 'Date', 'Drek_Reading',
-                        'Drek_Prediction', 'Drek_Worst_Swim_Status']
-    drekdata['Date'] = date_lookup(drekdata['Date'])
+    drekdata.columns = ['Beach', 'Full_date', 'Drek_Reading','Drek_Prediction', 'Drek_Worst_Swim_Status']
+    drekdata['Full_date'] = date_lookup(drekdata['Full_date'])
     drekdata['Beach'] = drekdata['Beach'].map(lambda x: x.strip())
     drekdata['Beach'] = drekdata['Beach'].map(lambda x: cleanbeachnames[x])
-    # Merge the data
-    df = pd.merge(df, drekdata, how='outer',
-                  left_on=['Client.ID', 'Full_date'],
-                  right_on=['Beach', 'Date'])
-    # Both dataframes had a Date column, they got replaced
-    # by Date_x and Date_y, drop the drek date and re-name Date_x.
-    df.drop('Date_y', 1, inplace=True)
+
+    df = pd.merge(df, drekdata, how='outer', on= ['Beach', 'Full_date'])
     c = df.columns.tolist()
-    c[c.index('Date_x')] = 'Date'
+    c[c.index('Full_date')] = 'Date'
     df.columns = c
+
+        
+    # get rid of some useless columns
+    df.drop(['Laboratory_ID','Units','Sample_Collection_Time','Drek_Worst_Swim_Status'], axis=1,inplace=True )
+    
     # There was an anamolous reading, the max possible value from the test
     # is around 2420, but one reading was 6488.
     # We need to do the ~(reading 1 > 2500 | reading 2 > 2500) instead of
     # (reading 1 < 2500 & reading 2 < 2500) since the latter returns
     # False if there is a NaN.
-    df = df[~((df['Reading.1'] > 2500) | (df['Reading.2'] > 2500))]
+    df = df[~((df['Reading1'] > 2500) | (df['Reading2'] > 2500))]
 
     # R code creates a calculated geometric mean column b/c it didn't
     # import the column correctly (it truncated the value). Pandas did
     # import correctly, so no need to create that.
 
-    df = df.sort(['Full_date', 'Client.ID'])
-
-    external_data_path = '../data/ExternalData/'
-    external_data_path = os.path.join(os.path.dirname(__file__),
-                                      external_data_path)
+    external_data_path = './data/ExternalData/'
+    #external_data_path = os.path.join(os.path.dirname(__file__),
+    #                                  external_data_path)
 
     holidaydata = read_holiday_data(external_data_path + 'Holidays.csv', verbose)
-    df = pd.merge(df, holidaydata, on='Full_date', how='outer')
-    df = days_since_holiday(df)
-
-    forecast_daily = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
-    df = pd.merge(df, forecast_daily, on=['Full_date', 'Client.ID'])
+    # TODO: merge holiday data
 
     watersensordata = read_water_sensor_data(verbose)
-    df = pd.merge(df, watersensordata, on='Full_date', how='outer')
+    df = pd.merge(df, watersensordata, on='Date', how='outer')
 
     weatherstationdata = read_weather_station_data(verbose)
-    df = pd.merge(df, weatherstationdata, on='Full_date', how='outer')
+    df = pd.merge(df, weatherstationdata, on='Date', how='outer')
 
     # TODO: discuss this
-    df.set_index('Full_date', drop=True, inplace=True)
+    #df.set_index('Date', drop=True, inplace=True)
 
-    df = df.dropna(subset=['Client.ID'])
+    df['actual_elevated'] = (df['Escherichia_coli']>=235).astype(int)
+    df['predicted_elevated'] = (df['Drek_Prediction']>=235).astype(int)
+
+    df = df.ix[pd.notnull(df['Beach'])].reset_index()
+    df.drop(['index'], axis=1, inplace=True)
+
+    # get levels of ecoli from yesterday and day before yesterday
+    import datetime as dt
+    temp = df.ix[:,['Date','Beach','Escherichia_coli']].reset_index()
+    temp['DateTomorrow']= temp['Date'] + dt.timedelta(days=1)
+    temp['YesterdayEcoli'] = temp['Escherichia_coli']
+    temp.drop(['index','Date','Escherichia_coli'], axis=1, inplace=True)
+    df = pd.merge(df, temp, left_on=['Beach', 'Date'], right_on=['Beach', 'DateTomorrow'], how='left')
+    df.drop(['DateTomorrow'], 1, inplace=True)
+    temp = df.ix[:,['Date','Beach','Escherichia_coli']].reset_index()
+    temp['DateTwoDaysAhead']= temp['Date'] + dt.timedelta(days=2)
+    temp['DayBeforeYesterdayEcoli'] = temp['Escherichia_coli']
+    temp.drop(['index','Date','Escherichia_coli'], axis=1, inplace=True)
+    df = pd.merge(df, temp, left_on=['Beach', 'Date'], right_on=['Beach', 'DateTwoDaysAhead'], how='left')
+    df.drop(['DateTwoDaysAhead'], 1, inplace=True)
+
 
     return df
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Process beach data.')
-    parser.add_argument('-o', '--outfile', nargs=1, type=str,
-                        metavar='outfile', help='output CSV filename')
-    parser.add_argument('-v', '--verbose', action='count')
 
-    args = parser.parse_args()
 
-    if args.verbose >= 2:
-        logging.basicConfig(level=logging.DEBUG)
-    elif args.verbose == 1:
-        logging.basicConfig(level=logging.INFO)
-    else:
-        logging.basicConfig(level=logging.WARNING)
+# if __name__ == '__main__':
+    # parser = argparse.ArgumentParser(description='Process beach data.')
+    # parser.add_argument('-o', '--outfile', nargs=1, type=str,
+                        # metavar='outfile', help='output CSV filename')
+    # parser.add_argument('-v', '--verbose', action='count')
 
-    df = read_data(args.verbose)
+    # args = parser.parse_args()
+    # print(args)
 
-    if args.outfile is not None:
-        df.to_csv(args.outfile[0], index=False)
+    # #if int(args.verbose) >= 2:
+    # #    logging.basicConfig(level=logging.DEBUG)
+    # #elif int(args.verbose) == 1:
+    # #    logging.basicConfig(level=logging.INFO)
+    # #else:
+    # #    logging.basicConfig(level=logging.WARNING)
+
+    # df = read_data(args.verbose)
+
+    # if args.outfile is not None:
+        # df.to_csv(args.outfile[0], index=False)
