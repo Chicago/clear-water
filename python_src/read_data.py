@@ -24,6 +24,126 @@ the R dataframe code exactly.
 #       and some of 2012?
 #       Just check for these everywhere, why is it happening?
 
+# Added functions:
+#
+#     addColumnPriorData(df, colName , NdaysPrior):
+#         Returns a new dataframe with an additional column of data N days Prior to current.
+#
+#     cleanUpBeaches(data):
+#         Makes the beachnames clean up a separate function that also checks for 
+#         duplicate readings at a given beach for a given day and takes the higher reading. 
+#
+#     read_data_simplified():
+#         Simplifies data reading (no more need for split_sheets or date_lookup functions).
+#         Also sorts Reading1 and Reading2 into lowReading and highReading columns.
+#         Does minimal cleaning of data. 
+#         No merging onto Drek or weather data.
+
+def read_data_simplified():
+    cpd_data_path = './data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
+    df =[]
+    dfs =[]
+    for yr in range(2002,2015):
+        if yr != 2004:
+            file_name = cpd_data_path + str(yr) + ' Lab Results.xls'
+            xls = pd.ExcelFile(file_name)
+            for i, sheet_name in enumerate(xls.sheet_names):
+                dfx = xls.parse(sheet_name)
+                if (yr == 2002) or (yr == 2003):
+                    if len(dfx.columns)==2:
+                        dfx.columns = ['Client ID','Escherichia coli']
+                        dfx["Escherichia coli"]= dfx["Escherichia coli"].astype(str)
+                    elif len(dfx.columns)==3:
+                        dfx.columns = ['Client ID','Escherichia coli','other']
+                        dfx["Escherichia coli"]= dfx["Escherichia coli"].astype(str)
+                try :
+                    dfx = dfx.dropna(axis=0, how='any', subset=['Escherichia coli','Client ID'])
+                    dfx.insert(0, u'Date', sheet_name)
+                    dfx.insert(0, u'Year', str(yr))
+                    discard_cols = set(dfx.columns) - set(['Year','Date','Client ID','Reading 1','Reading 2','Escherichia coli'])
+                    if len(list(discard_cols))>0 :
+                        dfx.drop(discard_cols, axis=1, inplace=True)
+                    if len(dfx)>0 :
+                        dfs.append(dfx)
+                except KeyError:
+                    continue
+                    #print('Trouble processing :', sheet_name, yr)
+                    #checked all trouble sheets and verified bad data
+    df = pd.concat(dfs)
+
+    # Do minimal processing of data
+    df=df.rename(columns = {'Client ID':'Beach', 'Escherichia coli':'Ecoli_geomean', 'Reading 1':'Reading1'  ,'Reading 2': 'Reading2'})
+    
+    df['Reading1'] = df['Reading1'].map(lambda x: str(x).replace('<', '').replace('>', '') )
+    df['Reading1'] = pd.to_numeric(df['Reading1'], errors='coerce')
+    df['Reading2'] = df['Reading2'].map(lambda x: str(x).replace('<', '').replace('>', '') )
+    df['Reading2'] = pd.to_numeric(df['Reading2'], errors='coerce')
+    df['Ecoli_geomean'] = df['Ecoli_geomean'].map(lambda x: str(x).replace('<', '').replace('>', '') )
+    df['Ecoli_geomean'] = pd.to_numeric(df['Ecoli_geomean'], errors='coerce')
+    df['lowReading'] = df.Reading1 * (df.Reading1 < df.Reading2) + df.Reading2 * (df.Reading1 >= df.Reading2)
+    df['highReading'] = df.Reading1 * (df.Reading1 >= df.Reading2) + df.Reading2 * (df.Reading1 < df.Reading2)
+    df.drop(['Reading1','Reading2'], axis=1,inplace=True )
+
+    df.insert(0, 'Full_date', df[['Date', 'Year']].apply(lambda x: ' '.join(x), axis=1).apply(lambda x: x.replace(' (PM)', '') ))
+    df.insert(0, 'Timestamp', pd.to_datetime(df['Full_date'],  errors='coerce') )
+    df = df.dropna(axis=0, how='any', subset=['Timestamp','Full_date','Ecoli_geomean'])
+    months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    df.insert(0, 'Month', df['Timestamp'].dt.month.apply(lambda x: months[int(x)-1]) )
+    days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+    df.insert(0, 'Weekday', df['Timestamp'].dt.dayofweek.apply(lambda x: days[int(x)]) )
+    df.insert(0, 'DayofMonth', df['Timestamp'].dt.day)
+    df.drop(['Date'], axis=1,inplace=True )
+    
+    df['Beach'] = df['Beach'].map(lambda x: x.strip())
+    
+    
+    df = df[['Full_date','Timestamp','Beach','Year','Month','DayofMonth','Weekday','lowReading','highReading','Ecoli_geomean']]
+    df = df.reset_index()
+    df.drop(['index'], axis=1, inplace=True)
+    
+    df = cleanUpBeaches(df)
+    
+    return df
+
+
+def cleanUpBeaches(data):
+    df = data.copy()
+    cpd_data_path = './data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
+    cleanbeachnames = pd.read_csv(cpd_data_path + 'cleanbeachnames2.csv')
+    cleanbeachnames = dict(zip(cleanbeachnames['Old'], cleanbeachnames['New']))
+    df['Beach'] = df['Beach'].map(lambda x: cleanbeachnames[x])
+    df = df.dropna(axis=0,  subset=['Beach'])
+    df['Beach-Date'] = list(map((lambda x,y: str(x)+" : "+str(y)),df.Beach, df.Full_date))
+    
+    dupIndx=list(df.ix[df.duplicated(['Beach-Date'])].index)
+    print('Colapsing {0} records by taking highest reading'.format( len(dupIndx) ))
+    
+    # assuming that the name-date conflict is for at most two records
+    for idx in range(len(dupIndx)):
+        BD = df.ix[dupIndx[idx],['Beach-Date']]
+        TmpIndx=list(df.ix[df['Beach-Date']==BD[0]].index)
+        TmpVal0=df.ix[TmpIndx[0],['Ecoli_geomean']]
+        TmpVal1=df.ix[TmpIndx[1],['Ecoli_geomean']]
+        if TmpVal0[0] > TmpVal1[0] :
+            df.drop(TmpIndx[0],axis=0,inplace=True)
+        else:
+            df.drop(TmpIndx[1],axis=0,inplace=True)
+            
+    return df
+
+
+
+def addColumnPriorData(df, colName , NdaysPrior):
+    import datetime as dt
+    newColName = str(NdaysPrior) + '_daysPrior_'+ colName
+    temp = df.ix[:,['Beach','Timestamp',colName]].reset_index()
+    temp['TempDate']= df['Timestamp'] + dt.timedelta(days=NdaysPrior)
+    temp[newColName] = temp[colName]
+    temp.drop(['index','Timestamp',colName], axis=1, inplace=True)
+    df = pd.merge(df, temp, left_on=['Beach', 'Timestamp'], right_on=['Beach', 'TempDate'], how='left')
+    df.drop(['TempDate'], 1, inplace=True)
+    
+    return df
 
 def split_sheets(file_name, year, verbose=False):
     '''
