@@ -33,6 +33,17 @@ beach_readings$Day <- format(beach_readings$Full_date, "%d")
 ##Remove problematic dates
 beach_readings <- beach_readings[-which(beach_readings$Full_date %in% c(as.Date("2006-07-06"), as.Date("2006-07-08"), as.Date("2006-07-09"))),]
 
+##Remove 6 duplicates (12 total observations) -- beaches that have more than one reading on a day
+beach_readings=beach_readings[-which(beach_readings$Full_date=="2006-07-19" & beach_readings$Client.ID=="Jarvis/ Fargo"),]
+beach_readings=beach_readings[-which(beach_readings$Full_date=="2006-08-24" & beach_readings$Client.ID=="Jarvis"),]
+beach_readings=beach_readings[-which(beach_readings$Full_date=="2006-07-19" & beach_readings$Client.ID=="Hollywood/Ostermann"),]
+beach_readings=beach_readings[-which(beach_readings$Full_date=="2007-06-08" & beach_readings$Client.ID=="Hollywood/Thorndale*"),]
+beach_readings=beach_readings[-which(beach_readings$Full_date=="2008-06-08" & beach_readings$Client.ID=="Hollywood/Thorndale*"),]
+beach_readings=beach_readings[-which(beach_readings$Full_date=="2006-08-08" & beach_readings$Client.ID=="Loyola"),]
+
+##Remove 66 observations with date specified as "PM" -- which creates more than one reading per beach on a day
+beach_readings=beach_readings[!grepl("PM",beach_readings$Date),]
+
 ##Normalize beach names using names found on cpdbeaches.com
 cleanbeachnames <- read.csv("data/ChicagoParkDistrict/raw/Standard 18 hr Testing/cleanbeachnames.csv", stringsAsFactors=FALSE)
 changenames <- setNames(cleanbeachnames$New, cleanbeachnames$Old) 
