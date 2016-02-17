@@ -4,7 +4,7 @@ import scipy.stats as sst
 import matplotlib.pyplot as plt
 
 
-class multilevel_linear_model:
+class multilevel_model:
     '''
     Creates the following model.
 
@@ -38,7 +38,7 @@ class multilevel_linear_model:
             df = rd.read_data()
         if columns is None:
             columns = [
-                'Days.Since.Last.Holiday','precipIntensityMax','temperatureMax'
+                'temperatureMax'
             ]
 
         df = df[['Client.ID','Escherichia.coli'] + columns]
@@ -48,25 +48,72 @@ class multilevel_linear_model:
             df['Client.ID'].map(lambda x: self.unique_beaches.tolist().index(x))
         )
         self.X = np.array(df[columns])
+        self.X = np.append(self.X, np.ones([self.X.shape[0], 1]))
         self.Y = np.array(df['Escherichia.coli'])
+        self.model()
 
-        self.metropolis_hastings(500, 1, 1)
+    def model(self):
+        X = self.X
+        Y = self.Y
+
+        M = X.shape[1]
+
+        beta = np.ones(self.X.shape[0])
+
+        # define priors
+        mu_beta = pymc.Normal('mu_beta', mu=0, tau=1.0 / 100**2)
+        sigma_beta = pymc.Uniform('tau_beta', low=1.0, hi=1.0)
+        beta = pymc.Normal('coefficients', mu=mu_beta, tau=sigma_beta, size=M)
+        epsilon = pymc.Gamma('epsilon', alpha=1.0, beta=1.0)
+
+        # define estimate
+        @pymc.deterministic
+        def mu(beta=beta, x=x):
+            est = alpha[self.beach_indexes] + np.sum(beta[self.beach_indexes,:] * self.X, 1)
+            return a * x + b
+
+        y = pymc.Normal('y', mu=mu, tau=tau, value=y_obs, observed=True)
+
+        # inference
+        m = pymc.Model([a, b, tau, x, y])
+        mc = pymc.MCMC(m)
+        mc.sample(iter=15000, burn=10000, thin=5)
+
+        abar = a.stats()['mean']
+        bbar = b.stats()['mean']
+        data.plot(x='x', y='y', kind='scatter', s=50)
+        xp = np.array([x.min(), x.max()])
+
+        lines = a.trace() * xp[:, None] + b.trace()
+        plt.plot(xp, lines, c='red', alpha=0.01)
+        plt.plot(xp, abar * xp + bbar, linewidth=2, c='red')
+
+        plt.figure()
+        plt.plot(a.trace())
+        plt.figure()
+        plt.plot(b.trace())
+
+        plt.show(block=False)
+        print('')
+        print(abar)
+        print(bbar)
+
 
     def calc_prob(self, alpha, beta, eps, mu_alpha,
                   sigma_alpha, mu_beta, sigma_beta):
         est = alpha[self.beach_indexes] + np.sum(beta[self.beach_indexes,:] * self.X, 1)
         prob_X_given_model = np.sum(
-            np.log(sst.norm.pdf(self.Y, est, eps))
+            sst.norm.logpdf(self.Y, est, eps)
         )
-        print(prob_X_given_model)
         prob_model = np.sum(
-            np.log(sst.norm.pdf(alpha, mu_alpha, sigma_alpha))
+            sst.norm.logpdf(alpha, mu_alpha, sigma_alpha)
         ) + np.sum(
-            np.log(sst.norm.pdf(beta, mu_beta, sigma_beta))
-        ) + np.log(sst.norm.pdf(mu_alpha, 0, 100)) + np.log(sst.norm.pdf(mu_beta, 0, 100))
-        return prob_X_given_model * prob_model
+            sst.norm.logpdf(beta, mu_beta, sigma_beta)
+        ) + sst.norm.logpdf(mu_alpha, 0, 1000) + sst.norm.logpdf(mu_beta, 0, 1000)
+        return prob_X_given_model + prob_model
 
-    def metropolis_hastings(self, niter, burnin, step_size, alpha=None, beta=None, eps=None):
+    def metropolis_hastings(self, niter, burnin, step_size, step_width=2,
+                            alpha=None, beta=None, eps=None):
         X = self.X
         N = X.shape[1]
         M = len(self.unique_beaches)
@@ -84,7 +131,7 @@ class multilevel_linear_model:
             # TODO: check dims
 
         if eps is None:
-            curr_eps = 1.
+            curr_eps = 50.
         else:
             curr_eps = eps
             # TODO: check dims
@@ -108,6 +155,9 @@ class multilevel_linear_model:
         epsilons = np.zeros(niter)
 
         idx = 0
+        self.rhos = []
+        self.curr_probs = []
+        self.next_probs = []
         for i in range(niter * step_size + burnin):
             next_mu_alpha = np.random.normal(0, 100)
             next_sigma_alpha = np.random.uniform(0, 100)
@@ -121,7 +171,10 @@ class multilevel_linear_model:
             next_prob = self.calc_prob(next_alpha, next_beta, next_eps, next_mu_alpha,
                                        next_sigma_alpha, next_mu_beta, next_sigma_beta)
 
-            rho = next_prob / curr_prob
+            rho = np.exp(next_prob) / np.exp(curr_prob)
+            self.rhos.append(rho)
+            self.curr_probs.append(curr_prob)
+            self.next_probs.append(next_prob)
 
             if rho > 1 or rho > np.random.uniform():
                 curr_prob = next_prob
@@ -154,7 +207,8 @@ class multilevel_linear_model:
         self.betas = betas
         self.epsilons = epsilons
 
-        _, alpha_axs = plt.subplots(M,1)
-        for i in range(M):
-            alpha_axs[i].plot(self.alphas[:,i])
+        plt.plot(self.rhos)
         plt.show()
+
+if __name__ == '__main__':
+    m = multilevel_model()
