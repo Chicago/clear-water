@@ -2,6 +2,7 @@ import numpy as np
 import read_data as rd
 import scipy.stats as sst
 import matplotlib.pyplot as plt
+import pymc
 
 
 class multilevel_model:
@@ -38,7 +39,7 @@ class multilevel_model:
             df = rd.read_data()
         if columns is None:
             columns = [
-                'temperatureMax'
+                'temperatureMax', 'temperatureMin'
             ]
 
         df = df[['Client.ID','Escherichia.coli'] + columns]
@@ -47,57 +48,44 @@ class multilevel_model:
         self.beach_indexes = np.array(
             df['Client.ID'].map(lambda x: self.unique_beaches.tolist().index(x))
         )
-        self.X = np.array(df[columns])
-        self.X = np.append(self.X, np.ones([self.X.shape[0], 1]))
+        self.X = np.array(df[columns],)
+        # TODO: handle one dim data
+        self.X = np.concatenate((self.X, np.ones([self.X.shape[0], 1])), 1)
         self.Y = np.array(df['Escherichia.coli'])
         self.model()
 
     def model(self):
         X = self.X
-        Y = self.Y
+        Y_obs = self.Y
 
         M = X.shape[1]
-
-        beta = np.ones(self.X.shape[0])
+        num_beaches = len(self.unique_beaches)
 
         # define priors
         mu_beta = pymc.Normal('mu_beta', mu=0, tau=1.0 / 100**2)
-        sigma_beta = pymc.Uniform('tau_beta', low=1.0, hi=1.0)
-        beta = pymc.Normal('coefficients', mu=mu_beta, tau=sigma_beta, size=M)
+        sigma_beta = pymc.Uniform('sigma_beta', lower=0.0, upper=100.0)
+        beta = pymc.Normal('coefficients', mu=mu_beta, tau=sigma_beta, size=[num_beaches, M])
         epsilon = pymc.Gamma('epsilon', alpha=1.0, beta=1.0)
 
         # define estimate
         @pymc.deterministic
-        def mu(beta=beta, x=x):
-            est = alpha[self.beach_indexes] + np.sum(beta[self.beach_indexes,:] * self.X, 1)
-            return a * x + b
+        def est(beta=beta, x=self.X):
+            return np.sum(beta[self.beach_indexes,:] * x, 1)
 
-        y = pymc.Normal('y', mu=mu, tau=tau, value=y_obs, observed=True)
+        y = pymc.Normal('y', mu=est, tau=epsilon, value=Y_obs, observed=True)
 
         # inference
-        m = pymc.Model([a, b, tau, x, y])
+        m = pymc.Model([mu_beta, sigma_beta, beta, epsilon, est, y])
         mc = pymc.MCMC(m)
         mc.sample(iter=15000, burn=10000, thin=5)
 
-        abar = a.stats()['mean']
-        bbar = b.stats()['mean']
-        data.plot(x='x', y='y', kind='scatter', s=50)
-        xp = np.array([x.min(), x.max()])
-
-        lines = a.trace() * xp[:, None] + b.trace()
-        plt.plot(xp, lines, c='red', alpha=0.01)
-        plt.plot(xp, abar * xp + bbar, linewidth=2, c='red')
-
+        bbar = beta.stats()['mean']
+        print(bbar)
         plt.figure()
-        plt.plot(a.trace())
-        plt.figure()
-        plt.plot(b.trace())
+        plt.plot(beta.trace()[...,0])
 
         plt.show(block=False)
-        print('')
-        print(abar)
         print(bbar)
-
 
     def calc_prob(self, alpha, beta, eps, mu_alpha,
                   sigma_alpha, mu_beta, sigma_beta):
