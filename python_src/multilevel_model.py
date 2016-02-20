@@ -40,12 +40,13 @@ class multilevel_model:
         num_beaches = len(self.unique_beaches)
 
         # define priors
-        mu_betas = pm.Normal('mu_beta', mu=0, tau=1.0 / 100**2, size=M)
-        sigma_betas = pm.Uniform('sigma_beta', lower=0.0, upper=1000.0, size=M)
+        mu_betas = pm.Normal('mu_beta', mu=0, tau=1.0 / 100**2, size=M, value=np.zeros(M))
+        sigma_betas = pm.HalfNormal('sigma_beta', tau=1. / 100.0**2, size=M)
         betas = pm.Container([pm.Normal(self.columns[i] + '_coef',
                                         mu=mu_betas[i],
                                         tau=1. / sigma_betas[i] ** 2.0,
-                                        size=num_beaches)
+                                        size=num_beaches,
+                                        value=np.zeros(num_beaches))
                              for i in range(M)])
 
         # define estimate
@@ -54,11 +55,6 @@ class multilevel_model:
             est = np.zeros(len(self.beach_indexes))
             for i in range(M):
                 est = est + betas[i][self.beach_indexes] * x[:,i]
-            est = pm.invlogit(est)
-            if min(est) < 0.0:
-                print(min(est))
-            if max(est) > 1.0:
-                print(max(est))
             return pm.invlogit(est)
 
         @pm.observed
@@ -68,7 +64,7 @@ class multilevel_model:
         # inference
         self.model = pm.Model([mu_betas, sigma_betas, betas, p_est, p_hat])
         self.mc = pm.MCMC(self.model)
-        self.mc.sample(iter=500000, burn=100000, thin=100)
+        self.mc.sample(iter=500000, burn=200000, thin=100)
 
         bbar = map(lambda x: x.stats()['mean'], betas)
         for mean_values in bbar:
