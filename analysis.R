@@ -91,30 +91,29 @@ source("data/ExternalData/merge_lock_data.r")
 # Bring in forecast.io daily weather data
 forecast_daily <- read.csv("data/ExternalData/forecastio_daily_weather.csv", stringsAsFactors = FALSE, row.names=NULL, header = T)
 forecast_daily <- unique(forecast_daily)
-beach_readings <- merge(x=beach_readings, y=forecast_daily, by.x=c("Client.ID", "Full_date"), by.y=c("beach", "time"), all.x=T)
+beach_readings <- merge(x=beach_readings, y=forecast_daily, by.x=c("Client.ID", "Full_date"), by.y=c("beach", "time"), all.x = T, all.y = T)
 
 
-
-# Build naive logit model 
+# Build naive logit model (today like yesterday)
 # -----------------------------------------------------------
 
-beach_readings <- beach_readings[!is.na(beach_readings$Client.ID),]
-beach_readings <- beach_readings[order(beach_readings$Client.ID, beach_readings$Full_date),]
+beach_readings_mod <- beach_readings[!is.na(beach_readings$Client.ID),]
+beach_readings_mod <- beach_readings_mod[order(beach_readings_mod$Client.ID, beach_readings_mod$Full_date),]
 
 # create "high reading" and "low reading"
-beach_readings$High.Reading <- mapply(max, beach_readings$Reading.1, beach_readings$Reading.2)
-beach_readings$Low.Reading <- mapply(min, beach_readings$Reading.1, beach_readings$Reading.2)
+beach_readings_mod$High.Reading <- mapply(max, beach_readings_mod$Reading.1, beach_readings_mod$Reading.2)
+beach_readings_mod$Low.Reading <- mapply(min, beach_readings_mod$Reading.1, beach_readings_mod$Reading.2)
 
-# create columns for previous readings
+# create columns for yesterday's readings
 library(useful)
-temp <- split(beach_readings, beach_readings$Client.ID)
+temp <- split(beach_readings_mod, beach_readings_mod$Client.ID)
 for (i in 1:length(temp)) {
-  temp[[i]] <- shift.column(temp[[i]], columns=c("High.Reading","Low.Reading","e_coli_geomean_actual_calculated"), newNames=c("Previous.High.Reading", "Previous.Low.Reading", "Previous.Geomean"), len=1L, up=FALSE)
+  temp[[i]] <- shift.column(temp[[i]], columns=c("High.Reading","Low.Reading","e_coli_geomean_actual_calculated"), newNames=c("Yesterday.High.Reading", "Yesterday.Low.Reading", "Yesterday.Geomean"), len=1L, up=FALSE)
 }
-beach_readings <- do.call("rbind", temp)
+beach_readings_mod <- do.call("rbind", temp)
 
 # use only records without NAs in predictors or response
-beach_readings_mod <- beach_readings[!is.na(beach_readings$Previous.High.Reading) & !is.na(beach_readings$Previous.Low.Reading) & !is.na(beach_readings$Previous.Geomean)& !is.na(beach_readings$elevated_levels_actual_calculated),]
+beach_readings_mod <- beach_readings_mod[!is.na(beach_readings_mod$Yesterday.High.Reading) & !is.na(beach_readings_mod$Yesterday.Low.Reading) & !is.na(beach_readings_mod$Yesterday.Geomean)& !is.na(beach_readings_mod$elevated_levels_actual_calculated),]
 
 # get train and test set
 set.seed(12345)
@@ -124,8 +123,8 @@ train <- beach_readings_mod[train_ind, ]
 test <- beach_readings_mod[-train_ind, ]
 
 # fit naive logit model to training set
-#fit <- glm(elevated_levels_actual_calculated ~ Previous.High.Reading + Previous.Low.Reading, data=train, family=binomial())
-fit <- glm(elevated_levels_actual_calculated ~ Previous.Geomean, data=train, family=binomial())
+#fit <- glm(elevated_levels_actual_calculated ~ Yesterday.High.Reading + Yesterday.Low.Reading, data=train, family=binomial())
+fit <- glm(elevated_levels_actual_calculated ~ Yesterday.Geomean, data=train, family=binomial())
 summary(fit)
 
 # evaluate model on test set
@@ -136,13 +135,13 @@ test$prediction <- pred.elevated
 confmatrix=table(pred.elevated,test$elevated_levels_actual_calculated)
 confmatrix
 Recall=confmatrix[2,2]/(confmatrix[2,2]+confmatrix[1,2])
-Recall # 3%
+Recall # 2%
 Precision=confmatrix[2,2]/(confmatrix[2,2]+confmatrix[2,1])
-Precision # 37%
+Precision # 32%
 Fscore=(2*Precision*Recall)/(Precision+Recall)
-Fscore # 0.05
+Fscore # 0.04
 Misclassification=1-(sum(diag(confmatrix))/nrow(test))
-Misclassification # 15%
+Misclassification # 14%
 
 # -----------------------------------------------------------
 
