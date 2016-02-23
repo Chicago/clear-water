@@ -137,3 +137,27 @@ imp = pd.DataFrame({'features': inputs.columns, 'importance': clf.feature_import
 imp.sort_values('importance')
 
 
+
+
+
+
+from sklearn.metrics import precision_recall_curve, average_precision_score
+precision, recall, thresh = metrics.precision_recall_curve(out_test, preds[:,1])
+average_precision = average_precision_score(out_test, preds[:,1])
+
+
+# Plot Precision-Recall curve
+plt.figure(1)
+plt.plot(recall, precision, label='Precision-Recall curve')
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.ylim([0.0, 1.05])
+plt.xlim([0.0, 1.0])
+plt.title('Precision-Recall example: AUC={0:0.2f}'.format(average_precision))
+plt.legend(loc="lower left")
+plt.show()
+
+
+
+
+
