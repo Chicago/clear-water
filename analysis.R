@@ -15,6 +15,11 @@ df2015 <- split_sheets("data/ChicagoParkDistrict/raw/Standard 18 hr Testing/2015
 # Combine Data
 beach_readings <- rbind(df2006, df2007, df2008, df2009, df2010, df2011, df2012, df2013, df2014, df2015)
 
+# Bring in forecast.io daily weather data
+forecast_daily <- read.csv("data/ExternalData/forecastio_daily_weather.csv", stringsAsFactors = FALSE, row.names=NULL, header = T)
+forecast_daily <- unique(forecast_daily)
+beach_readings <- merge(x=beach_readings, y=forecast_daily, by.x=c("Client.ID", "Full_date"), by.y=c("beach", "time"), all.x = T, all.y = T)
+
 # Clean Data
 ## Remove greater or less-than markings
 beach_readings$Reading.1 <- factor(gsub(">", "", beach_readings$Reading.1)) # Remove greater-than marks
@@ -29,6 +34,7 @@ beach_readings$Full_date <- as.Date(beach_readings$Full_date, format="%B %d %Y")
 beach_readings$Weekday <- weekdays(beach_readings$Full_date) #add day of week
 beach_readings$Month <- format(beach_readings$Full_date,"%B")
 beach_readings$Day <- format(beach_readings$Full_date, "%d")
+beach_readings$Year <- format(beach_readings$Full_date, "%Y")
 
 ##Remove problematic dates
 beach_readings <- beach_readings[-which(beach_readings$Full_date %in% c(as.Date("2006-07-06"), as.Date("2006-07-08"), as.Date("2006-07-09"))),]
@@ -87,11 +93,6 @@ source("data/ExternalData/merge_holiday_data.r")
 
 # Bring in lock opening data
 source("data/ExternalData/merge_lock_data.r")
-
-# Bring in forecast.io daily weather data
-forecast_daily <- read.csv("data/ExternalData/forecastio_daily_weather.csv", stringsAsFactors = FALSE, row.names=NULL, header = T)
-forecast_daily <- unique(forecast_daily)
-beach_readings <- merge(x=beach_readings, y=forecast_daily, by.x=c("Client.ID", "Full_date"), by.y=c("beach", "time"), all.x = T, all.y = T)
 
 
 # Build naive logit model (today like yesterday)
