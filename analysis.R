@@ -33,6 +33,17 @@ beach_readings$Day <- format(beach_readings$Full_date, "%d")
 ##Remove problematic dates
 beach_readings <- beach_readings[-which(beach_readings$Full_date %in% c(as.Date("2006-07-06"), as.Date("2006-07-08"), as.Date("2006-07-09"))),]
 
+##Remove 6 duplicates (12 total observations) -- beaches that have more than one reading on a day
+beach_readings=beach_readings[-which(beach_readings$Full_date=="2006-07-19" & beach_readings$Client.ID=="Jarvis/ Fargo"),]
+beach_readings=beach_readings[-which(beach_readings$Full_date=="2006-08-24" & beach_readings$Client.ID=="Jarvis"),]
+beach_readings=beach_readings[-which(beach_readings$Full_date=="2006-07-19" & beach_readings$Client.ID=="Hollywood/Ostermann"),]
+beach_readings=beach_readings[-which(beach_readings$Full_date=="2007-06-08" & beach_readings$Client.ID=="Hollywood/Thorndale*"),]
+beach_readings=beach_readings[-which(beach_readings$Full_date=="2008-06-08" & beach_readings$Client.ID=="Hollywood/Thorndale*"),]
+beach_readings=beach_readings[-which(beach_readings$Full_date=="2006-08-08" & beach_readings$Client.ID=="Loyola"),]
+
+##Remove 66 observations with date specified as "PM" -- which creates more than one reading per beach on a day
+beach_readings=beach_readings[!grepl("PM",beach_readings$Date),]
+
 ##Normalize beach names using names found on cpdbeaches.com
 cleanbeachnames <- read.csv("data/ChicagoParkDistrict/raw/Standard 18 hr Testing/cleanbeachnames.csv", stringsAsFactors=FALSE)
 changenames <- setNames(cleanbeachnames$New, cleanbeachnames$Old) 
@@ -80,30 +91,29 @@ source("data/ExternalData/merge_lock_data.r")
 # Bring in forecast.io daily weather data
 forecast_daily <- read.csv("data/ExternalData/forecastio_daily_weather.csv", stringsAsFactors = FALSE, row.names=NULL, header = T)
 forecast_daily <- unique(forecast_daily)
-beach_readings <- merge(x=beach_readings, y=forecast_daily, by.x=c("Client.ID", "Full_date"), by.y=c("beach", "time"), all.x=T)
+beach_readings <- merge(x=beach_readings, y=forecast_daily, by.x=c("Client.ID", "Full_date"), by.y=c("beach", "time"), all.x = T, all.y = T)
 
 
-
-# Build naive logit model 
+# Build naive logit model (today like yesterday)
 # -----------------------------------------------------------
 
-beach_readings <- beach_readings[!is.na(beach_readings$Client.ID),]
-beach_readings <- beach_readings[order(beach_readings$Client.ID, beach_readings$Full_date),]
+beach_readings_mod <- beach_readings[!is.na(beach_readings$Client.ID),]
+beach_readings_mod <- beach_readings_mod[order(beach_readings_mod$Client.ID, beach_readings_mod$Full_date),]
 
 # create "high reading" and "low reading"
-beach_readings$High.Reading <- mapply(max, beach_readings$Reading.1, beach_readings$Reading.2)
-beach_readings$Low.Reading <- mapply(min, beach_readings$Reading.1, beach_readings$Reading.2)
+beach_readings_mod$High.Reading <- mapply(max, beach_readings_mod$Reading.1, beach_readings_mod$Reading.2)
+beach_readings_mod$Low.Reading <- mapply(min, beach_readings_mod$Reading.1, beach_readings_mod$Reading.2)
 
-# create columns for previous readings
+# create columns for yesterday's readings
 library(useful)
-temp <- split(beach_readings, beach_readings$Client.ID)
+temp <- split(beach_readings_mod, beach_readings_mod$Client.ID)
 for (i in 1:length(temp)) {
-  temp[[i]] <- shift.column(temp[[i]], columns=c("High.Reading","Low.Reading","e_coli_geomean_actual_calculated"), newNames=c("Previous.High.Reading", "Previous.Low.Reading", "Previous.Geomean"), len=1L, up=FALSE)
+  temp[[i]] <- shift.column(temp[[i]], columns=c("High.Reading","Low.Reading","e_coli_geomean_actual_calculated"), newNames=c("Yesterday.High.Reading", "Yesterday.Low.Reading", "Yesterday.Geomean"), len=1L, up=FALSE)
 }
-beach_readings <- do.call("rbind", temp)
+beach_readings_mod <- do.call("rbind", temp)
 
 # use only records without NAs in predictors or response
-beach_readings_mod <- beach_readings[!is.na(beach_readings$Previous.High.Reading) & !is.na(beach_readings$Previous.Low.Reading) & !is.na(beach_readings$Previous.Geomean)& !is.na(beach_readings$elevated_levels_actual_calculated),]
+beach_readings_mod <- beach_readings_mod[!is.na(beach_readings_mod$Yesterday.High.Reading) & !is.na(beach_readings_mod$Yesterday.Low.Reading) & !is.na(beach_readings_mod$Yesterday.Geomean)& !is.na(beach_readings_mod$elevated_levels_actual_calculated),]
 
 # get train and test set
 set.seed(12345)
@@ -113,8 +123,8 @@ train <- beach_readings_mod[train_ind, ]
 test <- beach_readings_mod[-train_ind, ]
 
 # fit naive logit model to training set
-#fit <- glm(elevated_levels_actual_calculated ~ Previous.High.Reading + Previous.Low.Reading, data=train, family=binomial())
-fit <- glm(elevated_levels_actual_calculated ~ Previous.Geomean, data=train, family=binomial())
+#fit <- glm(elevated_levels_actual_calculated ~ Yesterday.High.Reading + Yesterday.Low.Reading, data=train, family=binomial())
+fit <- glm(elevated_levels_actual_calculated ~ Yesterday.Geomean, data=train, family=binomial())
 summary(fit)
 
 # evaluate model on test set
@@ -125,13 +135,13 @@ test$prediction <- pred.elevated
 confmatrix=table(pred.elevated,test$elevated_levels_actual_calculated)
 confmatrix
 Recall=confmatrix[2,2]/(confmatrix[2,2]+confmatrix[1,2])
-Recall # 3%
+Recall # 2%
 Precision=confmatrix[2,2]/(confmatrix[2,2]+confmatrix[2,1])
-Precision # 37%
+Precision # 32%
 Fscore=(2*Precision*Recall)/(Precision+Recall)
-Fscore # 0.05
+Fscore # 0.04
 Misclassification=1-(sum(diag(confmatrix))/nrow(test))
-Misclassification # 15%
+Misclassification # 14%
 
 # -----------------------------------------------------------
 
@@ -229,4 +239,44 @@ summary(model.forecast)
 
 prCurve(true_advisory_days,  exp(predict(model.forecast)))
 
-
+#This function can be called with or without the vector of column names, names_of_columns_to_shift
+#without the argument names_of_columns_to_shift, it defaults to all numeric columns in original_data_frame
+shift_previous_data <- function(number_of_observations, original_data_frame, names_of_columns_to_shift=FALSE) {
+  merged_data_frame <- data.frame()
+  #remove rows where Client.ID == NA
+  clean_data_frame <- original_data_frame[!is.na(original_data_frame$Client.ID),]         
+  #subset by year
+  for (year in unique(clean_data_frame$Year)) {        
+    readings_by_year <- clean_data_frame[clean_data_frame$Year == year,]
+    #subset by beach within year
+    for (beach in unique(readings_by_year$Client.ID) ) {     
+      readings_by_beach <- readings_by_year[readings_by_year$Client.ID == beach,]
+      readings_by_beach <- readings_by_beach[order(readings_by_beach$Full_date),]
+      #if no columns provided, use default (all numeric columns)
+      if (names_of_columns_to_shift[1] == FALSE) {        
+        readings_by_beach_columns <- readings_by_beach[sapply(readings_by_beach, is.numeric)]
+        names_of_columns_to_shift <- colnames(readings_by_beach_columns)
+      }
+      #build new column names
+      for (column in names_of_columns_to_shift) {        
+        new_column_name <- paste("Previous",column,sep=".")
+        new_column_values <- vector()
+        #build new columns
+        #for first n rows, use NA bc no prior data to use
+        for (n in 1:number_of_observations) {         
+          new_column_values[n] <- NA            
+        }
+        #add previous data to new columns
+        for (i in number_of_observations:nrow(readings_by_beach)) {  
+          new_column_values <- c(new_column_values, readings_by_beach[,column][i-n])
+        }
+        #merge new columns with subsetted year/beach data
+        readings_by_beach <- cbind(readings_by_beach, new_column_values)    
+        colnames(readings_by_beach)[colnames(readings_by_beach)=="new_column_values"] <- new_column_name
+      }
+      #rebuild original dataframe adding the merged data from above
+      merged_data_frame <- rbind(merged_data_frame, readings_by_beach)  
+    }
+  }
+  merged_data_frame
+}
