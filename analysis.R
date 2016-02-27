@@ -18,7 +18,9 @@ beach_readings <- rbind(df2006, df2007, df2008, df2009, df2010, df2011, df2012, 
 # Bring in forecast.io daily weather data
 forecast_daily <- read.csv("data/ExternalData/forecastio_daily_weather.csv", stringsAsFactors = FALSE, row.names=NULL, header = T)
 forecast_daily <- unique(forecast_daily)
+beach_readings <- unite_(beach_readings, "Full_date", c("Date", "Year"), sep=" ", remove=F)
 beach_readings <- merge(x=beach_readings, y=forecast_daily, by.x=c("Client.ID", "Full_date"), by.y=c("beach", "time"), all.x = T, all.y = T)
+
 
 # Clean Data
 ## Remove greater or less-than markings
@@ -35,6 +37,8 @@ beach_readings$Weekday <- weekdays(beach_readings$Full_date) #add day of week
 beach_readings$Month <- format(beach_readings$Full_date,"%B")
 beach_readings$Day <- format(beach_readings$Full_date, "%d")
 beach_readings$Year <- format(beach_readings$Full_date, "%Y")
+
+
 
 ##Remove problematic dates
 beach_readings <- beach_readings[-which(beach_readings$Full_date %in% c(as.Date("2006-07-06"), as.Date("2006-07-08"), as.Date("2006-07-09"))),]
@@ -259,8 +263,8 @@ shift_previous_data <- function(number_of_observations, original_data_frame, nam
         names_of_columns_to_shift <- colnames(readings_by_beach_columns)
       }
       #build new column names
-      for (column in names_of_columns_to_shift) {        
-        new_column_name <- paste("Previous",column,sep=".")
+      for (column in names_of_columns_to_shift) {     
+        new_column_name <- paste(number_of_observations,"daysPrior",column,sep=".")
         new_column_values <- vector()
         #build new columns
         #for first n rows, use NA bc no prior data to use
@@ -281,3 +285,15 @@ shift_previous_data <- function(number_of_observations, original_data_frame, nam
   }
   merged_data_frame
 }
+
+
+x <- shift_previous_data(1,beach_readings)
+x[x$Year == 2015 & x$Client.ID == "Calumet",c("Wave.Height.Min","Full_date")]
+
+#start PCA
+#when the NA values are omitted, the data is missing values and it is throwing an error
+nums <-  sapply(beach_readings_2015, is.numeric)
+beach_nums <- beach_readings_2015[, nums]
+prcomp(na.pass(beach_nums))
+
+#linear discriminate analysis - reducing dimension by categorizing your data.
