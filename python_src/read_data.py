@@ -27,16 +27,16 @@ the R dataframe code exactly.
     # addColumnPriorData(df, colName , NdaysPrior):
         # Returns a new dataframe with an additional column of data N days Prior to current.
     # cleanUpBeaches(data):
-        # Uses cleanbeachnames2.csv file for cleaning names. 
-        # Also checks for duplicate readings at a given beach for a given day and takes the higher reading. 
+        # Uses cleanbeachnames2.csv file for cleaning names.
+        # Also checks for duplicate readings at a given beach for a given day and takes the higher reading.
     # read_data_simplified():
         # Simplifies data reading (no more need for split_sheets or date_lookup functions).
         # Also sorts Reading1 and Reading2 into lowReading and highReading columns.
-        # Does minimal cleaning of data. 
+        # Does minimal cleaning of data.
         # No merging onto Drek or weather data.
 
 def read_data_simplified():
-    cpd_data_path = './data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
+    cpd_data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
     df =[]
     dfs =[]
     for yr in range(2002,2015):
@@ -69,7 +69,7 @@ def read_data_simplified():
 
     # Do minimal processing of data
     df=df.rename(columns = {'Client ID':'Beach', 'Escherichia coli':'Ecoli_geomean', 'Reading 1':'Reading1'  ,'Reading 2': 'Reading2'})
-    
+
     df['Reading1'] = df['Reading1'].map(lambda x: str(x).replace('<', '').replace('>', '') )
     df['Reading1'] = pd.to_numeric(df['Reading1'], errors='coerce')
     df['Reading2'] = df['Reading2'].map(lambda x: str(x).replace('<', '').replace('>', '') )
@@ -89,31 +89,31 @@ def read_data_simplified():
     df.insert(0, 'Weekday', df['Timestamp'].dt.dayofweek.apply(lambda x: days[int(x)]) )
     df.insert(0, 'DayofMonth', df['Timestamp'].dt.day)
     df.drop(['Date'], axis=1,inplace=True )
-    
+
     df['Beach'] = df['Beach'].map(lambda x: x.strip())
-    
-    
+
+
     df = df[['Full_date','Timestamp','Beach','Year','Month','DayofMonth','Weekday','lowReading','highReading','Ecoli_geomean']]
     df = df.reset_index()
     df.drop(['index'], axis=1, inplace=True)
-    
+
     df = cleanUpBeaches(df)
-    
+
     return df
 
 
 def cleanUpBeaches(data):
     df = data.copy()
-    cpd_data_path = './data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
+    cpd_data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
     cleanbeachnames = pd.read_csv(cpd_data_path + 'cleanbeachnames2.csv')
     cleanbeachnames = dict(zip(cleanbeachnames['Old'], cleanbeachnames['New']))
     df['Beach'] = df['Beach'].map(lambda x: cleanbeachnames[x])
     df = df.dropna(axis=0,  subset=['Beach'])
     df['Beach-Date'] = list(map((lambda x,y: str(x)+" : "+str(y)),df.Beach, df.Full_date))
-    
+
     dupIndx=list(df.ix[df.duplicated(['Beach-Date'])].index)
     print('Colapsing {0} records by taking highest reading'.format( len(dupIndx) ))
-    
+
     # assuming that the name-date conflict is for at most two records
     for idx in range(len(dupIndx)):
         BD = df.ix[dupIndx[idx],['Beach-Date']]
@@ -124,7 +124,7 @@ def cleanUpBeaches(data):
             df.drop(TmpIndx[0],axis=0,inplace=True)
         else:
             df.drop(TmpIndx[1],axis=0,inplace=True)
-            
+
     return df
 
 
@@ -138,14 +138,14 @@ def addColumnPriorData(df, colName , NdaysPrior):
     temp.drop(['index','Timestamp',colName], axis=1, inplace=True)
     df = pd.merge(df, temp, left_on=['Beach', 'Timestamp'], right_on=['Beach', 'TempDate'], how='left')
     df.drop(['TempDate'], 1, inplace=True)
-    
-    return df
-    
-    
-    
-    
 
-    
+    return df
+
+
+
+
+
+
 
 def split_sheets(file_name, year, verbose=False):
     '''
