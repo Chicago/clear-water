@@ -23,17 +23,6 @@ the R dataframe code exactly.
 #       follow-up 2015-06-16 has two samples in Excel, one
 #       labeled as a "PM" sample...
 
-# Added functions:
-    # addColumnPriorData(df, colName , NdaysPrior):
-        # Returns a new dataframe with an additional column of data N days Prior to current.
-    # cleanUpBeaches(data):
-        # Uses cleanbeachnames2.csv file for cleaning names.
-        # Also checks for duplicate readings at a given beach for a given day and takes the higher reading.
-    # read_data_simplified():
-        # Simplifies data reading (no more need for split_sheets or date_lookup functions).
-        # Also sorts Reading1 and Reading2 into lowReading and highReading columns.
-        # Does minimal cleaning of data.
-        # No merging onto Drek or weather data.
 
 def read_data_simplified():
     cpd_data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
@@ -97,12 +86,12 @@ def read_data_simplified():
     df = df.reset_index()
     df.drop(['index'], axis=1, inplace=True)
 
-    df = cleanUpBeaches(df)
+    df = clean_up_beaches(df)
 
     return df
 
 
-def cleanUpBeaches(data):
+def clean_up_beaches(data):
     df = data.copy()
     cpd_data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
     cleanbeachnames = pd.read_csv(cpd_data_path + 'cleanbeachnames2.csv')
@@ -129,95 +118,76 @@ def cleanUpBeaches(data):
 
 
 
-def addColumnPriorData(df, colName , NdaysPrior):
-    import datetime as dt
-    newColName = str(NdaysPrior) + '_daysPrior_'+ colName
-    temp = df.ix[:,['Beach','Timestamp',colName]].reset_index()
-    temp['TempDate']= df['Timestamp'] + dt.timedelta(days=NdaysPrior)
-    temp[newColName] = temp[colName]
-    temp.drop(['index','Timestamp',colName], axis=1, inplace=True)
-    df = pd.merge(df, temp, left_on=['Beach', 'Timestamp'], right_on=['Beach', 'TempDate'], how='left')
-    df.drop(['TempDate'], 1, inplace=True)
-
-    return df
-
-
-
-
-
-
-
-def split_sheets(file_name, year, verbose=False):
+def add_column_prior_data(df, colnames, ns, beach_col_name='Beach', timestamp_col_name='Timestamp'):
     '''
-    Reads in all sheets of an excel workbook, concatenating
-    all of the information into a single dataframe.
+    Adds data from previous days to the dataframe.
 
-    The excel files were unfortunately structured such that
-    each day had its own sheet.
+    Parameters
+    ==========
+    df       : Dataframe of data.
+    colnames : Can be a string, integer, or list-like of strings and integers.
+               If a list-like type is specified, then prior data will be added
+               for each specified column.
+    ns       : Can be an integer, or list-like of integers. This specifies how
+               many days back the prior data should be added from. For example,
+               if ns is 1, then data from the previous day will be added (if the
+               previous day is unavailable, then a nan is inserted).
+               If a list-like type is specified, then for each n in ns,
+               the data from n days back is added.
+
+    Keyword Arguments
+    =================
+    beach_col_name='Beach'
+        The name of the column containing the beach names in df.
+    timestamp_col_name='Timestamp'
+        The name of the column containing the timestamp in df.
+
+    Output
+    ======
+    df : Dataframe with the previous data merged onto the input dataframe.
+
+    Example
+    =======
+    >>> df = rd.read_data(read_weather_station=False,read_water_sensor=False)
+    >>> df2 = rd.add_column_prior_data(df, 'Escherichia.coli', 1,
+    >>>                                beach_col_name='Client.ID', timestamp_col_name='Full_date')
+    >>> df3 = rd.add_column_prior_data(df, 'Escherichia.coli', [1,2,3,4,5,6,7],
+    >>>                                beach_col_name='Client.ID', timestamp_col_name='Full_date')
+    >>> df4 = rd.add_column_prior_data(df, ['summary', 'icon'], [1, 2],
+    >>>                                beach_col_name='Client.ID', timestamp_col_name='Full_date')
     '''
-    xls = pd.ExcelFile(file_name)
-    dfs = []
-    standardized_col_names = [
-        'Date', 'Laboratory.ID', 'Client.ID', 'Reading.1',
-        'Reading.2', 'Escherichia.coli', 'Units', 'Sample.Collection.Time'
-    ]
+    import sys
+    if sys.version_info[0] < 3:
+        if not hasattr(colnames, '__getitem__') or isinstance(colnames, basestring):
+            colnames = [colnames]
+        if not hasattr(ns, '__getitem__'):
+            ns = [ns]
+    else:
+        if not hasattr(colnames, '__getitem__') or type(colnames) is str:
+            colnames = [colnames]
+        if not hasattr(ns, '__getitem__'):
+            ns = [ns]
 
-    for i, sheet_name in enumerate(xls.sheet_names):
-        if not xls.book.sheet_by_name(sheet_name).nrows:
-            # Older versions of ExcelFile.parse threw an error if the sheet
-            # was empty, explicitly check for this condition.
-            logging.debug('sheet "{0}" from {1} is empty'.format(sheet_name,
-                                                                 year))
-            continue
-        df = xls.parse(sheet_name)
+    dfc = df.copy()
+    for colname in colnames:
+        for n in ns:
+            new_col_name = str(n) + '_day_prior_'+ colname
 
-        if i == 0 and len(df.columns) > 30:
-            # This is the master/summary sheet
-            logging.debug('ignoring sheet "{0}" from {1}'.format(sheet_name,
-                                                                 year))
-            continue
+            beaches = list(pd.Series(df[beach_col_name].unique()))
+            days = pd.date_range(df[timestamp_col_name].min(), df[timestamp_col_name].max() , freq='d')
+            df2 = dfc.set_index([beach_col_name,timestamp_col_name] )
+            idx = pd.MultiIndex.from_product([beaches,days], names=[beach_col_name,timestamp_col_name])
+            full = df2.reindex(idx) # This ensures indexing only within beach
+            previous = full.groupby(level=0)[colname].shift(n)
+            previous.name = new_col_name
+            final = pd.concat([full,previous], axis=1)
+            # final.dropna(subset=[colname], inplace=True)
 
-        if df.index.dtype == 'object':
-            # If the first column does not have a label, then the excel
-            # parsing engine will helpfully use the first column as
-            # the index. This is *usually* helpful, but there are two
-            # days when the first column is missing the typical label
-            # of 'Laboratory ID'. In this case, peel that index off
-            # and set its name.
-            msg = '1st column in sheet "{0}" from {1} is missing title'.format(
-                sheet_name, year)
-            logging.debug(msg)
-            df.reset_index(inplace=True)
-            df.columns = ['Laboratory ID'] + df.columns.tolist()[1:]
+            dfn = final.reset_index()
+            df = dfn
+            dfc = df.copy()
 
-        # Insert name of sheet as first column, the sheet name is the date
-        df.insert(0, u'Date', sheet_name)
-
-        for c in df.columns.tolist():
-            if 'Reading' in c:
-                # There are about 10 days that have >2 readings for some reason
-                if int(c[8:]) > 2:
-                    logging.info('sheet "{0}" from {1} has >2 readings'.format(
-                        sheet_name, year)
-                    )
-                    df.drop(c, 1, inplace=True)
-
-        # Only take the first 8 columns, some sheets erroneously have >8 cols
-        df = df.ix[:,0:8]
-
-        # Standardize the column names
-        df.columns = standardized_col_names
-
-        dfs.append(df)
-
-    df = pd.concat(dfs)
-
-    df.insert(0, u'Year', str(year))
-
-    logging.info('Removing data with missing Client ID')
-    df.dropna(subset=['Client.ID'], inplace=True)
-
-    return df
+    return dfn
 
 
 def read_holiday_data(file_name, verbose=False):
@@ -256,11 +226,10 @@ def days_since_holiday(df, verbose=False):
     return df
 
 
-def read_forecast_data(filename, verbose=False):
+def read_forecast_data(filename='../data/ExternalData/forecastio_daily_weather.csv'):
     '''
     Read in forecast.io historical weather data.
     '''
-    # TODO: verbose ?
 
     df = pd.read_csv(filename)
     df = df.drop_duplicates()
@@ -420,7 +389,81 @@ def date_lookup(s, verbose=False):
     return s.apply(lambda v: dates[v])
 
 
-def read_data(verbose=False):
+def split_sheets(file_name, year, verbose=False):
+    '''
+    Reads in all sheets of an excel workbook, concatenating
+    all of the information into a single dataframe.
+
+    The excel files were unfortunately structured such that
+    each day had its own sheet.
+    '''
+    xls = pd.ExcelFile(file_name)
+    dfs = []
+    standardized_col_names = [
+        'Date', 'Laboratory.ID', 'Client.ID', 'Reading.1',
+        'Reading.2', 'Escherichia.coli', 'Units', 'Sample.Collection.Time'
+    ]
+
+    for i, sheet_name in enumerate(xls.sheet_names):
+        if not xls.book.sheet_by_name(sheet_name).nrows:
+            # Older versions of ExcelFile.parse threw an error if the sheet
+            # was empty, explicitly check for this condition.
+            logging.debug('sheet "{0}" from {1} is empty'.format(sheet_name,
+                                                                 year))
+            continue
+        df = xls.parse(sheet_name)
+
+        if i == 0 and len(df.columns) > 30:
+            # This is the master/summary sheet
+            logging.debug('ignoring sheet "{0}" from {1}'.format(sheet_name,
+                                                                 year))
+            continue
+
+        if df.index.dtype == 'object':
+            # If the first column does not have a label, then the excel
+            # parsing engine will helpfully use the first column as
+            # the index. This is *usually* helpful, but there are two
+            # days when the first column is missing the typical label
+            # of 'Laboratory ID'. In this case, peel that index off
+            # and set its name.
+            msg = '1st column in sheet "{0}" from {1} is missing title'.format(
+                sheet_name, year)
+            logging.debug(msg)
+            df.reset_index(inplace=True)
+            df.columns = ['Laboratory ID'] + df.columns.tolist()[1:]
+
+        # Insert name of sheet as first column, the sheet name is the date
+        df.insert(0, u'Date', sheet_name)
+
+        for c in df.columns.tolist():
+            if 'Reading' in c:
+                # There are about 10 days that have >2 readings for some reason
+                if int(c[8:]) > 2:
+                    logging.info('sheet "{0}" from {1} has >2 readings'.format(
+                        sheet_name, year)
+                    )
+                    df.drop(c, 1, inplace=True)
+
+        # Only take the first 8 columns, some sheets erroneously have >8 cols
+        df = df.ix[:,0:8]
+
+        # Standardize the column names
+        df.columns = standardized_col_names
+
+        dfs.append(df)
+
+    df = pd.concat(dfs)
+
+    df.insert(0, u'Year', str(year))
+
+    logging.info('Removing data with missing Client ID')
+    df.dropna(subset=['Client.ID'], inplace=True)
+
+    return df
+
+
+def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_station=True,
+              read_water_sensor=True, read_forecast=True):
     '''
     Read in the excel files for years 2006-2015 found in
     'data/ChicagoParkDistrict/raw/Standard 18 hr Testing'
@@ -485,25 +528,27 @@ def read_data(verbose=False):
     df = df[df['Client.ID'].map(lambda x: x in cleanbeachnames)]
     df['Client.ID'] = df['Client.ID'].map(lambda x: cleanbeachnames[x])
 
-    # Read in drek beach data
-    drek_data_path = '../data/DrekBeach/'
-    drek_data_path = os.path.join(os.path.dirname(__file__), drek_data_path)
-    drekdata = pd.read_csv(drek_data_path + 'daily_summaries_drekb.csv')
-    drekdata.columns = ['Beach', 'Date', 'Drek_Reading',
-                        'Drek_Prediction', 'Drek_Worst_Swim_Status']
-    drekdata['Date'] = date_lookup(drekdata['Date'])
-    drekdata['Beach'] = drekdata['Beach'].map(lambda x: x.strip())
-    drekdata['Beach'] = drekdata['Beach'].map(lambda x: cleanbeachnames[x])
-    # Merge the data
-    df = pd.merge(df, drekdata, how='outer',
-                  left_on=['Client.ID', 'Full_date'],
-                  right_on=['Beach', 'Date'])
-    # Both dataframes had a Date column, they got replaced
-    # by Date_x and Date_y, drop the drek date and re-name Date_x.
-    df.drop('Date_y', 1, inplace=True)
-    c = df.columns.tolist()
-    c[c.index('Date_x')] = 'Date'
-    df.columns = c
+    if read_drek:
+        # Read in drek beach data
+        drek_data_path = '../data/DrekBeach/'
+        drek_data_path = os.path.join(os.path.dirname(__file__), drek_data_path)
+        drekdata = pd.read_csv(drek_data_path + 'daily_summaries_drekb.csv')
+        drekdata.columns = ['Beach', 'Date', 'Drek_Reading',
+                            'Drek_Prediction', 'Drek_Worst_Swim_Status']
+        drekdata['Date'] = date_lookup(drekdata['Date'])
+        drekdata['Beach'] = drekdata['Beach'].map(lambda x: x.strip())
+        drekdata['Beach'] = drekdata['Beach'].map(lambda x: cleanbeachnames[x])
+        # Merge the data
+        df = pd.merge(df, drekdata, how='outer',
+                      left_on=['Client.ID', 'Full_date'],
+                      right_on=['Beach', 'Date'])
+        # Both dataframes had a Date column, they got replaced
+        # by Date_x and Date_y, drop the drek date and re-name Date_x.
+        df.drop('Date_y', 1, inplace=True)
+        c = df.columns.tolist()
+        c[c.index('Date_x')] = 'Date'
+        df.columns = c
+
     # There was an anamolous reading, the max possible value from the test
     # is around 2420, but one reading was 6488.
     # We need to do the ~(reading 1 > 2500 | reading 2 > 2500) instead of
@@ -521,23 +566,28 @@ def read_data(verbose=False):
     external_data_path = os.path.join(os.path.dirname(__file__),
                                       external_data_path)
 
-    holidaydata = read_holiday_data(external_data_path + 'Holidays.csv', verbose)
-    df = pd.merge(df, holidaydata, on='Full_date', how='outer')
-    df = days_since_holiday(df)
+    if read_holiday:
+        holidaydata = read_holiday_data(external_data_path + 'Holidays.csv', verbose)
+        df = pd.merge(df, holidaydata, on='Full_date', how='outer')
+        df = days_since_holiday(df)
 
-    forecast_daily = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
-    df = pd.merge(df, forecast_daily, on=['Full_date', 'Client.ID'])
+    if read_forecast:
+        forecast_daily = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
+        df = pd.merge(df, forecast_daily, on=['Full_date', 'Client.ID'])
 
-    watersensordata = read_water_sensor_data(verbose)
-    df = pd.merge(df, watersensordata, on='Full_date', how='outer')
+    if read_water_sensor:
+        watersensordata = read_water_sensor_data(verbose)
+        df = pd.merge(df, watersensordata, on='Full_date', how='outer')
 
-    weatherstationdata = read_weather_station_data(verbose)
-    df = pd.merge(df, weatherstationdata, on='Full_date', how='outer')
-
-    # TODO: discuss this
-    df.set_index('Full_date', drop=True, inplace=True)
+    if read_weather_station:
+        weatherstationdata = read_weather_station_data(verbose)
+        df = pd.merge(df, weatherstationdata, on='Full_date', how='outer')
 
     df = df.dropna(subset=['Client.ID'])
+    df.reset_index()
+
+    # remove duplicates
+    df = df.ix[~df.duplicated(subset=['Client.ID', 'Full_date'], keep='first'), :]
 
     return df
 
