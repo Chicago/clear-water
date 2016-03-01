@@ -8,7 +8,7 @@ import pandas as pd
 TO_BLOCK = True
 
 
-def roc(scores, labels):
+def roc(scores, labels, block_show=TO_BLOCK):
     '''
     Plots the Receiver Operator Characteristic (ROC) curve of the results
     from a binary classification system.
@@ -56,12 +56,12 @@ def roc(scores, labels):
     ax.set_ylabel('True Positive Rate')
     ax.set_title('ROC curve')
 
-    plt.show(block=TO_BLOCK)
+    plt.show(block=block_show)
 
     return fpr, tpr, scores[threshold_idxs]
 
 
-def precision_recall(scores, labels):
+def precision_recall(scores, labels, block_show=TO_BLOCK):
     '''
     Plots the Precision Recall (PR) curve of the results
     from a binary classification system.
@@ -110,7 +110,7 @@ def precision_recall(scores, labels):
     ax.set_ylabel('Positive Predictive Value')
     ax.set_title('PR curve')
 
-    plt.show(block=TO_BLOCK)
+    plt.show(block=block_show)
 
     return tpr, ppv, scores[threshold_idxs]
 

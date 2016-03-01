@@ -187,7 +187,7 @@ def add_column_prior_data(df, colnames, ns, beach_col_name='Beach', timestamp_co
             df = dfn
             dfc = df.copy()
 
-    return dfn
+    return dfn.copy()
 
 
 def read_holiday_data(file_name, verbose=False):
