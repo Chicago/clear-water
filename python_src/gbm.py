@@ -35,7 +35,6 @@ def main():
     df['city_mean'] = df[priorEColiColumns].mean(axis=1)
     fill_value = pd.DataFrame({col: df['city_mean'] for col in priorEColiColumns})
     df.fillna(fill_value, inplace=True)
-    df.drop('city_mean', axis=1, inplace=True)
 
     # process all of the nonnumeric columns
     def nonnumericCols(data, verbose=True):
