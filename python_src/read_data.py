@@ -1,6 +1,5 @@
 from __future__ import print_function
 import pandas as pd
-import os
 import logging
 import argparse
 
@@ -16,6 +15,11 @@ the R dataframe code exactly.
 # TODO: create better docstrings
 
 def read_data_simplified():
+    '''
+    Simple function to read in the data from the excel files.
+
+    Returns a dataframe that has only been minimally cleaned.
+    '''
     cpd_data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
     df =[]
     dfs =[]
@@ -36,7 +40,8 @@ def read_data_simplified():
                     dfx = dfx.dropna(axis=0, how='any', subset=['Escherichia coli','Client ID'])
                     dfx.insert(0, u'Date', sheet_name)
                     dfx.insert(0, u'Year', str(yr))
-                    discard_cols = set(dfx.columns) - set(['Year','Date','Client ID','Reading 1','Reading 2','Escherichia coli'])
+                    discard_cols = set(dfx.columns) - set(['Year','Date','Client ID','Reading 1',
+                                                           'Reading 2','Escherichia coli'])
                     if len(list(discard_cols))>0 :
                         dfx.drop(discard_cols, axis=1, inplace=True)
                     if len(dfx)>0 :
@@ -48,7 +53,8 @@ def read_data_simplified():
     df = pd.concat(dfs)
 
     # Do minimal processing of data
-    df=df.rename(columns = {'Client ID':'Beach', 'Escherichia coli':'Ecoli_geomean', 'Reading 1':'Reading1'  ,'Reading 2': 'Reading2'})
+    df=df.rename(columns = {'Client ID':'Beach', 'Escherichia coli':'Ecoli_geomean',
+                            'Reading 1':'Reading1'  ,'Reading 2': 'Reading2'})
 
     df['Reading1'] = df['Reading1'].map(lambda x: str(x).replace('<', '').replace('>', '') )
     df['Reading1'] = pd.to_numeric(df['Reading1'], errors='coerce')
@@ -72,8 +78,8 @@ def read_data_simplified():
 
     df['Beach'] = df['Beach'].map(lambda x: x.strip())
 
-
-    df = df[['Full_date','Timestamp','Beach','Year','Month','DayofMonth','Weekday','lowReading','highReading','Ecoli_geomean']]
+    df = df[['Full_date','Timestamp','Beach','Year','Month','DayofMonth',
+             'Weekday','lowReading','highReading','Ecoli_geomean']]
     df = df.reset_index()
     df.drop(['index'], axis=1, inplace=True)
 
@@ -81,13 +87,26 @@ def read_data_simplified():
 
 
 def clean_up_beaches(data, beach_names_column='Beach'):
+    '''
+    Merge beach names to prevent duplicate readings.
+
+    Parameters
+    ==========
+    data               : A dataframe containing a column of beach names
+    beach_names_column : The name of the column containing the beach names
+
+    Output
+    ======
+    df : Dataframe with cleaned beach names.
+    '''
     df = data.copy()
     cpd_data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
     cleanbeachnames = pd.read_csv(cpd_data_path + 'cleanbeachnames2.csv')
     cleanbeachnames = dict(zip(cleanbeachnames['Old'], cleanbeachnames['New']))
     df[beach_names_column] = df[beach_names_column].map(lambda x: cleanbeachnames[x])
     df = df.dropna(axis=0,  subset=[beach_names_column])
-    df['Beach-Date'] = list(map((lambda x,y: str(x)+" : "+str(y)),df[beach_names_column], df.Full_date))
+    df['Beach-Date'] = list(map((lambda x,y: str(x)+" : "+str(y)),
+                                df[beach_names_column], df.Full_date))
 
     dupIndx=list(df.ix[df.duplicated(['Beach-Date'])].index)
     print('Colapsing {0} records by taking highest reading'.format( len(dupIndx) ))
@@ -113,7 +132,8 @@ def add_column_prior_data(df, colName , NdaysPrior):
     temp['TempDate']= df['Timestamp'] + dt.timedelta(days=NdaysPrior)
     temp[newColName] = temp[colName]
     temp.drop(['index','Timestamp',colName], axis=1, inplace=True)
-    df = pd.merge(df, temp, left_on=['Beach', 'Timestamp'], right_on=['Beach', 'TempDate'], how='left')
+    df = pd.merge(df, temp, left_on=['Beach', 'Timestamp'],
+                  right_on=['Beach', 'TempDate'], how='left')
     df.drop(['TempDate'], 1, inplace=True)
 
     return df
@@ -192,24 +212,22 @@ def split_sheets(file_name, year, verbose=False):
     return df
 
 
-def read_holiday_data(file_name, verbose=False):
+def read_holiday_data(file_name):
     '''
     Reads in holiday CSV file.
     '''
-    # TODO: verbose ?
     df = pd.read_csv(file_name)
     df['Date'] = pd.to_datetime(df['Date'])
     df.columns = ['Full_date', 'Holiday']
     return df
 
 
-def days_since_holiday(df, verbose=False):
+def days_since_holiday(df):
     '''
     Creates a column that describes the number of days since last
     summer holiday, which could have happened last year resulting
     in numbers 300 and above.
     '''
-    # TODO: verbose ?
     df['Holiday.Flag'] = ~df['Holiday'].isnull()
 
     holiday_dates = df.ix[df['Holiday.Flag'], 'Full_date'].unique()
@@ -228,11 +246,10 @@ def days_since_holiday(df, verbose=False):
     return df
 
 
-def read_forecast_data(filename, verbose=False):
+def read_forecast_data(filename):
     '''
     Read in forecast.io historical weather data.
     '''
-    # TODO: verbose ?
 
     df = pd.read_csv(filename)
     df = df.drop_duplicates()
@@ -262,8 +279,6 @@ def read_water_sensor_data(verbose=False):
                   left_on='Beach Name', right_on='Sensor Name')
 
     df.drop(['Sensor Type', 'Location'], 1, inplace=True)
-
-    # TODO: map sensor to beach ???
 
     df['Beach Name'] = df['Beach Name'].apply(lambda x: x[0:-6])
 
@@ -401,7 +416,6 @@ def read_data(verbose=False):
     '''
 
     cpd_data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
-    cpd_data_path = os.path.join(os.path.dirname(__file__), cpd_data_path)
 
     dfs = []
 
@@ -457,7 +471,6 @@ def read_data(verbose=False):
 
     # Read in drek beach data
     drek_data_path = '../data/DrekBeach/'
-    drek_data_path = os.path.join(os.path.dirname(__file__), drek_data_path)
     drekdata = pd.read_csv(drek_data_path + 'daily_summaries_drekb.csv')
     drekdata.columns = ['Beach', 'Date', 'Drek_Reading',
                         'Drek_Prediction', 'Drek_Worst_Swim_Status']
@@ -488,8 +501,6 @@ def read_data(verbose=False):
     df = df.sort_values(by=['Full_date', 'Client.ID'])
 
     external_data_path = '../data/ExternalData/'
-    external_data_path = os.path.join(os.path.dirname(__file__),
-                                      external_data_path)
 
     holidaydata = read_holiday_data(external_data_path + 'Holidays.csv', verbose)
     df = pd.merge(df, holidaydata, on='Full_date', how='outer')
@@ -503,9 +514,6 @@ def read_data(verbose=False):
 
     weatherstationdata = read_weather_station_data(verbose)
     df = pd.merge(df, weatherstationdata, on='Full_date', how='outer')
-
-    # TODO: discuss this
-    df.set_index('Full_date', drop=True, inplace=True)
 
     df = df.dropna(subset=['Client.ID'])
 
