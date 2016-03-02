@@ -43,8 +43,8 @@ def read_data_simplified():
                         dfs.append(dfx)
                 except KeyError:
                     continue
-                    #print('Trouble processing :', sheet_name, yr)
-                    #checked all trouble sheets and verified bad data
+                    # print('Trouble processing :', sheet_name, yr)
+                    # checked all trouble sheets and verified bad data
     df = pd.concat(dfs)
 
     # Do minimal processing of data
@@ -77,19 +77,17 @@ def read_data_simplified():
     df = df.reset_index()
     df.drop(['index'], axis=1, inplace=True)
 
-    df = cleanUpBeaches(df)
-
     return df
 
 
-def cleanUpBeaches(data):
+def clean_up_beaches(data, beach_names_column='Beach'):
     df = data.copy()
     cpd_data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
     cleanbeachnames = pd.read_csv(cpd_data_path + 'cleanbeachnames2.csv')
     cleanbeachnames = dict(zip(cleanbeachnames['Old'], cleanbeachnames['New']))
-    df['Beach'] = df['Beach'].map(lambda x: cleanbeachnames[x])
-    df = df.dropna(axis=0,  subset=['Beach'])
-    df['Beach-Date'] = list(map((lambda x,y: str(x)+" : "+str(y)),df.Beach, df.Full_date))
+    df[beach_names_column] = df[beach_names_column].map(lambda x: cleanbeachnames[x])
+    df = df.dropna(axis=0,  subset=[beach_names_column])
+    df['Beach-Date'] = list(map((lambda x,y: str(x)+" : "+str(y)),df[beach_names_column], df.Full_date))
 
     dupIndx=list(df.ix[df.duplicated(['Beach-Date'])].index)
     print('Colapsing {0} records by taking highest reading'.format( len(dupIndx) ))
@@ -108,10 +106,9 @@ def cleanUpBeaches(data):
     return df
 
 
-
-def addColumnPriorData(df, colName , NdaysPrior):
+def add_column_prior_data(df, colName , NdaysPrior):
     import datetime as dt
-    newColName = str(NdaysPrior) + '_daysPrior_'+ colName
+    newColName = str(NdaysPrior) + '_days_prior_'+ colName
     temp = df.ix[:,['Beach','Timestamp',colName]].reset_index()
     temp['TempDate']= df['Timestamp'] + dt.timedelta(days=NdaysPrior)
     temp[newColName] = temp[colName]
@@ -120,11 +117,6 @@ def addColumnPriorData(df, colName , NdaysPrior):
     df.drop(['TempDate'], 1, inplace=True)
 
     return df
-
-
-
-
-
 
 
 def split_sheets(file_name, year, verbose=False):
