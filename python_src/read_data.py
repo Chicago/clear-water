@@ -12,31 +12,11 @@ such that the dataframe loaded here will match
 the R dataframe code exactly.
 '''
 
-# TODO: use multi-level index on date/beach ?
 # TODO: standardize on inplace=True or not inplace
-# TODO: how much consistency do we want between python columns
-#       and the R columns?
 # TODO: create better docstrings
-# TODO: repeats on 2015-06-16 ?
-#       and some of 2012?
-#       Just check for these everywhere, why is it happening?
-#       follow-up 2015-06-16 has two samples in Excel, one
-#       labeled as a "PM" sample...
-
-# Added functions:
-    # addColumnPriorData(df, colName , NdaysPrior):
-        # Returns a new dataframe with an additional column of data N days Prior to current.
-    # cleanUpBeaches(data):
-        # Uses cleanbeachnames2.csv file for cleaning names. 
-        # Also checks for duplicate readings at a given beach for a given day and takes the higher reading. 
-    # read_data_simplified():
-        # Simplifies data reading (no more need for split_sheets or date_lookup functions).
-        # Also sorts Reading1 and Reading2 into lowReading and highReading columns.
-        # Does minimal cleaning of data. 
-        # No merging onto Drek or weather data.
 
 def read_data_simplified():
-    cpd_data_path = './data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
+    cpd_data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
     df =[]
     dfs =[]
     for yr in range(2002,2015):
@@ -69,7 +49,7 @@ def read_data_simplified():
 
     # Do minimal processing of data
     df=df.rename(columns = {'Client ID':'Beach', 'Escherichia coli':'Ecoli_geomean', 'Reading 1':'Reading1'  ,'Reading 2': 'Reading2'})
-    
+
     df['Reading1'] = df['Reading1'].map(lambda x: str(x).replace('<', '').replace('>', '') )
     df['Reading1'] = pd.to_numeric(df['Reading1'], errors='coerce')
     df['Reading2'] = df['Reading2'].map(lambda x: str(x).replace('<', '').replace('>', '') )
@@ -89,31 +69,31 @@ def read_data_simplified():
     df.insert(0, 'Weekday', df['Timestamp'].dt.dayofweek.apply(lambda x: days[int(x)]) )
     df.insert(0, 'DayofMonth', df['Timestamp'].dt.day)
     df.drop(['Date'], axis=1,inplace=True )
-    
+
     df['Beach'] = df['Beach'].map(lambda x: x.strip())
-    
-    
+
+
     df = df[['Full_date','Timestamp','Beach','Year','Month','DayofMonth','Weekday','lowReading','highReading','Ecoli_geomean']]
     df = df.reset_index()
     df.drop(['index'], axis=1, inplace=True)
-    
+
     df = cleanUpBeaches(df)
-    
+
     return df
 
 
 def cleanUpBeaches(data):
     df = data.copy()
-    cpd_data_path = './data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
+    cpd_data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
     cleanbeachnames = pd.read_csv(cpd_data_path + 'cleanbeachnames2.csv')
     cleanbeachnames = dict(zip(cleanbeachnames['Old'], cleanbeachnames['New']))
     df['Beach'] = df['Beach'].map(lambda x: cleanbeachnames[x])
     df = df.dropna(axis=0,  subset=['Beach'])
     df['Beach-Date'] = list(map((lambda x,y: str(x)+" : "+str(y)),df.Beach, df.Full_date))
-    
+
     dupIndx=list(df.ix[df.duplicated(['Beach-Date'])].index)
     print('Colapsing {0} records by taking highest reading'.format( len(dupIndx) ))
-    
+
     # assuming that the name-date conflict is for at most two records
     for idx in range(len(dupIndx)):
         BD = df.ix[dupIndx[idx],['Beach-Date']]
@@ -124,7 +104,7 @@ def cleanUpBeaches(data):
             df.drop(TmpIndx[0],axis=0,inplace=True)
         else:
             df.drop(TmpIndx[1],axis=0,inplace=True)
-            
+
     return df
 
 
@@ -138,14 +118,14 @@ def addColumnPriorData(df, colName , NdaysPrior):
     temp.drop(['index','Timestamp',colName], axis=1, inplace=True)
     df = pd.merge(df, temp, left_on=['Beach', 'Timestamp'], right_on=['Beach', 'TempDate'], how='left')
     df.drop(['TempDate'], 1, inplace=True)
-    
-    return df
-    
-    
-    
-    
 
-    
+    return df
+
+
+
+
+
+
 
 def split_sheets(file_name, year, verbose=False):
     '''
@@ -307,7 +287,7 @@ def read_water_sensor_data(verbose=False):
     cols = df_mins.columns.tolist()
 
     def rename_columns(cols, aggregation_type):
-        cols = map(lambda x: x.replace(' ', '.'), cols)
+        cols = [x.replace(' ', '.') for x in cols]
         for i in range(2,7):
             cols[i] = cols[i] + '.' + aggregation_type
         return cols
@@ -324,8 +304,7 @@ def read_water_sensor_data(verbose=False):
     df = df.pivot(index='Date', columns='Beach.Name')
     df.columns = ['.'.join(col[::-1]).strip() for col in df.columns.values]
     df.reset_index(inplace=True)
-    df.columns = ['Full_date'] + map(lambda x: x.replace(' ', '.'),
-                                     df.columns.tolist()[1:])
+    df.columns = ['Full_date'] + [x.replace(' ', '.') for x in df.columns.tolist()[1:]]
 
     return df
 
@@ -364,7 +343,7 @@ def read_weather_station_data(verbose=False):
     cols = df_mins.columns.tolist()
 
     def rename_columns(cols, aggregation_type):
-        cols = map(lambda x: x.replace(' ', '.'), cols)
+        cols = [x.replace(' ', '.') for x in cols]
         for i in range(2,15):
             cols[i] = cols[i] + '.' + aggregation_type
         return cols
@@ -381,8 +360,7 @@ def read_weather_station_data(verbose=False):
     df = df.pivot(index='Date', columns='Station.Name')
     df.columns = ['.'.join(col[::-1]).strip() for col in df.columns.values]
     df.reset_index(inplace=True)
-    df.columns = ['Full_date'] + map(lambda x: x.replace(' ', '.'),
-                                     df.columns.tolist()[1:])
+    df.columns = ['Full_date'] + [x.replace(' ', '.') for x in df.columns.tolist()[1:]]
 
     return df
 
@@ -412,7 +390,7 @@ def date_lookup(s, verbose=False):
     http://stackoverflow.com/questions/29882573
     '''
     dates = {date:pd.to_datetime(date, errors='ignore') for date in s.unique()}
-    for date, parsed in dates.iteritems():
+    for date, parsed in dates.items():
         if type(parsed) is not pd.tslib.Timestamp:
             logging.debug('Non-regular date format "{0}"'.format(date))
             fmt = '%B %d (%p) %Y'
@@ -449,7 +427,7 @@ def read_data(verbose=False):
     # Also convert string to float, if possible
     for col in ['Reading.1', 'Reading.2', 'Escherichia.coli']:
         for i, val in enumerate(df[col].tolist()):
-            if isinstance(val, basestring):
+            if type(val) is str:
                 val = val.replace('<', '').replace('>', '')
                 try:
                     df.ix[i, col] = float(val)
@@ -515,7 +493,7 @@ def read_data(verbose=False):
     # import the column correctly (it truncated the value). Pandas did
     # import correctly, so no need to create that.
 
-    df = df.sort(['Full_date', 'Client.ID'])
+    df = df.sort_values(by=['Full_date', 'Client.ID'])
 
     external_data_path = '../data/ExternalData/'
     external_data_path = os.path.join(os.path.dirname(__file__),
@@ -545,7 +523,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process beach data.')
     parser.add_argument('-o', '--outfile', nargs=1, type=str,
                         metavar='outfile', help='output CSV filename')
-    parser.add_argument('-v', '--verbose', action='count')
+    parser.add_argument('-v', '--verbose', action='count', default=0)
 
     args = parser.parse_args()
 
