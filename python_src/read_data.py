@@ -11,8 +11,6 @@ such that the dataframe loaded here will match
 the R dataframe code exactly.
 '''
 
-# TODO: standardize on inplace=True or not inplace
-# TODO: create better docstrings
 
 def read_data_simplified():
     '''
@@ -86,7 +84,7 @@ def read_data_simplified():
     return df
 
 
-def clean_up_beaches(data, beach_names_column='Beach'):
+def clean_up_beaches(data, beach_names_column='Beach', verbose=False):
     '''
     Merge beach names to prevent duplicate readings.
 
@@ -94,6 +92,7 @@ def clean_up_beaches(data, beach_names_column='Beach'):
     ==========
     data               : A dataframe containing a column of beach names
     beach_names_column : The name of the column containing the beach names
+    verbose            : Print information if True
 
     Output
     ======
@@ -109,7 +108,8 @@ def clean_up_beaches(data, beach_names_column='Beach'):
                                 df[beach_names_column], df.Full_date))
 
     dupIndx=list(df.ix[df.duplicated(['Beach-Date'])].index)
-    print('Colapsing {0} records by taking highest reading'.format( len(dupIndx) ))
+    if verbose:
+        print('Colapsing {0} records by taking highest reading'.format( len(dupIndx) ))
 
     # assuming that the name-date conflict is for at most two records
     for idx in range(len(dupIndx)):
@@ -125,18 +125,68 @@ def clean_up_beaches(data, beach_names_column='Beach'):
     return df
 
 
-def add_column_prior_data(df, colName , NdaysPrior):
-    import datetime as dt
-    newColName = str(NdaysPrior) + '_days_prior_'+ colName
-    temp = df.ix[:,['Beach','Timestamp',colName]].reset_index()
-    temp['TempDate']= df['Timestamp'] + dt.timedelta(days=NdaysPrior)
-    temp[newColName] = temp[colName]
-    temp.drop(['index','Timestamp',colName], axis=1, inplace=True)
-    df = pd.merge(df, temp, left_on=['Beach', 'Timestamp'],
-                  right_on=['Beach', 'TempDate'], how='left')
-    df.drop(['TempDate'], 1, inplace=True)
+def add_column_prior_data(df, colnames, ns, beach_col_name='Beach', timestamp_col_name='Timestamp'):
+    '''
+    Adds data from previous days to the dataframe.
 
-    return df
+    Parameters
+    ==========
+    df       : Dataframe of data.
+    colnames : Can be a string, integer, or list-like of strings and integers.
+               If a list-like type is specified, then prior data will be added
+               for each specified column.
+    ns       : Can be an integer, or list-like of integers. This specifies how
+               many days back the prior data should be added from. For example,
+               if ns is 1, then data from the previous day will be added (if the
+               previous day is unavailable, then a nan is inserted).
+               If a list-like type is specified, then for each n in ns,
+               the data from n days back is added.
+
+    Keyword Arguments
+    =================
+    beach_col_name='Beach'
+        The name of the column containing the beach names in df.
+    timestamp_col_name='Timestamp'
+        The name of the column containing the timestamp in df.
+
+    Output
+    ======
+    df : Dataframe with the previous data merged onto (a copy of) the input dataframe.
+
+    Example
+    =======
+    >>> df = rd.read_data(read_weather_station=False, read_water_sensor=False)
+    >>> df2 = rd.add_column_prior_data(df, 'Escherichia.coli', 1,
+    >>>                                beach_col_name='Client.ID', timestamp_col_name='Full_date')
+    >>> df3 = rd.add_column_prior_data(df, 'Escherichia.coli', [1,2,3,4,5,6,7],
+    >>>                                beach_col_name='Client.ID', timestamp_col_name='Full_date')
+    >>> df4 = rd.add_column_prior_data(df, ['summary', 'icon'], [1, 2],
+    >>>                                beach_col_name='Client.ID', timestamp_col_name='Full_date')
+    '''
+    if not hasattr(colnames, '__getitem__') or type(colnames) is str:
+        colnames = [colnames]
+    if not hasattr(ns, '__getitem__'):
+        ns = [ns]
+
+    dfc = df.copy()
+    for colname in colnames:
+        for n in ns:
+            new_col_name = str(n) + '_day_prior_'+ colname
+
+            beaches = list(pd.Series(df[beach_col_name].unique()))
+            days = pd.date_range(df[timestamp_col_name].min(), df[timestamp_col_name].max() , freq='d')
+            df2 = dfc.set_index([beach_col_name,timestamp_col_name] )
+            idx = pd.MultiIndex.from_product([beaches,days], names=[beach_col_name,timestamp_col_name])
+            full = df2.reindex(idx) # This ensures indexing only within beach
+            previous = full.groupby(level=0)[colname].shift(n)
+            previous.name = new_col_name
+            final = pd.concat([full,previous], axis=1)
+
+            dfn = final.reset_index()
+            df = dfn
+            dfc = df.copy()
+
+    return dfn.copy()
 
 
 def split_sheets(file_name, year, verbose=False):
@@ -405,7 +455,8 @@ def date_lookup(s, verbose=False):
     return s.apply(lambda v: dates[v])
 
 
-def read_data(verbose=False):
+def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_station=True,
+              read_water_sensor=True, read_forecast=True):
     '''
     Read in the excel files for years 2006-2015 found in
     'data/ChicagoParkDistrict/raw/Standard 18 hr Testing'
@@ -469,24 +520,26 @@ def read_data(verbose=False):
     df = df[df['Client.ID'].map(lambda x: x in cleanbeachnames)]
     df['Client.ID'] = df['Client.ID'].map(lambda x: cleanbeachnames[x])
 
-    # Read in drek beach data
-    drek_data_path = '../data/DrekBeach/'
-    drekdata = pd.read_csv(drek_data_path + 'daily_summaries_drekb.csv')
-    drekdata.columns = ['Beach', 'Date', 'Drek_Reading',
-                        'Drek_Prediction', 'Drek_Worst_Swim_Status']
-    drekdata['Date'] = date_lookup(drekdata['Date'])
-    drekdata['Beach'] = drekdata['Beach'].map(lambda x: x.strip())
-    drekdata['Beach'] = drekdata['Beach'].map(lambda x: cleanbeachnames[x])
-    # Merge the data
-    df = pd.merge(df, drekdata, how='outer',
-                  left_on=['Client.ID', 'Full_date'],
-                  right_on=['Beach', 'Date'])
-    # Both dataframes had a Date column, they got replaced
-    # by Date_x and Date_y, drop the drek date and re-name Date_x.
-    df.drop('Date_y', 1, inplace=True)
-    c = df.columns.tolist()
-    c[c.index('Date_x')] = 'Date'
-    df.columns = c
+    if read_drek:
+        # Read in drek beach data
+        drek_data_path = '../data/DrekBeach/'
+        drekdata = pd.read_csv(drek_data_path + 'daily_summaries_drekb.csv')
+        drekdata.columns = ['Beach', 'Date', 'Drek_Reading',
+                            'Drek_Prediction', 'Drek_Worst_Swim_Status']
+        drekdata['Date'] = date_lookup(drekdata['Date'])
+        drekdata['Beach'] = drekdata['Beach'].map(lambda x: x.strip())
+        drekdata['Beach'] = drekdata['Beach'].map(lambda x: cleanbeachnames[x])
+        # Merge the data
+        df = pd.merge(df, drekdata, how='outer',
+                      left_on=['Client.ID', 'Full_date'],
+                      right_on=['Beach', 'Date'])
+        # Both dataframes had a Date column, they got replaced
+        # by Date_x and Date_y, drop the drek date and re-name Date_x.
+        df.drop('Date_y', 1, inplace=True)
+        c = df.columns.tolist()
+        c[c.index('Date_x')] = 'Date'
+        df.columns = c
+
     # There was an anamolous reading, the max possible value from the test
     # is around 2420, but one reading was 6488.
     # We need to do the ~(reading 1 > 2500 | reading 2 > 2500) instead of
@@ -500,22 +553,48 @@ def read_data(verbose=False):
 
     df = df.sort_values(by=['Full_date', 'Client.ID'])
 
+    if read_drek:
+        # Read in drek beach data
+        drek_data_path = '../data/DrekBeach/'
+        drekdata = pd.read_csv(drek_data_path + 'daily_summaries_drekb.csv')
+        drekdata.columns = ['Beach', 'Date', 'Drek_Reading',
+                            'Drek_Prediction', 'Drek_Worst_Swim_Status']
+        drekdata['Date'] = date_lookup(drekdata['Date'])
+        drekdata['Beach'] = drekdata['Beach'].map(lambda x: x.strip())
+        drekdata['Beach'] = drekdata['Beach'].map(lambda x: cleanbeachnames[x])
+        # Merge the data
+        df = pd.merge(df, drekdata, how='outer',
+                      left_on=['Client.ID', 'Full_date'],
+                      right_on=['Beach', 'Date'])
+        # Both dataframes had a Date column, they got replaced
+        # by Date_x and Date_y, drop the drek date and re-name Date_x.
+        df.drop('Date_y', 1, inplace=True)
+        c = df.columns.tolist()
+        c[c.index('Date_x')] = 'Date'
+        df.columns = c
+
     external_data_path = '../data/ExternalData/'
 
-    holidaydata = read_holiday_data(external_data_path + 'Holidays.csv', verbose)
-    df = pd.merge(df, holidaydata, on='Full_date', how='outer')
-    df = days_since_holiday(df)
+    if read_holiday:
+        holidaydata = read_holiday_data(external_data_path + 'Holidays.csv')
+        df = pd.merge(df, holidaydata, on='Full_date', how='outer')
+        df = days_since_holiday(df)
 
-    forecast_daily = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
-    df = pd.merge(df, forecast_daily, on=['Full_date', 'Client.ID'])
+    if read_forecast:
+        forecast_daily = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
+        df = pd.merge(df, forecast_daily, on=['Full_date', 'Client.ID'])
 
-    watersensordata = read_water_sensor_data(verbose)
-    df = pd.merge(df, watersensordata, on='Full_date', how='outer')
+    if read_water_sensor:
+        watersensordata = read_water_sensor_data()
+        df = pd.merge(df, watersensordata, on='Full_date', how='outer')
 
-    weatherstationdata = read_weather_station_data(verbose)
-    df = pd.merge(df, weatherstationdata, on='Full_date', how='outer')
+    if read_weather_station:
+        weatherstationdata = read_weather_station_data()
+        df = pd.merge(df, weatherstationdata, on='Full_date', how='outer')
 
+    # Final cleaning, drop rows with no beach name, remove duplicate beach-days
     df = df.dropna(subset=['Client.ID'])
+    df.drop_duplicates(subset=['Client.ID', 'Full_date'], keep='first', inplace=True)
 
     return df
 
@@ -524,6 +603,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--outfile', nargs=1, type=str,
                         metavar='outfile', help='output CSV filename')
     parser.add_argument('-v', '--verbose', action='count', default=0)
+    parser.add_argument('-t', '--test', action='count', help='run tests', default=0)
 
     args = parser.parse_args()
 
@@ -534,7 +614,51 @@ if __name__ == '__main__':
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    df = read_data(args.verbose)
-
     if args.outfile is not None:
+        df = read_data(args.verbose)
         df.to_csv(args.outfile[0], index=False)
+
+    if args.test:
+        df = read_data(args.verbose)
+        print('read_data() returns dataframe with size {0} x {1}'.format(
+            df.shape[0], df.shape[1]
+        ))
+        df2 = add_column_prior_data(df, 'Escherichia.coli', 1,
+                                    beach_col_name='Client.ID',
+                                    timestamp_col_name='Full_date')
+        print('Adding a single prior column results in a dataframe with size {0} x {1}'.format(
+            df2.shape[0], df2.shape[1]
+        ))
+        df2 = add_column_prior_data(df, 'Escherichia.coli', range(4),
+                                    beach_col_name='Client.ID',
+                                    timestamp_col_name='Full_date')
+        print('Adding a four prior days results in a dataframe with size {0} x {1}'.format(
+            df2.shape[0], df2.shape[1]
+        ))
+        df2 = add_column_prior_data(df, ['Escherichia.coli', 'icon'], range(4),
+                                    beach_col_name='Client.ID',
+                                    timestamp_col_name='Full_date')
+        print('Adding a four prior days of two columns results in a dataframe with size {0} x {1}'.format(
+            df2.shape[0], df2.shape[1]
+        ))
+
+        df = read_data_simplified()
+        print('read_data_simplified() returns dataframe with size {0} x {1}'.format(
+            df.shape[0], df.shape[1]
+        ))
+        df = clean_up_beaches(df)
+        print('After cleaning with clean_up_beaches, we have a dataframe with size {0} x {1}'.format(
+            df.shape[0], df.shape[1]
+        ))
+        df2 = add_column_prior_data(df, 'Ecoli_geomean', 1)
+        print('Adding a single prior column results in a dataframe with size {0} x {1}'.format(
+            df2.shape[0], df2.shape[1]
+        ))
+        df2 = add_column_prior_data(df, 'Ecoli_geomean', range(4))
+        print('Adding a four prior days results in a dataframe with size {0} x {1}'.format(
+            df2.shape[0], df2.shape[1]
+        ))
+        df2 = add_column_prior_data(df, ['Ecoli_geomean', 'lowReading'], range(4))
+        print('Adding a four prior days of two columns results in a dataframe with size {0} x {1}'.format(
+            df2.shape[0], df2.shape[1]
+        ))
