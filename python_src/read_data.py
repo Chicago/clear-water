@@ -618,6 +618,7 @@ if __name__ == '__main__':
         df = read_data(args.verbose)
         df.to_csv(args.outfile[0], index=False)
 
+
     if args.test:
         df = read_data(args.verbose)
         print('read_data() returns dataframe with size {0} x {1}'.format(
