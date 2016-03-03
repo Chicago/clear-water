@@ -2,6 +2,7 @@ from __future__ import print_function
 import pandas as pd
 import logging
 import argparse
+import six
 
 '''
 This file reads in data related E. coli levels
@@ -163,7 +164,7 @@ def add_column_prior_data(df, colnames, ns, beach_col_name='Beach', timestamp_co
     >>> df4 = rd.add_column_prior_data(df, ['summary', 'icon'], [1, 2],
     >>>                                beach_col_name='Client.ID', timestamp_col_name='Full_date')
     '''
-    if not hasattr(colnames, '__getitem__') or type(colnames) is str:
+    if not hasattr(colnames, '__getitem__') or isinstance(colnames, six.string_types):
         colnames = [colnames]
     if not hasattr(ns, '__getitem__'):
         ns = [ns]
@@ -484,7 +485,7 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
     # Also convert string to float, if possible
     for col in ['Reading.1', 'Reading.2', 'Escherichia.coli']:
         for i, val in enumerate(df[col].tolist()):
-            if type(val) is str:
+            if isinstance(val, six.string_types):
                 val = val.replace('<', '').replace('>', '')
                 try:
                     df.ix[i, col] = float(val)
