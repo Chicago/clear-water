@@ -60,6 +60,17 @@ drekdata$Beach <- changenames[drekdata$Beach]
 ##Merge drek with beach_readings 
 beach_readings <- merge(beach_readings, drekdata, by.x = c("Client.ID", "Full_date"), by.y = c("Beach", "Date"), all.x=T)
 
+##Final Clean of beach names for consistency from 2006 to 2015 -- now the the 20 beaches in the data set are the same as those with readings from 2010 through 2015
+changenames.2 <- setNames(cleanbeachnames$Short_Names, cleanbeachnames$New) 
+beach_readings$Beach_Name <- beach_readings$Client.ID
+beach_readings$Beach_Name <- changenames.2[beach_readings$Beach_Name] 
+
+#Remove all but instances with a beach name and at least 1 reading so that we only keep duplicate beaches WITH readings data (re: next line that removes duplicates)
+beach_readings=beach_readings[which((!is.na(beach_readings$Reading.1) | !is.na(beach_readings$Reading.2)) & !is.na(beach_readings$Beach_Name)),]
+
+#Remove all instances where same beach has more than one reading on a day, keeping only 1st instance - because some beaches merged during final name clean (e.g. hartigan, north shore, and tobey prinz become Albion)
+beach_readings=beach_readings[!duplicated(beach_readings[c("Full_date", "Beach_Name")]), ] #keeps first instance, gets rid of dups
+
 ### Change readings to numeric data
 beach_readings$Reading.1 <- as.numeric(as.character(beach_readings$Reading.1))
 beach_readings$Reading.2 <- as.numeric(as.character(beach_readings$Reading.2))
@@ -93,6 +104,27 @@ forecast_daily <- read.csv("data/ExternalData/forecastio_daily_weather.csv", str
 forecast_daily <- unique(forecast_daily)
 beach_readings <- merge(x=beach_readings, y=forecast_daily, by.x=c("Client.ID", "Full_date"), by.y=c("beach", "time"), all.x = T, all.y = T)
 
+#Bring in NEW variables
+##Final Beach_Name is lost in weather data merge, so this brings them back in
+changenames.2 <- setNames(cleanbeachnames$Short_Names, cleanbeachnames$New) 
+beach_readings$Beach_Name <- beach_readings$Client.ID
+beach_readings$Beach_Name <- changenames.2[beach_readings$Beach_Name] 
+
+##Add time variables 
+beach_readings$Year <- as.numeric(format(beach_readings$Full_date, "%Y"))
+beach_readings$Month <- format(beach_readings$Full_date,"%B")
+beach_readings$Weekday <- weekdays(beach_readings$Full_date)  
+beach_readings$Day_of_year <- as.numeric(format(beach_readings$Full_date, "%j"))  
+beach_readings$Week<- format(beach_readings$Full_date, "%W")  
+beach_readings$Day <- format(beach_readings$Full_date, "%d") #rename to Day_of_month? Other code may depend on this name
+
+#Remove duplicates -- more than one observation per beach on a day
+beach_readings=beach_readings[!duplicated(beach_readings[c("Full_date", "Beach_Name")]), ]#keeps first instance, gets rid of dups
+
+#so that Client.ID is now the cleaned beaches, but we don't lose old names
+beach_readings$Old_Client.ID=beach_readings$Client.ID
+beach_readings$Client.ID=beach_readings$Beach_Name
+beach_readings=beach_readings[-which(colnames(beach_readings) %in% "Beach_Name")]
 
 # Build naive logit model (today like yesterday)
 # -----------------------------------------------------------
