@@ -4,11 +4,46 @@ import sklearn.ensemble
 import read_data as rd
 import visualizations as viz
 import pandas as pd
+import matplotlib.pyplot as plt
 
 
-def main():
-    # Load data, don't load water/weather station data
-    df = rd.read_data(read_water_sensor=False, read_weather_station=False)
+def gbm(timestamps, predictors, classes):
+
+    timestamps = timestamps.map(lambda x: x.year)
+
+    start = timestamps.min()
+    stop = timestamps.max()
+    stop = min(stop, 2014) # do not include 2015
+
+    roc_ax = plt.subplots(1)[1]
+    pr_ax = plt.subplots(1)[1]
+
+    clfs = dict()
+
+    for yr in range(start, stop+1):
+        train_indices = np.array((timestamps < yr) | (timestamps > yr))
+
+        clf = sklearn.ensemble.GradientBoostingClassifier(
+            n_estimators=500, learning_rate=0.05,
+            max_depth=6, subsample=0.7, verbose=True
+        )
+        clf.fit(predictors.ix[train_indices,:], classes[train_indices])
+
+        clfs[yr] = clf
+
+        predictions = clf.predict_proba(predictors.ix[~train_indices,:])[:,1]
+
+        viz.roc(predictions, classes[~train_indices], block_show=False, ax=roc_ax)
+        viz.precision_recall(predictions, classes[~train_indices], block_show=False, ax=pr_ax)
+
+    return clfs
+
+
+def prepare_data(df=None):
+    if df is None:
+        df = rd.read_data()
+
+    df = df[df['Full_date'] < '1-1-2015']
 
     df = df[['Full_date','Client.ID','Weekday','Escherichia.coli']]
 
@@ -49,20 +84,33 @@ def main():
     df = nonnumericCols(df)
     df.dropna(axis=0, inplace=True)
 
-    train_index = np.array(df['Full_date'] < '1-1-2015')
-    Y = df['Escherichia.coli'] > 235
-    df.drop(['Escherichia.coli', 'Full_date'], axis=1, inplace=True)
-
-    clf = sklearn.ensemble.GradientBoostingClassifier(n_estimators=1000, learning_rate=0.05, max_depth=6, verbose=True)
-    clf.fit(df.ix[train_index,:], Y[train_index])
-
-    predictions = clf.predict_proba(df.ix[~np.array(train_index),:])[:,1]
-
-    viz.roc(predictions, Y[~train_index], block_show=False)
-    viz.precision_recall(predictions, Y[~train_index], block_show=True)
-
-    return clf, df, Y, train_index
+    return df
 
 
 if __name__ == '__main__':
-    main()
+    df = prepare_data()
+    timestamps = df['Full_date']
+    classes = df['Escherichia.coli'] > 235
+    predictors = df.drop(['Full_date', 'Escherichia.coli'], axis=1)
+    clfs = gbm(timestamps, predictors, classes)
+
+    plt.figure(1)
+    ax = plt.gca()
+    c = ax.get_children()
+    for i in range(18):
+        c[i].set_alpha(.5)
+    ax.legend([c[i] for i in range(0,18,2)],
+              ['06', '07', '08', '09'] + [str(i) for i in range(10,15)],
+              loc=4)
+
+    plt.figure(2)
+    ax = plt.gca()
+    c = ax.get_children()
+    for i in range(18):
+        c[i].set_alpha(.5)
+    ax.legend([c[i] for i in range(0,18,2)],
+              ['06', '07', '08', '09'] + [str(i) for i in range(10,15)],
+              loc=1)
+
+    plt.draw()
+    plt.show(block=True)
