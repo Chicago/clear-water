@@ -92,7 +92,10 @@ source("data/ExternalData/merge_lock_data.r")
 forecast_daily <- read.csv("data/ExternalData/forecastio_daily_weather.csv", stringsAsFactors = FALSE, row.names=NULL, header = T)
 forecast_daily <- unique(forecast_daily)
 beach_readings <- merge(x=beach_readings, y=forecast_daily, by.x=c("Client.ID", "Full_date"), by.y=c("beach", "time"), all.x = T, all.y = T)
-
+beach_readings$Weekday <- weekdays(beach_readings$Full_date) #add day of week
+beach_readings$Year <- format(beach_readings$Full_date,"%Y")
+beach_readings$Month <- format(beach_readings$Full_date,"%B")
+beach_readings$Day <- format(beach_readings$Full_date, "%d")
 
 # Build naive logit model (today like yesterday)
 # -----------------------------------------------------------
@@ -258,8 +261,8 @@ shift_previous_data <- function(number_of_observations, original_data_frame, nam
         names_of_columns_to_shift <- colnames(readings_by_beach_columns)
       }
       #build new column names
-      for (column in names_of_columns_to_shift) {        
-        new_column_name <- paste("Previous",column,sep=".")
+      for (column in names_of_columns_to_shift) {     
+        new_column_name <- paste(number_of_observations,"daysPrior",column,sep=".")
         new_column_values <- vector()
         #build new columns
         #for first n rows, use NA bc no prior data to use
@@ -280,3 +283,23 @@ shift_previous_data <- function(number_of_observations, original_data_frame, nam
   }
   merged_data_frame
 }
+
+#Principal Component Analysis
+
+beach_readings_pca <- beach_readings
+cols_to_remove <- c("Transducer.Depth.Min", "Transducer.Depth.Max", "Transducer.Depth.Mean", "Rain.Intensity.Min", "Interval.Rain.Min", "Holiday.Flag", "precipIntensityMaxTime")
+beach_readings_pca <- beach_readings_pca[,!names(beach_readings_pca) %in% cols_to_remove]
+beach_readings_pca_shifted <- shift_previous_data(1,beach_readings_pca)
+new_shifted_col_names <- setdiff(colnames(beach_readings_pca_shifted),colnames(beach_readings_pca))
+beach_readings_pca_shifted_new_only <- beach_readings_pca_shifted[,new_shifted_col_names]
+cols_to_remove <- c("1.daysPrior.Reading.1", "1.daysPrior.Reading.2", "1.daysPrior.Escherichia.coli", "1.daysPrior.Drek_Reading", "1.daysPrior.Drek_Prediction", "1.daysPrior.e_coli_geomean_actual_calculated", "1.daysPrior.elevated_levels_actual_calculated", "1.daysPrior.Drek_elevated_levels_predicted_calculated")
+beach_readings_pca_shifted_new_only <- beach_readings_pca_shifted_new_only[,!names(beach_readings_pca_shifted_new_only) %in% cols_to_remove]
+beach_readings_pca <- cbind(beach_readings_pca_shifted$Reading.1, beach_readings_pca_shifted$Reading.2, beach_readings_pca_shifted$e_coli_geomean_actual_calculated, beach_readings_pca_shifted_new_only)
+names(beach_readings_pca)[1:3] <- c("Reading.1", "Reading.2", "e_coli_geomean_actual_calculated")
+beach_readings_pca <-  beach_readings_pca[,sapply(beach_readings_pca, is.numeric)]
+beach_readings_pca <- beach_readings_pca[complete.cases(beach_readings_pca),]
+beach_readings_pca <- scale(beach_readings_pca)
+pca <- prcomp(beach_readings_pca)
+plot(pca, type = "l")
+aload <- abs(pca$rotation[,1:2])
+relative_contribution_to_PC <- sweep(aload, 2, colSums(aload), "/")
