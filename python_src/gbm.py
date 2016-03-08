@@ -45,28 +45,36 @@ def prepare_data(df=None):
 
     df = df[df['Full_date'] < '1-1-2015']
 
-    df = df[['Full_date','Client.ID','Weekday','Escherichia.coli']]
+    df = df[['Full_date', 'Client.ID', 'Weekday', 'Escherichia.coli',
+             'cloudCover', 'temperatureMin', 'temperatureMax',
+             'precipIntensityMax', 'precipProbability']]
 
-    df2 = rd.add_column_prior_data(df, 'Escherichia.coli', range(1,8),
-                                   beach_col_name='Client.ID', timestamp_col_name='Full_date')
+    df2 = rd.add_column_prior_data(
+        df, ['Escherichia.coli', 'cloudCover', 'temperatureMin', 'temperatureMax',
+             'precipIntensityMax', 'precipProbability'],
+        range(1,8), beach_col_name='Client.ID', timestamp_col_name='Full_date'
+    )
 
-    df2['7_day_moving_avg'] = df2[df2.columns[df2.columns.map(lambda x: x[1:6]) == '_day_']].mean(axis=1)
+    for col in ['Escherichia.coli', 'cloudCover', 'temperatureMin', 'temperatureMax', 'precipIntensityMax', 'precipProbability']:
+        all_prior_columns = df2.columns.map(lambda x: x[1:12+len(col)]) == '_day_prior_' + col
+        df2[col + '7_day_moving_avg'] = df2[df2.columns[all_prior_columns]].mean(axis=1)
 
-    df = pd.merge(df, df2[['Full_date', 'Client.ID', '7_day_moving_avg']],
-                  how='left', on=['Full_date', 'Client.ID'])
+        df = pd.merge(df, df2[['Full_date', 'Client.ID', col + '7_day_moving_avg', '1_day_prior_' + col]],
+                      how='left', on=['Full_date', 'Client.ID'])
 
-    df['PriorEColiReading'] =  pd.Series(map((lambda x,y: y if np.isnan(x) else x),
-                                             df2['1_day_prior_Escherichia.coli'], df['7_day_moving_avg']))
+        df['Prior' + col] =  pd.Series(map((lambda x,y: y if np.isnan(x) else x),
+                                         df['1_day_prior_' + col], df[col + '7_day_moving_avg']))
+        df = df.drop([col + '7_day_moving_avg', '1_day_prior_' + col], axis=1)
 
     for b in df['Client.ID'].unique().tolist():
-        beach2 = df.ix[df['Client.ID']==b,['Full_date','Client.ID','PriorEColiReading']].reset_index()
+        beach2 = df.ix[df['Client.ID']==b,['Full_date','Client.ID','PriorEscherichia.coli']].reset_index()
         c = beach2.columns.tolist()
-        c[c.index('PriorEColiReading')] = b + '_PriorEColiReading'
+        c[c.index('PriorEscherichia.coli')] = b + '_PriorEscherichia.coli'
         beach2.columns = c
         beach2.drop(['index','Client.ID'], axis=1, inplace=True)
         df = pd.merge(df, beach2, on='Full_date', how='left')
 
-    priorEColiColumns = [b + '_PriorEColiReading' for b in df['Client.ID'].unique().tolist()]
+    priorEColiColumns = [b + '_PriorEscherichia.coli' for b in df['Client.ID'].unique().tolist()]
     df['city_mean'] = df[priorEColiColumns].mean(axis=1)
     fill_value = pd.DataFrame({col: df['city_mean'] for col in priorEColiColumns})
     df.fillna(fill_value, inplace=True)
@@ -91,16 +99,20 @@ if __name__ == '__main__':
     df = prepare_data()
     timestamps = df['Full_date']
     classes = df['Escherichia.coli'] > 235
-    predictors = df.drop(['Full_date', 'Escherichia.coli'], axis=1)
+    predictors = df.drop(
+        ['Full_date', 'Escherichia.coli',  'cloudCover',
+         'temperatureMin', 'temperatureMax', 'precipIntensityMax', 'precipProbability'],
+        axis=1
+    )
     clfs = gbm(timestamps, predictors, classes)
+    print(predictors.columns.tolist())
 
     df2 = rd.read_data()
-    # need to investigate why it's _x, what merge caused that?
-    df2 = df2[['Drek_Prediction_x', 'Escherichia.coli']].dropna()
+    df2 = df2[['Drek_Prediction', 'Escherichia.coli']].dropna()
 
     plt.figure(1)
     ax = plt.gca()
-    viz.roc(df2['Drek_Prediction_x'], df2['Escherichia.coli'] > 235,
+    viz.roc(df2['Drek_Prediction'], df2['Escherichia.coli'] > 235,
             ax=ax, block_show=False)
     c = ax.get_children()
     for i in range(18):
@@ -117,7 +129,7 @@ if __name__ == '__main__':
     plt.figure(2)
     ax = plt.gca()
     c = ax.get_children()
-    viz.precision_recall(df2['Drek_Prediction_x'], df2['Escherichia.coli'] > 235,
+    viz.precision_recall(df2['Drek_Prediction'], df2['Escherichia.coli'] > 235,
                          ax=ax, block_show=False)
     for i in range(18):
         c[i].set_alpha(.5)
