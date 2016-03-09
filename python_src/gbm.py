@@ -9,34 +9,86 @@ import matplotlib.pyplot as plt
 
 def gbm(timestamps, predictors, classes):
 
-    timestamps = timestamps.map(lambda x: x.year)
+    ### Create random 70% train, 30% test
+    perm = np.random.permutation(predictors.shape[0])
+    cutoff = int(perm.shape[0] * 0.70)
+    train_indices = perm[:cutoff]
+    test_indices = perm[cutoff:]
 
-    start = timestamps.min()
-    stop = timestamps.max()
-    stop = min(stop, 2014) # do not include 2015
+    in_train = predictors.iloc[train_indices, :]
+    out_train = classes.iloc[train_indices]
+
+    in_test = predictors.iloc[test_indices, :]
+    out_test = classes.iloc[test_indices]
+
+    clf = sklearn.ensemble.GradientBoostingClassifier(
+        n_estimators=500, learning_rate=0.05,
+        max_depth=6, subsample=0.7, verbose=True
+    )
+    clf.fit(in_train, out_train)
+
+    predictions = clf.predict_proba(in_test)[:,1]
 
     roc_ax = plt.subplots(1)[1]
     pr_ax = plt.subplots(1)[1]
 
-    clfs = dict()
+    viz.roc(predictions, out_test, block_show=False, ax=roc_ax)
+    viz.precision_recall(predictions, out_test, block_show=False, ax=pr_ax)
 
-    for yr in range(start, stop+1):
-        train_indices = np.array((timestamps < yr) | (timestamps > yr))
+    # take 2010 as testing set
+    yr = 2010
+    ts = timestamps.map(lambda x: x.year)
+    train_indices = np.array((ts < yr) | (ts > yr))
+    test_indices = ~train_indices
 
-        clf = sklearn.ensemble.GradientBoostingClassifier(
-            n_estimators=500, learning_rate=0.05,
-            max_depth=6, subsample=0.7, verbose=True
-        )
-        clf.fit(predictors.ix[train_indices,:], classes[train_indices])
+    in_train = predictors.ix[train_indices, :]
+    out_train = classes.ix[train_indices]
 
-        clfs[yr] = clf
+    in_test = predictors.ix[test_indices, :]
+    out_test = classes.ix[test_indices]
 
-        predictions = clf.predict_proba(predictors.ix[~train_indices,:])[:,1]
+    clf = sklearn.ensemble.GradientBoostingClassifier(
+        n_estimators=500, learning_rate=0.05,
+        max_depth=6, subsample=0.7, verbose=True
+    )
+    clf.fit(in_train, out_train)
 
-        viz.roc(predictions, classes[~train_indices], block_show=False, ax=roc_ax)
-        viz.precision_recall(predictions, classes[~train_indices], block_show=False, ax=pr_ax)
+    predictions = clf.predict_proba(in_test)[:,1]
 
-    return clfs
+    viz.roc(predictions, out_test, block_show=False, ax=roc_ax)
+    viz.precision_recall(predictions, out_test, block_show=True, ax=pr_ax)
+
+
+    return clf
+
+    # timestamps = timestamps.map(lambda x: x.year)
+    #
+    # start = timestamps.min()
+    # stop = timestamps.max()
+    # stop = min(stop, 2014) # do not include 2015
+    #
+    # roc_ax = plt.subplots(1)[1]
+    # pr_ax = plt.subplots(1)[1]
+    #
+    # clfs = dict()
+    #
+    # for yr in range(start, stop+1):
+    #     train_indices = np.array((timestamps < yr) | (timestamps > yr))
+    #
+    #     clf = sklearn.ensemble.GradientBoostingClassifier(
+    #         n_estimators=500, learning_rate=0.05,
+    #         max_depth=6, subsample=0.7, verbose=True
+    #     )
+    #     clf.fit(predictors.ix[train_indices,:], classes[train_indices])
+    #
+    #     clfs[yr] = clf
+    #
+    #     predictions = clf.predict_proba(predictors.ix[~train_indices,:])[:,1]
+    #
+    #     viz.roc(predictions, classes[~train_indices], block_show=False, ax=roc_ax)
+    #     viz.precision_recall(predictions, classes[~train_indices], block_show=False, ax=pr_ax)
+    #
+    # return clfs
 
 
 def prepare_data(df=None):
@@ -110,36 +162,36 @@ if __name__ == '__main__':
     df2 = rd.read_data()
     df2 = df2[['Drek_Prediction', 'Escherichia.coli']].dropna()
 
-    plt.figure(1)
-    ax = plt.gca()
-    viz.roc(df2['Drek_Prediction'], df2['Escherichia.coli'] > 235,
-            ax=ax, block_show=False)
-    c = ax.get_children()
-    for i in range(18):
-        c[i].set_alpha(.5)
-    c[18].set_color([0,0,0])
-    c[18].set_ls('-.')
-    c[18].set_linewidth(3)
-    c[18].set_alpha(.8)
-    ax.legend([c[i] for i in range(0,20,2)],
-              ['06', '07', '08', '09'] + [str(i) for i in range(10,15)] + ['EPA Model'],
-              loc=4)
-
-
-    plt.figure(2)
-    ax = plt.gca()
-    c = ax.get_children()
-    viz.precision_recall(df2['Drek_Prediction'], df2['Escherichia.coli'] > 235,
-                         ax=ax, block_show=False)
-    for i in range(18):
-        c[i].set_alpha(.5)
-    c[18].set_color([0,0,0])
-    c[18].set_ls('-.')
-    c[18].set_linewidth(3)
-    c[18].set_alpha(.8)
-    ax.legend([c[i] for i in range(0,20,2)],
-              ['06', '07', '08', '09'] + [str(i) for i in range(10,15)] + ['EPA Model'],
-              loc=1)
-
-    plt.draw()
-    plt.show(block=True)
+    # plt.figure(1)
+    # ax = plt.gca()
+    # viz.roc(df2['Drek_Prediction'], df2['Escherichia.coli'] > 235,
+    #         ax=ax, block_show=False)
+    # c = ax.get_children()
+    # for i in range(18):
+    #     c[i].set_alpha(.5)
+    # c[18].set_color([0,0,0])
+    # c[18].set_ls('-.')
+    # c[18].set_linewidth(3)
+    # c[18].set_alpha(.8)
+    # ax.legend([c[i] for i in range(0,20,2)],
+    #           ['06', '07', '08', '09'] + [str(i) for i in range(10,15)] + ['EPA Model'],
+    #           loc=4)
+    #
+    #
+    # plt.figure(2)
+    # ax = plt.gca()
+    # c = ax.get_children()
+    # viz.precision_recall(df2['Drek_Prediction'], df2['Escherichia.coli'] > 235,
+    #                      ax=ax, block_show=False)
+    # for i in range(18):
+    #     c[i].set_alpha(.5)
+    # c[18].set_color([0,0,0])
+    # c[18].set_ls('-.')
+    # c[18].set_linewidth(3)
+    # c[18].set_alpha(.8)
+    # ax.legend([c[i] for i in range(0,20,2)],
+    #           ['06', '07', '08', '09'] + [str(i) for i in range(10,15)] + ['EPA Model'],
+    #           loc=1)
+    #
+    # plt.draw()
+    # plt.show(block=True)
