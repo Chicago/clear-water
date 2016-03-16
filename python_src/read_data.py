@@ -554,26 +554,6 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
 
     df = df.sort_values(by=['Full_date', 'Client.ID'])
 
-    if read_drek:
-        # Read in drek beach data
-        drek_data_path = '../data/DrekBeach/'
-        drekdata = pd.read_csv(drek_data_path + 'daily_summaries_drekb.csv')
-        drekdata.columns = ['Beach', 'Date', 'Drek_Reading',
-                            'Drek_Prediction', 'Drek_Worst_Swim_Status']
-        drekdata['Date'] = date_lookup(drekdata['Date'])
-        drekdata['Beach'] = drekdata['Beach'].map(lambda x: x.strip())
-        drekdata['Beach'] = drekdata['Beach'].map(lambda x: cleanbeachnames[x])
-        # Merge the data
-        df = pd.merge(df, drekdata, how='outer',
-                      left_on=['Client.ID', 'Full_date'],
-                      right_on=['Beach', 'Date'])
-        # Both dataframes had a Date column, they got replaced
-        # by Date_x and Date_y, drop the drek date and re-name Date_x.
-        df.drop('Date_y', 1, inplace=True)
-        c = df.columns.tolist()
-        c[c.index('Date_x')] = 'Date'
-        df.columns = c
-
     external_data_path = '../data/ExternalData/'
 
     if read_holiday:
