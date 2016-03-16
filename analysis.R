@@ -99,24 +99,29 @@ source("data/ExternalData/merge_holiday_data.r")
 # Bring in lock opening data
 source("data/ExternalData/merge_lock_data.r")
 
+#Final Beach_Name is lost in weather data merge, so this brings them back in
+beach_readings$Beach_Name <- beach_readings$Client.ID
+beach_readings$Beach_Name <- changenames.2[beach_readings$Beach_Name]
+
 # Bring in forecast.io daily weather data
 forecast_daily <- read.csv("data/ExternalData/forecastio_daily_weather.csv", stringsAsFactors = FALSE, row.names=NULL, header = T)
 forecast_daily <- unique(forecast_daily)
 beach_readings <- merge(x=beach_readings, y=forecast_daily, by.x=c("Client.ID", "Full_date"), by.y=c("beach", "time"), all.x = T, all.y = T)
 
-#Bring in NEW variables
-##Final Beach_Name is lost in weather data merge, so this brings them back in
-changenames.2 <- setNames(cleanbeachnames$Short_Names, cleanbeachnames$New) 
-beach_readings$Beach_Name <- beach_readings$Client.ID
-beach_readings$Beach_Name <- changenames.2[beach_readings$Beach_Name] 
+#WORKING ON THIS -- Change new Client.ID names brought in from forecast.daily
+beach_readings=beach_readings[!duplicated(beach_readings[c("Full_date", "Client.ID")]), ]
+beach_readings$Beach_Name2 <- beach_readings$Client.ID
+beach_readings$Beach_Name2 <- changenames.2[beach_readings$Beach_Name2] 
 
-##Add time variables 
-beach_readings$Year <- as.numeric(format(beach_readings$Full_date, "%Y"))
-beach_readings$Month <- format(beach_readings$Full_date,"%B")
-beach_readings$Weekday <- weekdays(beach_readings$Full_date)  
-beach_readings$Day_of_year <- as.numeric(format(beach_readings$Full_date, "%j"))  
-beach_readings$Week<- format(beach_readings$Full_date, "%W")  
-beach_readings$Day <- format(beach_readings$Full_date, "%d") #rename to Day_of_month? Other code may depend on this name
+test=beach_readings[-which(beach_readings$Client.ID=="Columbia"),]
+test=test[-which((duplicated(test[c("Full_date", "Beach_Name2")])) & is.na(test$Beach_Name)), ] #PROBLEM IS HERE; for some reason "Lane" (turned to Osterman) dup not being removed
+test$Beach_Name_final <- ifelse(!is.na(test$Beach_Name),test$Beach_Name,test$Beach_Name2) #So HERE, the Lane (now Osterman) and Osterman dup still in
+# as.data.frame(table(test$Beach_Name_final))
+# View(table(test$Client.ID, test$Beach_Name_final))
+test=test[-which(duplicated(test[c("Full_date", "Beach_Name_final")])),]
+sum(!is.na(test$Beach_Name))#14787 not 14790 -- WHY do we lose 3 from OSTERMAN?? No dups to start with 
+
+View(cbind(table(pre_water_merge_new$Beach_Name), table(test$Beach_Name)))
 
 #Remove duplicates -- more than one observation per beach on a day
 beach_readings=beach_readings[!duplicated(beach_readings[c("Full_date", "Beach_Name")]), ]#keeps first instance, gets rid of dups
@@ -125,6 +130,14 @@ beach_readings=beach_readings[!duplicated(beach_readings[c("Full_date", "Beach_N
 beach_readings$Old_Client.ID=beach_readings$Client.ID
 beach_readings$Client.ID=beach_readings$Beach_Name
 beach_readings=beach_readings[-which(colnames(beach_readings) %in% "Beach_Name")]
+
+##Add time variables 
+beach_readings$Year <- as.numeric(format(beach_readings$Full_date, "%Y"))
+beach_readings$Month <- format(beach_readings$Full_date,"%B")
+beach_readings$Weekday <- weekdays(beach_readings$Full_date)  
+beach_readings$Day_of_year <- as.numeric(format(beach_readings$Full_date, "%j"))  
+beach_readings$Week<- format(beach_readings$Full_date, "%W")  
+beach_readings$Day <- format(beach_readings$Full_date, "%d") #rename to Day_of_month? Other code may depend on this name
 
 # Build naive logit model (today like yesterday)
 # -----------------------------------------------------------
@@ -290,8 +303,8 @@ shift_previous_data <- function(number_of_observations, original_data_frame, nam
         names_of_columns_to_shift <- colnames(readings_by_beach_columns)
       }
       #build new column names
-      for (column in names_of_columns_to_shift) {        
-        new_column_name <- paste("Previous",column,sep=".")
+      for (column in names_of_columns_to_shift) {     
+        new_column_name <- paste(number_of_observations,"daysPrior",column,sep=".")
         new_column_values <- vector()
         #build new columns
         #for first n rows, use NA bc no prior data to use
@@ -312,3 +325,23 @@ shift_previous_data <- function(number_of_observations, original_data_frame, nam
   }
   merged_data_frame
 }
+
+#Principal Component Analysis
+
+beach_readings_pca <- beach_readings
+cols_to_remove <- c("Transducer.Depth.Min", "Transducer.Depth.Max", "Transducer.Depth.Mean", "Rain.Intensity.Min", "Interval.Rain.Min", "Holiday.Flag", "precipIntensityMaxTime")
+beach_readings_pca <- beach_readings_pca[,!names(beach_readings_pca) %in% cols_to_remove]
+beach_readings_pca_shifted <- shift_previous_data(1,beach_readings_pca)
+new_shifted_col_names <- setdiff(colnames(beach_readings_pca_shifted),colnames(beach_readings_pca))
+beach_readings_pca_shifted_new_only <- beach_readings_pca_shifted[,new_shifted_col_names]
+cols_to_remove <- c("1.daysPrior.Reading.1", "1.daysPrior.Reading.2", "1.daysPrior.Escherichia.coli", "1.daysPrior.Drek_Reading", "1.daysPrior.Drek_Prediction", "1.daysPrior.e_coli_geomean_actual_calculated", "1.daysPrior.elevated_levels_actual_calculated", "1.daysPrior.Drek_elevated_levels_predicted_calculated")
+beach_readings_pca_shifted_new_only <- beach_readings_pca_shifted_new_only[,!names(beach_readings_pca_shifted_new_only) %in% cols_to_remove]
+beach_readings_pca <- cbind(beach_readings_pca_shifted$Reading.1, beach_readings_pca_shifted$Reading.2, beach_readings_pca_shifted$e_coli_geomean_actual_calculated, beach_readings_pca_shifted_new_only)
+names(beach_readings_pca)[1:3] <- c("Reading.1", "Reading.2", "e_coli_geomean_actual_calculated")
+beach_readings_pca <-  beach_readings_pca[,sapply(beach_readings_pca, is.numeric)]
+beach_readings_pca <- beach_readings_pca[complete.cases(beach_readings_pca),]
+beach_readings_pca <- scale(beach_readings_pca)
+pca <- prcomp(beach_readings_pca)
+plot(pca, type = "l")
+aload <- abs(pca$rotation[,1:2])
+relative_contribution_to_PC <- sweep(aload, 2, colSums(aload), "/")
