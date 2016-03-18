@@ -99,45 +99,32 @@ source("data/ExternalData/merge_holiday_data.r")
 # Bring in lock opening data
 source("data/ExternalData/merge_lock_data.r")
 
-#Final Beach_Name is lost in weather data merge, so this brings them back in
+#Beach_Name is lost when brining in water/weather/holiday/lock data -- this brings Beach_Name back in
 beach_readings$Beach_Name <- beach_readings$Client.ID
 beach_readings$Beach_Name <- changenames.2[beach_readings$Beach_Name]
 
-# Bring in forecast.io daily weather data
+#Bring in forecast.io daily weather data using cleaned Beach_Name
 forecast_daily <- read.csv("data/ExternalData/forecastio_daily_weather.csv", stringsAsFactors = FALSE, row.names=NULL, header = T)
 forecast_daily <- unique(forecast_daily)
-beach_readings <- merge(x=beach_readings, y=forecast_daily, by.x=c("Client.ID", "Full_date"), by.y=c("beach", "time"), all.x = T, all.y = T)
+forecast_daily$Beach_Name <- forecast_daily$beach
+forecast_daily$Beach_Name <- changenames.2[forecast_daily$Beach_Name] #this cleans the beach names
+forecast_daily=forecast_daily[!duplicated(forecast_daily[c("time", "Beach_Name")]), ] #remove duplicates, for example instances where North Shore & Hartigan appear on same day, due to merge on previous line
+beach_readings <- merge(x=beach_readings, y=forecast_daily, by.x=c("Beach_Name", "Full_date"), by.y=c("Beach_Name", "time"), all.x = T, all.y = T)
 
-#WORKING ON THIS -- Change new Client.ID names brought in from forecast.daily
-beach_readings=beach_readings[!duplicated(beach_readings[c("Full_date", "Client.ID")]), ]
-beach_readings$Beach_Name2 <- beach_readings$Client.ID
-beach_readings$Beach_Name2 <- changenames.2[beach_readings$Beach_Name2] 
-
-test=beach_readings[-which(beach_readings$Client.ID=="Columbia"),]
-test=test[-which((duplicated(test[c("Full_date", "Beach_Name2")])) & is.na(test$Beach_Name)), ] #PROBLEM IS HERE; for some reason "Lane" (turned to Osterman) dup not being removed
-test$Beach_Name_final <- ifelse(!is.na(test$Beach_Name),test$Beach_Name,test$Beach_Name2) #So HERE, the Lane (now Osterman) and Osterman dup still in
-# as.data.frame(table(test$Beach_Name_final))
-# View(table(test$Client.ID, test$Beach_Name_final))
-test=test[-which(duplicated(test[c("Full_date", "Beach_Name_final")])),]
-sum(!is.na(test$Beach_Name))#14787 not 14790 -- WHY do we lose 3 from OSTERMAN?? No dups to start with 
-
-View(cbind(table(pre_water_merge_new$Beach_Name), table(test$Beach_Name)))
-
-#Remove duplicates -- more than one observation per beach on a day
-beach_readings=beach_readings[!duplicated(beach_readings[c("Full_date", "Beach_Name")]), ]#keeps first instance, gets rid of dups
-
-#so that Client.ID is now the cleaned beaches, but we don't lose old names
+#so that Client.ID is now the cleaned beaches, and we don't lose the old names
 beach_readings$Old_Client.ID=beach_readings$Client.ID
 beach_readings$Client.ID=beach_readings$Beach_Name
 beach_readings=beach_readings[-which(colnames(beach_readings) %in% "Beach_Name")]
 
-##Add time variables 
+##Add time variables - most were lost during the weather/water/holiday/lock merge
 beach_readings$Year <- as.numeric(format(beach_readings$Full_date, "%Y"))
 beach_readings$Month <- format(beach_readings$Full_date,"%B")
+beach_readings$Date <- format(beach_readings$Full_date,"%B %d")
 beach_readings$Weekday <- weekdays(beach_readings$Full_date)  
 beach_readings$Day_of_year <- as.numeric(format(beach_readings$Full_date, "%j"))  
 beach_readings$Week<- format(beach_readings$Full_date, "%W")  
 beach_readings$Day <- format(beach_readings$Full_date, "%d") #rename to Day_of_month? Other code may depend on this name
+
 
 # Build naive logit model (today like yesterday)
 # -----------------------------------------------------------
