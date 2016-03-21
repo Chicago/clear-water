@@ -8,7 +8,23 @@ import matplotlib.pyplot as plt
 
 def gbm(timestamps, predictors, classes):
     '''
-    TODO
+    Creates several GBMs using leave-one-year-out cross validation.
+
+    ROC and PR curves are plotted as a side-effect.
+
+    Parameters
+    ----------
+    timestamps : Nx1 pandas series of timestamps.
+                 Each element should have a "year" attribute.
+    predictors : NxM pandas DataFrame, all values should be numeric,
+                 and there should be no NaN values.
+    classes    : Nx1 array like of binary outcomes, e.g. True or False.
+
+    Returns
+    -------
+    clfs : Dictionary of (year, classifier) pairs, where the classifier
+           is the GBM found by leaving the specified year out of the
+           training set.
     '''
     timestamps = timestamps.map(lambda x: x.year)
 
@@ -42,7 +58,20 @@ def gbm(timestamps, predictors, classes):
 
 def prepare_data(df=None):
     '''
-    TODO
+    Preps the data to be used in the model. Right now, the code itself must
+    be modified to tweak which columns are included in what way.
+
+    Parameters
+    ----------
+    df : Dataframe to use. If not specified, the dataframe is loaded automatically.
+
+    Returns
+    -------
+    predictors : NxM DataFrame of the predictors for the classification problem.
+    meta_info  : Nx2 DataFrame containing the columns 'Escherichia.coli' and
+                 'Full_date', to be used, e.g., for leave-one-year-out cross
+                 validation and creating the true class labels (elevated vs.
+                 not elevated E. coli levels).
     '''
     if df is None:
         df = rd.read_data()
@@ -148,6 +177,8 @@ if __name__ == '__main__':
     df2 = rd.read_data()
     df2 = df2[['Drek_Prediction', 'Escherichia.coli']].dropna()
 
+
+    # TODO: better document/automate this plotting business.
     N = 18
 
     ax = plt.figure(1).get_axes()[0]
