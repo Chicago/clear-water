@@ -514,8 +514,8 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
     df = df[df['Laboratory.ID'] != u'Laboratory ID']
     # Normalize the beach names
     df['Client.ID'] = df['Client.ID'].map(lambda x: x.strip())
-    cleanbeachnames = pd.read_csv(cpd_data_path + 'cleanbeachnames.csv')
-    cleanbeachnames = dict(zip(cleanbeachnames['Old'], cleanbeachnames['New']))
+    cleanbeachnamesdf = pd.read_csv(cpd_data_path + 'cleanbeachnames.csv')
+    cleanbeachnames = dict(zip(cleanbeachnamesdf['Old'], cleanbeachnamesdf['Short_Names']))
     # There is one observation that does not have a beach name in the
     # Client.ID column, remove it.
     df = df[df['Client.ID'].map(lambda x: x in cleanbeachnames)]
@@ -562,7 +562,12 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
         df = days_since_holiday(df)
 
     if read_forecast:
+        beach_names_new_to_short = dict(zip(cleanbeachnamesdf['New'],
+                                            cleanbeachnamesdf['Short_Names']))
         forecast_daily = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
+        forecast_daily['Client.ID'] = forecast_daily['Client.ID'].map(
+            lambda x: beach_names_new_to_short[x]
+        )
         df = pd.merge(df, forecast_daily, on=['Full_date', 'Client.ID'])
 
     if read_water_sensor:

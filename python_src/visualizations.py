@@ -8,7 +8,7 @@ import pandas as pd
 TO_BLOCK = True
 
 
-def roc(scores, labels):
+def roc(scores, labels, block_show=TO_BLOCK, ax=None):
     '''
     Plots the Receiver Operator Characteristic (ROC) curve of the results
     from a binary classification system.
@@ -18,6 +18,13 @@ def roc(scores, labels):
     scores : Nx1 array of (usually continuous) outputs of a classification
              system, for example, predicted E. coli levels
     labels : Nx1 boolean array of true classes
+
+    Keyword arguments
+    -----------------
+    block_show : Boolean, if true, then the call to matplotlib.pyplot.show()
+                 will block further computation until the window is closed.
+    ax         : Will be plotted to the specified axis, or a new axis
+                 if ax is None.
 
     Returns
     -------
@@ -48,20 +55,23 @@ def roc(scores, labels):
     tpr = tps / float(tps[-1])
     fpr = fps / float(fps[-1])
 
-    fig, ax = plt.subplots(1)
+    if ax is None:
+        ax = plt.subplots(1)[1]
+
     ax.plot(fpr, tpr)
     ax.hold(True)
     ax.plot([0, 1], [0, 1], 'r--')
     ax.set_xlabel('False Positive Rate')
     ax.set_ylabel('True Positive Rate')
     ax.set_title('ROC curve')
+    ax.set_aspect('equal')
 
-    plt.show(block=TO_BLOCK)
+    plt.show(block=block_show)
 
     return fpr, tpr, scores[threshold_idxs]
 
 
-def precision_recall(scores, labels):
+def precision_recall(scores, labels, block_show=TO_BLOCK, ax=None):
     '''
     Plots the Precision Recall (PR) curve of the results
     from a binary classification system.
@@ -71,6 +81,13 @@ def precision_recall(scores, labels):
     scores : Nx1 array of (usually continuous) outputs of a classification
              system, for example, predicted E. coli levels
     labels : Nx1 boolean array of true classes
+
+    Keyword arguments
+    -----------------
+    block_show : Boolean, if true, then the call to matplotlib.pyplot.show()
+                 will block further computation until the window is closed.
+    ax         : Will be plotted to the specified axis, or a new axis
+                 if ax is None.
 
     Returns
     -------
@@ -101,7 +118,9 @@ def precision_recall(scores, labels):
         ppv[i] = (predict_pos & labels).sum() / float(predict_pos.sum())
         tpr[i] = (predict_pos & labels).sum() / float(labels.sum())
 
-    fig, ax = plt.subplots(1)
+    if ax is None:
+        ax = plt.subplots(1)[1]
+
     ax.plot(tpr, ppv)
     ax.hold(True)
     ax.plot([0, 1], [float(labels.sum()) / labels.size,
@@ -109,8 +128,10 @@ def precision_recall(scores, labels):
     ax.set_xlabel('True Positive Rate')
     ax.set_ylabel('Positive Predictive Value')
     ax.set_title('PR curve')
+    ax.set_ylim([0, 1])
+    ax.set_aspect('equal')
 
-    plt.show(block=TO_BLOCK)
+    plt.show(block=block_show)
 
     return tpr, ppv, scores[threshold_idxs]
 
