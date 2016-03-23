@@ -512,7 +512,7 @@ def date_lookup(s, verbose=False):
 
 
 def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_station=True,
-              read_water_sensor=True, read_forecast=True):
+              read_water_sensor=True, read_daily_forecast=True, read_hourly_forecast=True):
     '''
     Read in the excel files for years 2006-2015 found in
     'data/ChicagoParkDistrict/raw/Standard 18 hr Testing'
@@ -616,7 +616,7 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
         df = pd.merge(df, holidaydata, on='Full_date', how='outer')
         df = days_since_holiday(df)
 
-    if read_forecast:
+    if read_daily_forecast:
         beach_names_new_to_short = dict(zip(cleanbeachnamesdf['New'],
                                             cleanbeachnamesdf['Short_Names']))
         forecast_daily = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
@@ -624,6 +624,16 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
             lambda x: beach_names_new_to_short[x]
         )
         df = pd.merge(df, forecast_daily, on=['Full_date', 'Client.ID'])
+
+    if read_hourly_forecast:
+        beach_names_new_to_short = dict(zip(cleanbeachnamesdf['New'],
+                                            cleanbeachnamesdf['Short_Names']))
+        forecast_hourly = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
+        forecast_hourly['Client.ID'] = forecast_hourly['Client.ID'].map(
+            lambda x: beach_names_new_to_short[x]
+        )
+        forecast_hourly = process_hourly_data(forecast_hourly, hours_offset=5)
+        df = pd.merge(df, forecast_hourly, on=['Full_date', 'Client.ID'])
 
     if read_water_sensor:
         watersensordata = read_water_sensor_data()
