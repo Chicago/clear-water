@@ -692,7 +692,7 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
         forecast_hourly['Client.ID'] = forecast_hourly['Client.ID'].map(
             lambda x: beach_names_new_to_short[x]
         )
-        forecast_hourly = process_hourly_data(forecast_hourly, hours_offset=5)
+        forecast_hourly = process_hourly_data(forecast_hourly, hours_offset=-19)
         df = pd.merge(df, forecast_hourly, on=['Full_date', 'Client.ID'])
 
     if read_water_sensor:
