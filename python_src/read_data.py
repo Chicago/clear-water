@@ -226,6 +226,9 @@ def add_column_prior_data(df, colnames, ns, beach_col_name='Beach', timestamp_co
     if not hasattr(ns, '__getitem__'):
         ns = [ns]
 
+    if not colnames and ns:
+        return df.copy()
+
     dfc = df.copy()
     for colname in colnames:
         for n in ns:
