@@ -688,7 +688,7 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
     if read_hourly_forecast:
         beach_names_new_to_short = dict(zip(cleanbeachnamesdf['New'],
                                             cleanbeachnamesdf['Short_Names']))
-        forecast_hourly = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
+        forecast_hourly = read_forecast_data(external_data_path + 'forecastio_hourly_weather.csv')
         forecast_hourly['Client.ID'] = forecast_hourly['Client.ID'].map(
             lambda x: beach_names_new_to_short[x]
         )
