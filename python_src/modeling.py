@@ -59,6 +59,15 @@ def model(timestamps, predictors, classes, classifier=None, hyperparams=None):
         viz.roc(predictions, classes[~train_indices], block_show=False, ax=roc_ax)
         viz.precision_recall(predictions, classes[~train_indices], block_show=False, ax=pr_ax)
 
+        print('Year ' + str(yr))
+        print('Feature importances:')
+        feat_imps = clf.feature_importances_
+        idxs = np.argsort(feat_imps)[::-1]
+        max_width = max([len(c) for c in predictors.columns])
+        for c, fi in zip(predictors.columns[idxs], feat_imps[idxs]):
+            print('  {0:<{1}} : {2:.5f}'.format(c, max_width+1, fi))
+
+
     return clfs
 
 
@@ -106,7 +115,7 @@ def prepare_data(df=None):
         'Client.ID', 'Weekday', 'sunriseTime', 'DayOfYear'
     ]
     deterministic_hourly_columns = ['precipIntensity', 'temperature', 'windSpeed',
-                                    'windBearing', 'pressure', 'cloudCover', 'precipProbability']
+                                    'windBearing', 'pressure', 'cloudCover']
     for var in deterministic_hourly_columns:
         for hr in [-12, -8, -4, 0, 4]:
             deterministic_columns.append(var + '_hour_' + str(hr))
@@ -124,7 +133,7 @@ def prepare_data(df=None):
 
     # Each historical column will have the data from 1 day back, 2 days back,
     # ..., NUM_LOOKBACK_DAYS days back added to the predictors.
-    NUM_LOOKBACK_DAYS = 3
+    NUM_LOOKBACK_DAYS = 7
 
 
     ######################################################
@@ -178,7 +187,8 @@ def prepare_data(df=None):
 
 
 if __name__ == '__main__':
-    predictors, meta_info = prepare_data()
+    df = rd.read_data(read_weather_station=False, read_water_sensor=False)
+    predictors, meta_info = prepare_data(df)
     timestamps = meta_info['Full_date']
     classes = meta_info['Escherichia.coli'] > 235
 
@@ -186,14 +196,18 @@ if __name__ == '__main__':
     for c in predictors.columns:
         print('\t' + str(c))
     hyperparams = {
-        'n_estimators':100, 'random_state':42,
-        'max_depth':6, 'verbose':True
+        # Parameters that effect computation
+        'n_estimators':500, 'max_depth':12,
+        # Misc parameters
+        'n_jobs':-1, 'verbose':False
     }
     clfs = model(timestamps, predictors, classes,
                  classifier=sklearn.ensemble.RandomForestClassifier,
                  hyperparams=hyperparams)
 
-    df2 = rd.read_data()
+    df2 = rd.read_data(read_holiday=False, read_weather_station=False,
+                       read_water_sensor=False, read_daily_forecast=False,
+                       read_hourly_forecast=False)
     df2 = df2[['Drek_Prediction', 'Escherichia.coli']].dropna()
 
     # TODO: better document/automate this plotting business.
@@ -204,7 +218,7 @@ if __name__ == '__main__':
             ax=ax, block_show=False)
     c = ax.get_children()
     for i in range(N):
-        c[i].set_alpha(.5)
+        c[i].set_alpha(.75)
     c[N].set_color([0,0,0])
     c[N].set_ls('--')
     c[N].set_linewidth(3)
@@ -212,6 +226,7 @@ if __name__ == '__main__':
     ax.legend([c[i] for i in range(0,N+2,2)],
               ['06', '07', '08', '09'] + [str(i) for i in range(10,15)] + ['EPA Model'],
               loc=4)
+    ax.grid(True, which='major')
 
 
     ax = plt.figure(2).get_axes()[0]
@@ -219,7 +234,7 @@ if __name__ == '__main__':
                          ax=ax, block_show=False)
     c = ax.get_children()
     for i in range(N):
-        c[i].set_alpha(.5)
+        c[i].set_alpha(.75)
     c[N].set_color([0,0,0])
     c[N].set_ls('--')
     c[N].set_linewidth(3)
@@ -227,6 +242,7 @@ if __name__ == '__main__':
     ax.legend([c[i] for i in range(0,N+2,2)],
               ['06', '07', '08', '09'] + [str(i) for i in range(10,15)] + ['EPA Model'],
               loc=1)
+    ax.grid(True, which='major')
 
     plt.draw()
     plt.show(block=True)
