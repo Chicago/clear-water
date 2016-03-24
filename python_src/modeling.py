@@ -1,7 +1,6 @@
 import numpy as np
 import sklearn
 import sklearn.ensemble
-import sklearn.base
 import read_data as rd
 import visualizations as viz
 import matplotlib.pyplot as plt
@@ -35,7 +34,6 @@ def model(timestamps, predictors, classes, classifier=None, hyperparams=None):
         classifier = sklearn.ensemble.GradientBoostingClassifier
     if hyperparams is None:
         hyperparams = {}
-    classifier = sklearn.base.clone(classifier)
 
     timestamps = timestamps.map(lambda x: x.year)
 
