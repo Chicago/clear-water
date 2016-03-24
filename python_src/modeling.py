@@ -1,6 +1,7 @@
 import numpy as np
 import sklearn
 import sklearn.ensemble
+import sklearn.base
 import read_data as rd
 import visualizations as viz
 import matplotlib.pyplot as plt
@@ -34,6 +35,8 @@ def model(timestamps, predictors, classes, classifier=None, hyperparams=None):
         classifier = sklearn.ensemble.GradientBoostingClassifier
     if hyperparams is None:
         hyperparams = {}
+    classifier = sklearn.base.clone(classifier)
+
     timestamps = timestamps.map(lambda x: x.year)
 
     start = timestamps.min()
@@ -48,7 +51,7 @@ def model(timestamps, predictors, classes, classifier=None, hyperparams=None):
     for yr in range(start, stop+1):
         train_indices = np.array((timestamps < yr) | (timestamps > yr))
 
-        clf = sklearn.ensemble.GradientBoostingClassifier(**hyperparams)
+        clf = classifier(**hyperparams)
         clf.fit(predictors.ix[train_indices,:], classes[train_indices])
 
         clfs[yr] = clf
@@ -102,9 +105,13 @@ def prepare_data(df=None):
     # Deterministic columns are known ahead of time, their actual values are used
     # with no previous days being used.
     deterministic_columns = [
-        'Client.ID', 'Weekday', 'sunriseTime', 'DayOfYear',
-        'windSpeed_hour_4', 'windBearing_hour_4'
+        'Client.ID', 'Weekday', 'sunriseTime', 'DayOfYear'
     ]
+    deterministic_hourly_columns = ['precipIntensity', 'temperature', 'windSpeed',
+                                    'windBearing', 'pressure', 'cloudCover', 'precipProbability']
+    for var in deterministic_hourly_columns:
+        for hr in [-12, -8, -4, 0, 4]:
+            deterministic_columns.append(var + '_hour_' + str(hr))
 
     # Historical columns have their previous days' values added to the predictors,
     # but not the current day's value(s). The value NUM_LOOKBACK_DAYS set below
@@ -112,9 +119,9 @@ def prepare_data(df=None):
     # fill NA values here, so if you wish to use columns with a high rate of data
     # loss, then you should add logic to fill the NA values.
     historical_columns = [
-        # 'precipIntensity', 'precipIntensityMax',
-        # 'temperatureMin', 'temperatureMax',
-        # 'humidity', 'windSpeed', 'cloudCover'
+        'precipIntensity', 'precipIntensityMax',
+        'temperatureMin', 'temperatureMax',
+        'humidity', 'windSpeed', 'cloudCover'
     ]
 
     # Each historical column will have the data from 1 day back, 2 days back,
@@ -181,8 +188,8 @@ if __name__ == '__main__':
     for c in predictors.columns:
         print('\t' + str(c))
     hyperparams = {
-        # 'n_estimators':100, 'learning_rate':0.05,
-        # 'max_depth':4, 'subsample':0.9, 'verbose':True
+        'n_estimators':100, 'random_state':42,
+        'max_depth':6, 'verbose':True
     }
     clfs = model(timestamps, predictors, classes,
                  classifier=sklearn.ensemble.RandomForestClassifier,
