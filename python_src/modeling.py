@@ -6,7 +6,7 @@ import visualizations as viz
 import matplotlib.pyplot as plt
 
 
-def gbm(timestamps, predictors, classes):
+def model(timestamps, predictors, classes, classifier=None, hyperparams=None):
     '''
     Creates several GBMs using leave-one-year-out cross validation.
 
@@ -19,13 +19,21 @@ def gbm(timestamps, predictors, classes):
     predictors : NxM pandas DataFrame, all values should be numeric,
                  and there should be no NaN values.
     classes    : Nx1 array like of binary outcomes, e.g. True or False.
+    classifier : sklearn classifier, should have the attributes "fit"
+                 and "predict_proba" at the least.
+    hyperparams: Dictionary of hyper parameters to pass to the
+                 classifier method.
 
     Returns
     -------
     clfs : Dictionary of (year, classifier) pairs, where the classifier
-           is the GBM found by leaving the specified year out of the
+           is the model found by leaving the specified year out of the
            training set.
     '''
+    if classifier is None:
+        classifier = sklearn.ensemble.GradientBoostingClassifier
+    if hyperparams is None:
+        hyperparams = {}
     timestamps = timestamps.map(lambda x: x.year)
 
     start = timestamps.min()
@@ -40,10 +48,7 @@ def gbm(timestamps, predictors, classes):
     for yr in range(start, stop+1):
         train_indices = np.array((timestamps < yr) | (timestamps > yr))
 
-        clf = sklearn.ensemble.GradientBoostingClassifier(
-            n_estimators=100, learning_rate=0.05,
-            max_depth=4, subsample=0.9, verbose=True
-        )
+        clf = sklearn.ensemble.GradientBoostingClassifier(**hyperparams)
         clf.fit(predictors.ix[train_indices,:], classes[train_indices])
 
         clfs[yr] = clf
@@ -79,6 +84,7 @@ def prepare_data(df=None):
     # Leaving 2015 as the final validation set
     df = df[df['Full_date'] < '1-1-2015']
 
+
     ######################################################
     #### Add derived columns here
     ######################################################
@@ -94,20 +100,22 @@ def prepare_data(df=None):
     meta_columns = ['Full_date', 'Escherichia.coli']
 
     # Deterministic columns are known ahead of time, their actual values are used
-    # with no previous days being used. If you wish to have a determinstic value
-    # while also including historical values, then the current work-around is to
-    # put that column in both the determinstic and the historical lists.
-    deterministic_columns = ['Client.ID', 'Weekday', 'sunriseTime',
-                             'DayOfYear']
+    # with no previous days being used.
+    deterministic_columns = [
+        'Client.ID', 'Weekday', 'sunriseTime', 'DayOfYear',
+        'windSpeed_hour_4', 'windBearing_hour_4'
+    ]
 
     # Historical columns have their previous days' values added to the predictors,
     # but not the current day's value(s). The value NUM_LOOKBACK_DAYS set below
     # controls the number of previous days added. Nothing is currently done to
     # fill NA values here, so if you wish to use columns with a high rate of data
     # loss, then you should add logic to fill the NA values.
-    historical_columns = ['precipIntensity', 'precipIntensityMax',
-                          'temperatureMin', 'temperatureMax',
-                          'humidity', 'windSpeed', 'cloudCover']
+    historical_columns = [
+        # 'precipIntensity', 'precipIntensityMax',
+        # 'temperatureMin', 'temperatureMax',
+        # 'humidity', 'windSpeed', 'cloudCover'
+    ]
 
     # Each historical column will have the data from 1 day back, 2 days back,
     # ..., NUM_LOOKBACK_DAYS days back added to the predictors.
@@ -172,11 +180,16 @@ if __name__ == '__main__':
     print('Using the following columns as predictors:')
     for c in predictors.columns:
         print('\t' + str(c))
-    clfs = gbm(timestamps, predictors, classes)
+    hyperparams = {
+        # 'n_estimators':100, 'learning_rate':0.05,
+        # 'max_depth':4, 'subsample':0.9, 'verbose':True
+    }
+    clfs = model(timestamps, predictors, classes,
+                 classifier=sklearn.ensemble.RandomForestClassifier,
+                 hyperparams=hyperparams)
 
     df2 = rd.read_data()
     df2 = df2[['Drek_Prediction', 'Escherichia.coli']].dropna()
-
 
     # TODO: better document/automate this plotting business.
     N = 18
