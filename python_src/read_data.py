@@ -93,23 +93,23 @@ def group_beaches_geographically(data, beach_names_column='Client.ID', verbose=F
     '''
     df = data.copy()
 
-	# Mid North
+    # Mid North
     group_1 = ['Montrose','Montrose Dog','Foster','Osterman','Leone','Thorndale']
 
-	# Rogers Park Area
+    # Rogers Park Area
     group_2 = ['Juneway','Rogers','Howard','Marion','Leone','Pratt','Columbia','North Shore','Hartigan','Albion',
-			'Marion Mahoney Griffin','Loyola','Margaret T Burroughs','Lane','Jarvis']
-	# Near North Area
+            'Marion Mahoney Griffin','Loyola','Margaret T Burroughs','Lane','Jarvis']
+    # Near North Area
     group_3 = ['Oak Street','Ohio','North Ave','North Avenue']
 
-	# Near South
+    # Near South
     group_4 = ['12th','31st']
 
-	# Mid South
+    # Mid South
 
     group_5 = ['57th','63rd','41st','Oakwood','67th','South Shore','Rainbow', 'Humbolt']
 
-	# Calumet is way off to the side.
+    # Calumet is way off to the side.
     group_6 = ['Calumet']
 
     north_group = group_1 + group_2 + group_3
@@ -568,7 +568,7 @@ def date_lookup(s, verbose=False):
 
 def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_station=True,
               read_water_sensor=True, read_daily_forecast=True, read_hourly_forecast=True,
-		group_beaches=True):
+        group_beaches=True):
     '''
     Read in the excel files for years 2006-2015 found in
     'data/ChicagoParkDistrict/raw/Standard 18 hr Testing'
@@ -673,7 +673,7 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
         df = days_since_holiday(df)
 
     if group_beaches:
-	    df = group_beaches_geographically(df)
+        df = group_beaches_geographically(df)
 
     if read_daily_forecast:
         beach_names_new_to_short = dict(zip(cleanbeachnamesdf['New'],
