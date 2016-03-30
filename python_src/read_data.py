@@ -85,7 +85,7 @@ def read_data_simplified():
 
     return df
 
-def group_beaches_geographically(data, beach_names_column='Beach', verbose=False):
+def group_beaches_geographically(data, beach_names_column='Client.ID', verbose=False):
     '''
     Creates geographical categorizations for the beaches.
 
@@ -98,16 +98,16 @@ def group_beaches_geographically(data, beach_names_column='Beach', verbose=False
 
 	# Rogers Park Area
     group_2 = ['Juneway','Rogers','Howard','Marion','Leone','Pratt','Columbia','North Shore','Hartigan','Albion',
-			'Marione Mahoney Griffin']
+			'Marion Mahoney Griffin','Loyola','Margaret T Burroughs','Lane','Jarvis']
 	# Near North Area
-    group_3 = ['Oak Street','Ohio','North Ave']
+    group_3 = ['Oak Street','Ohio','North Ave','North Avenue']
 
 	# Near South
     group_4 = ['12th','31st']
 
 	# Mid South
 
-    group_5 = ['57th','63rd','49th','67th','South Shore','Rainbow']
+    group_5 = ['57th','63rd','41st','Oakwood','67th','South Shore','Rainbow', 'Humbolt']
 
 	# Calumet is way off to the side.
     group_6 = ['Calumet']
@@ -137,9 +137,9 @@ def beach_grouping(beach_name, grouping):
     '''
 
     if beach_name in grouping:
-        return 1
+        return int(1)
     else:
-        return 0
+        return int(0)
 
 def clean_up_beaches(data, beach_names_column='Beach', verbose=False):
     '''
