@@ -3,6 +3,7 @@ import pandas as pd
 import logging
 import argparse
 import six
+import datetime as dt
 
 '''
 This file reads in data related E. coli levels
@@ -85,18 +86,19 @@ def read_data_simplified():
     return df
 
 def group_beaches_geographically(data, beach_names_column='Beach', verbose=False):
-	#north_beaches = ['Oakwood','','','','','','','','','','','','',]
-	#south_beaches = [''Oakwood','','','','','','','','',]
+    '''
+    Creates geographical categorizations for the beaches.
 
+    The indicators are any of six groups and a north indicator (1 if North of the pier, 0 if South).
+    '''
     df = data.copy()
 
 	# Mid North
     group_1 = ['Montrose','Montrose Dog','Foster','Osterman','Leone','Thorndale']
-	
+
 	# Rogers Park Area
     group_2 = ['Juneway','Rogers','Howard','Marion','Leone','Pratt','Columbia','North Shore','Hartigan','Albion',
 			'Marione Mahoney Griffin']
-
 	# Near North Area
     group_3 = ['Oak Street','Ohio','North Ave']
 
@@ -112,24 +114,32 @@ def group_beaches_geographically(data, beach_names_column='Beach', verbose=False
 
     north_group = group_1 + group_2 + group_3
     south_group = group_4 + group_5 + group_6
+    all_groups = [group_1, group_2, group_3, group_4, group_5, group_6]
 
-    groups = [group_1,group_2,group_3,group_4,
-        group_5,group_6,north_group,south_group]
+    for ind in range(len(all_groups)):
+        var_name = 'flag_group_' + str(ind+1)
+        df[var_name] = df[beach_names_column].map(lambda x: beach_grouping(x,all_groups[ind]))
 
-    for group in groups:
-        var_name = 'flag_' + str(group)
-        df[var_name] = df[beach_names_column].map(lambda x: beach_grouping(x,group))
+    df['flag_north_beach'] = df[beach_names_column].map(lambda x: beach_grouping(x,north_group))
     
-    # also want to add single columns
+    # also want to add single columns, but that is harder.
 
     return df
 
 def beach_grouping(beach_name, grouping):
+    '''Simple function that returns 1 if the beach name is in the applied list.
+
+    Input
+    -----
+    beach_name: string
+    grouping: list of strings
+    
+    '''
+
     if beach_name in grouping:
         return 1
     else:
         return 0
-
 
 def clean_up_beaches(data, beach_names_column='Beach', verbose=False):
     '''
@@ -202,6 +212,7 @@ def add_column_prior_data(df, colnames, ns, beach_col_name='Beach', timestamp_co
 
     Example
     =======
+    >>> import read_data as rd
     >>> df = rd.read_data(read_weather_station=False, read_water_sensor=False)
     >>> df2 = rd.add_column_prior_data(df, 'Escherichia.coli', 1,
     >>>                                beach_col_name='Client.ID', timestamp_col_name='Full_date')
@@ -234,6 +245,59 @@ def add_column_prior_data(df, colnames, ns, beach_col_name='Beach', timestamp_co
             dfc = df.copy()
 
     return dfn.copy()
+
+
+def process_hourly_data(df, hours_offset=0,
+                        beach_col_name='Client.ID',
+                        timestamp_col_name='Full_date'):
+    '''
+    Pivot hourly data into daily data, optionally shifting the hours that
+    get mapped to a given date.
+
+    For example, you can choose to have a "day" be defined as 5am to 5am, so
+    that, e.g., all hours from 6/1/2015 05:00 through 6/2/2015 05:00 inclusive
+    are pivoted onto the day 6/1/2015.
+
+    Parameters
+    ----------
+    df                 : Dataframe to pivot. Should have hourly data.
+    hours_offset       : The hour offset. All hours ranging from
+                         ((midnight on day D) + hours_offset) through
+                         ((midnight on day (D + 1)) + hours_offset) will
+                         be pivoted onto day D.
+    beach_col_name     : Name of the column containing the beach names.
+    timestamp_col_name : Name of the column containing the timestamps.
+                         Note that this column is expected to be
+                         pandas.tslib.Timestamp.
+
+    Returns
+    -------
+    df : Pivoted dataframe.
+
+    Example
+    --------
+    >>> import read_data as rd
+    >>> df = rd.read_forecast_data('../data/ExternalData/forecastio_hourly_weather.csv')
+    >>> df2 = rd.process_hourly_data(df)
+    >>> df3 = rd.process_hourly_data(df, 5)
+    >>> df4 = rd.process_hourly_data(df, -5)
+    '''
+    df = df.copy()
+    df[timestamp_col_name] = df[timestamp_col_name].map(
+        lambda x: x - dt.timedelta(hours=hours_offset)
+    )
+    df['hour_of_day'] = df[timestamp_col_name].map(
+        lambda x: x.hour + hours_offset
+    )
+    df[timestamp_col_name] = pd.to_datetime(df[timestamp_col_name].map(
+        lambda x: x.date().isoformat()
+    ))
+
+    df = df.pivot_table(index=[beach_col_name, timestamp_col_name],
+                        columns='hour_of_day')
+    df.columns = [x[0] + '_hour_' + str(x[1]) for x in df.columns]
+    df = df.reset_index()
+    return df
 
 
 def split_sheets(file_name, year, verbose=False):
@@ -503,7 +567,8 @@ def date_lookup(s, verbose=False):
 
 
 def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_station=True,
-              read_water_sensor=True, read_forecast=True, group_beaches=True):
+              read_water_sensor=True, read_daily_forecast=True, read_hourly_forecast=True,
+		group_beaches=True):
     '''
     Read in the excel files for years 2006-2015 found in
     'data/ChicagoParkDistrict/raw/Standard 18 hr Testing'
@@ -560,8 +625,8 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
     df = df[df['Laboratory.ID'] != u'Laboratory ID']
     # Normalize the beach names
     df['Client.ID'] = df['Client.ID'].map(lambda x: x.strip())
-    cleanbeachnames = pd.read_csv(cpd_data_path + 'cleanbeachnames.csv')
-    cleanbeachnames = dict(zip(cleanbeachnames['Old'], cleanbeachnames['New']))
+    cleanbeachnamesdf = pd.read_csv(cpd_data_path + 'cleanbeachnames.csv')
+    cleanbeachnames = dict(zip(cleanbeachnamesdf['Old'], cleanbeachnamesdf['Short_Names']))
     # There is one observation that does not have a beach name in the
     # Client.ID column, remove it.
     df = df[df['Client.ID'].map(lambda x: x in cleanbeachnames)]
@@ -610,9 +675,25 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
     if group_beaches:
 	    df = group_beaches_geographically(df)
 
-    if read_forecast:
+    if read_daily_forecast:
+        beach_names_new_to_short = dict(zip(cleanbeachnamesdf['New'],
+                                            cleanbeachnamesdf['Short_Names']))
+
         forecast_daily = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
+        forecast_daily['Client.ID'] = forecast_daily['Client.ID'].map(
+            lambda x: beach_names_new_to_short[x]
+        )
         df = pd.merge(df, forecast_daily, on=['Full_date', 'Client.ID'])
+
+    if read_hourly_forecast:
+        beach_names_new_to_short = dict(zip(cleanbeachnamesdf['New'],
+                                            cleanbeachnamesdf['Short_Names']))
+        forecast_hourly = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
+        forecast_hourly['Client.ID'] = forecast_hourly['Client.ID'].map(
+            lambda x: beach_names_new_to_short[x]
+        )
+        forecast_hourly = process_hourly_data(forecast_hourly, hours_offset=5)
+        df = pd.merge(df, forecast_hourly, on=['Full_date', 'Client.ID'])
 
     if read_water_sensor:
         watersensordata = read_water_sensor_data()
