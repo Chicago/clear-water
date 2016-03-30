@@ -67,7 +67,6 @@ def model(timestamps, predictors, classes, classifier=None, hyperparams=None):
         for c, fi in zip(predictors.columns[idxs], feat_imps[idxs]):
             print('  {0:<{1}} : {2:.5f}'.format(c, max_width+1, fi))
 
-
     return clfs
 
 
@@ -112,10 +111,12 @@ def prepare_data(df=None):
     # Deterministic columns are known ahead of time, their actual values are used
     # with no previous days being used.
     deterministic_columns = [
-        'Client.ID', 'Weekday', 'sunriseTime', 'DayOfYear'
+        'Client.ID', 'Weekday', 'sunriseTime', 'DayOfYear',
     ]
-    deterministic_hourly_columns = ['precipIntensity', 'temperature', 'windSpeed',
-                                    'windBearing', 'pressure', 'cloudCover']
+    deterministic_hourly_columns = [
+        'precipIntensity', 'temperature', 'windSpeed',
+        'windBearing', 'pressure', 'cloudCover'
+    ]
     for var in deterministic_hourly_columns:
         for hr in [-12, -8, -4, 0, 4]:
             deterministic_columns.append(var + '_hour_' + str(hr))
