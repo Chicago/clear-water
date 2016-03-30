@@ -117,10 +117,10 @@ def group_beaches_geographically(data, beach_names_column='Beach', verbose=False
     all_groups = [group_1, group_2, group_3, group_4, group_5, group_6]
 
     for ind in range(len(all_groups)):
-        var_name = 'flag_group_' + str(ind+1)
+        var_name = 'flag_geographic_group_' + str(ind+1)
         df[var_name] = df[beach_names_column].map(lambda x: beach_grouping(x,all_groups[ind]))
 
-    df['flag_north_beach'] = df[beach_names_column].map(lambda x: beach_grouping(x,north_group))
+    df['flag_geographically_a_north_beach'] = df[beach_names_column].map(lambda x: beach_grouping(x,north_group))
     
     # also want to add single columns, but that is harder.
 
