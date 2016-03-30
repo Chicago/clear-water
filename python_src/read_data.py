@@ -84,6 +84,52 @@ def read_data_simplified():
 
     return df
 
+def group_beaches_geographically(data, beach_names_column='Beach', verbose=False):
+	#north_beaches = ['Oakwood','','','','','','','','','','','','',]
+	#south_beaches = [''Oakwood','','','','','','','','',]
+
+    df = data.copy()
+
+	# Mid North
+    group_1 = ['Montrose','Montrose Dog','Foster','Osterman','Leone','Thorndale']
+	
+	# Rogers Park Area
+    group_2 = ['Juneway','Rogers','Howard','Marion','Leone','Pratt','Columbia','North Shore','Hartigan','Albion',
+			'Marione Mahoney Griffin']
+
+	# Near North Area
+    group_3 = ['Oak Street','Ohio','North Ave']
+
+	# Near South
+    group_4 = ['12th','31st']
+
+	# Mid South
+
+    group_5 = ['57th','63rd','49th','67th','South Shore','Rainbow']
+
+	# Calumet is way off to the side.
+    group_6 = ['Calumet']
+
+    north_group = group_1 + group_2 + group_3
+    south_group = group_4 + group_5 + group_6
+
+    groups = [group_1,group_2,group_3,group_4,
+        group_5,group_6,north_group,south_group]
+
+    for group in groups:
+        var_name = 'flag_' + str(group)
+        df[var_name] = df[beach_names_column].map(lambda x: beach_grouping(x,group))
+    
+    # also want to add single columns
+
+    return df
+
+def beach_grouping(beach_name, grouping):
+    if beach_name in grouping:
+        return 1
+    else:
+        return 0
+
 
 def clean_up_beaches(data, beach_names_column='Beach', verbose=False):
     '''
@@ -457,7 +503,7 @@ def date_lookup(s, verbose=False):
 
 
 def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_station=True,
-              read_water_sensor=True, read_forecast=True):
+              read_water_sensor=True, read_forecast=True, group_beaches=True):
     '''
     Read in the excel files for years 2006-2015 found in
     'data/ChicagoParkDistrict/raw/Standard 18 hr Testing'
@@ -560,6 +606,9 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
         holidaydata = read_holiday_data(external_data_path + 'Holidays.csv')
         df = pd.merge(df, holidaydata, on='Full_date', how='outer')
         df = days_since_holiday(df)
+
+    if group_beaches:
+	    df = group_beaches_geographically(df)
 
     if read_forecast:
         forecast_daily = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
