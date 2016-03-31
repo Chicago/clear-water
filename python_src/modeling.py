@@ -59,6 +59,9 @@ def model(timestamps, predictors, classes, classifier=None, hyperparams=None):
         viz.roc(predictions, classes[~train_indices], block_show=False, ax=roc_ax)
         viz.precision_recall(predictions, classes[~train_indices], block_show=False, ax=pr_ax)
 
+        roc_ax.get_lines()[-2].set_label(str(yr))
+        pr_ax.get_lines()[-2].set_label(str(yr))
+
         print('Year ' + str(yr))
         print('Feature importances:')
         feat_imps = clf.feature_importances_
@@ -67,7 +70,7 @@ def model(timestamps, predictors, classes, classifier=None, hyperparams=None):
         for c, fi in zip(predictors.columns[idxs], feat_imps[idxs]):
             print('  {0:<{1}} : {2:.5f}'.format(c, max_width+1, fi))
 
-    return clfs
+    return clfs, roc_ax, pr_ax
 
 
 def prepare_data(df=None):
@@ -189,6 +192,7 @@ def prepare_data(df=None):
 
 if __name__ == '__main__':
     df = rd.read_data(read_weather_station=False, read_water_sensor=False)
+    epa_model_df = df[['Drek_Prediction', 'Escherichia.coli']].dropna()
     predictors, meta_info = prepare_data(df)
     timestamps = meta_info['Full_date']
     classes = meta_info['Escherichia.coli'] > 235
@@ -198,52 +202,43 @@ if __name__ == '__main__':
         print('\t' + str(c))
     hyperparams = {
         # Parameters that effect computation
-        'n_estimators':500, 'max_depth':12,
+        'n_estimators':250, 'max_depth':5,
         # Misc parameters
         'n_jobs':-1, 'verbose':False
     }
-    clfs = model(timestamps, predictors, classes,
-                 classifier=sklearn.ensemble.RandomForestClassifier,
-                 hyperparams=hyperparams)
+    clfs, roc_ax, pr_ax = model(timestamps, predictors, classes,
+                                classifier=sklearn.ensemble.RandomForestClassifier,
+                                hyperparams=hyperparams)
 
-    df2 = rd.read_data(read_holiday=False, read_weather_station=False,
-                       read_water_sensor=False, read_daily_forecast=False,
-                       read_hourly_forecast=False)
-    df2 = df2[['Drek_Prediction', 'Escherichia.coli']].dropna()
+    c = roc_ax.get_lines()
+    for line in c:
+        line.set_alpha(.75)
 
-    # TODO: better document/automate this plotting business.
-    N = 18
+    viz.roc(epa_model_df['Drek_Prediction'], epa_model_df['Escherichia.coli'] > 235,
+            ax=roc_ax, block_show=False)
+    epa_line = roc_ax.get_lines()[-2]
+    epa_line.set_color([0,0,0])
+    epa_line.set_ls('--')
+    epa_line.set_linewidth(3)
+    epa_line.set_alpha(.85)
+    epa_line.set_label('EPA Model')
+    roc_ax.legend(loc=4)
+    roc_ax.grid(True, which='major')
 
-    ax = plt.figure(1).get_axes()[0]
-    viz.roc(df2['Drek_Prediction'], df2['Escherichia.coli'] > 235,
-            ax=ax, block_show=False)
-    c = ax.get_children()
-    for i in range(N):
-        c[i].set_alpha(.75)
-    c[N].set_color([0,0,0])
-    c[N].set_ls('--')
-    c[N].set_linewidth(3)
-    c[N].set_alpha(.8)
-    ax.legend([c[i] for i in range(0,N+2,2)],
-              ['06', '07', '08', '09'] + [str(i) for i in range(10,15)] + ['EPA Model'],
-              loc=4)
-    ax.grid(True, which='major')
+    c = pr_ax.get_children()
+    for line in c:
+        line.set_alpha(.75)
 
-
-    ax = plt.figure(2).get_axes()[0]
-    viz.precision_recall(df2['Drek_Prediction'], df2['Escherichia.coli'] > 235,
-                         ax=ax, block_show=False)
-    c = ax.get_children()
-    for i in range(N):
-        c[i].set_alpha(.75)
-    c[N].set_color([0,0,0])
-    c[N].set_ls('--')
-    c[N].set_linewidth(3)
-    c[N].set_alpha(.8)
-    ax.legend([c[i] for i in range(0,N+2,2)],
-              ['06', '07', '08', '09'] + [str(i) for i in range(10,15)] + ['EPA Model'],
-              loc=1)
-    ax.grid(True, which='major')
+    viz.precision_recall(epa_model_df['Drek_Prediction'], epa_model_df['Escherichia.coli'] > 235,
+                         ax=pr_ax, block_show=False)
+    epa_line = pr_ax.get_lines()[-2]
+    epa_line.set_color([0,0,0])
+    epa_line.set_ls('--')
+    epa_line.set_linewidth(3)
+    epa_line.set_alpha(.85)
+    epa_line.set_label('EPA Model')
+    pr_ax.legend(loc=1)
+    pr_ax.grid(True, which='major')
 
     plt.draw()
     plt.show(block=True)
