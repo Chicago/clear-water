@@ -68,7 +68,9 @@ def roc(scores, labels, block_show=TO_BLOCK, ax=None):
 
     plt.show(block=block_show)
 
-    return fpr, tpr, scores[threshold_idxs]
+    auc = np.trapz(tpr, x=fpr)
+
+    return fpr, tpr, scores[threshold_idxs], auc
 
 
 def precision_recall(scores, labels, block_show=TO_BLOCK, ax=None):
@@ -133,7 +135,9 @@ def precision_recall(scores, labels, block_show=TO_BLOCK, ax=None):
 
     plt.show(block=block_show)
 
-    return tpr, ppv, scores[threshold_idxs]
+    auc = np.trapz(ppv, x=tpr)
+
+    return tpr, ppv, scores[threshold_idxs], auc
 
 
 def beach_hist(col='Escherichia.coli', beaches=None,

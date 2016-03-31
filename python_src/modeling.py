@@ -6,7 +6,7 @@ import visualizations as viz
 import matplotlib.pyplot as plt
 
 
-def gbm(timestamps, predictors, classes):
+def model(timestamps, predictors, classes, classifier=None, hyperparams=None, verbose=False):
     '''
     Creates several GBMs using leave-one-year-out cross validation.
 
@@ -19,13 +19,23 @@ def gbm(timestamps, predictors, classes):
     predictors : NxM pandas DataFrame, all values should be numeric,
                  and there should be no NaN values.
     classes    : Nx1 array like of binary outcomes, e.g. True or False.
+    classifier : sklearn classifier, should have the attributes "fit"
+                 and "predict_proba" at the least.
+    hyperparams: Dictionary of hyper parameters to pass to the
+                 classifier method.
+    verbose    : True if the clf.feature_importances_ should be printed
 
     Returns
     -------
     clfs : Dictionary of (year, classifier) pairs, where the classifier
-           is the GBM found by leaving the specified year out of the
+           is the model found by leaving the specified year out of the
            training set.
     '''
+    if classifier is None:
+        classifier = sklearn.ensemble.GradientBoostingClassifier
+    if hyperparams is None:
+        hyperparams = {}
+
     timestamps = timestamps.map(lambda x: x.year)
 
     start = timestamps.min()
@@ -40,20 +50,34 @@ def gbm(timestamps, predictors, classes):
     for yr in range(start, stop+1):
         train_indices = np.array((timestamps < yr) | (timestamps > yr))
 
-        clf = sklearn.ensemble.GradientBoostingClassifier(
-            n_estimators=100, learning_rate=0.05,
-            max_depth=4, subsample=0.9, verbose=True
-        )
+        clf = classifier(**hyperparams)
         clf.fit(predictors.ix[train_indices,:], classes[train_indices])
 
         clfs[yr] = clf
 
         predictions = clf.predict_proba(predictors.ix[~train_indices,:])[:,1]
 
-        viz.roc(predictions, classes[~train_indices], block_show=False, ax=roc_ax)
-        viz.precision_recall(predictions, classes[~train_indices], block_show=False, ax=pr_ax)
+        auc_roc = viz.roc(predictions, classes[~train_indices],
+                          block_show=False, ax=roc_ax)[3]
+        auc_pr = viz.precision_recall(predictions, classes[~train_indices],
+                                      block_show=False, ax=pr_ax)[3]
 
-    return clfs
+        auc_roc = float(auc_roc)
+        auc_pr = float(auc_pr)
+        roc_ax.get_lines()[-2].set_label(str(yr) + ' - AUC: {0:.4f}'.format(auc_roc))
+        pr_ax.get_lines()[-2].set_label(str(yr) + ' - AUC: {0:.4f}'.format(auc_pr))
+
+        if verbose:
+            print('Year ' + str(yr))
+            print('Feature importances:')
+            feat_imps = clf.feature_importances_
+            idxs = np.argsort(feat_imps)[::-1]
+            max_width = max([len(c) for c in predictors.columns])
+
+            for c, fi in zip(predictors.columns[idxs], feat_imps[idxs]):
+                print('  {0:<{1}} : {2:.5f}'.format(c, max_width+1, fi))
+
+    return clfs, roc_ax, pr_ax
 
 
 def prepare_data(df=None):
@@ -79,6 +103,7 @@ def prepare_data(df=None):
     # Leaving 2015 as the final validation set
     df = df[df['Full_date'] < '1-1-2015']
 
+
     ######################################################
     #### Add derived columns here
     ######################################################
@@ -94,20 +119,28 @@ def prepare_data(df=None):
     meta_columns = ['Full_date', 'Escherichia.coli']
 
     # Deterministic columns are known ahead of time, their actual values are used
-    # with no previous days being used. If you wish to have a determinstic value
-    # while also including historical values, then the current work-around is to
-    # put that column in both the determinstic and the historical lists.
-    deterministic_columns = ['Client.ID', 'Weekday', 'sunriseTime',
-                             'DayOfYear']
+    # with no previous days being used.
+    deterministic_columns = [
+        'Client.ID', 'Weekday', 'sunriseTime', 'DayOfYear'
+    ]
+    deterministic_hourly_columns = [
+        'precipIntensity', 'temperature', 'windSpeed',
+        'windBearing', 'pressure', 'cloudCover'
+    ]
+    for var in deterministic_hourly_columns:
+        for hr in [-12, -8, -4, 0, 4]:
+            deterministic_columns.append(var + '_hour_' + str(hr))
 
     # Historical columns have their previous days' values added to the predictors,
     # but not the current day's value(s). The value NUM_LOOKBACK_DAYS set below
     # controls the number of previous days added. Nothing is currently done to
     # fill NA values here, so if you wish to use columns with a high rate of data
     # loss, then you should add logic to fill the NA values.
-    historical_columns = ['precipIntensity', 'precipIntensityMax',
-                          'temperatureMin', 'temperatureMax',
-                          'humidity', 'windSpeed', 'cloudCover']
+    historical_columns = [
+        'precipIntensity', 'precipIntensityMax',
+        'temperatureMin', 'temperatureMax',
+        'humidity', 'windSpeed', 'cloudCover'
+    ]
 
     # Each historical column will have the data from 1 day back, 2 days back,
     # ..., NUM_LOOKBACK_DAYS days back added to the predictors.
@@ -118,7 +151,7 @@ def prepare_data(df=None):
     #### Get relevant columns, add historical data
     ######################################################
 
-    all_columns = meta_columns + deterministic_columns + historical_columns
+    all_columns = list(set(meta_columns + deterministic_columns + historical_columns))
 
     df = df[all_columns]
 
@@ -127,7 +160,7 @@ def prepare_data(df=None):
         beach_col_name='Client.ID', timestamp_col_name='Full_date'
     )
 
-    df.drop(historical_columns, axis=1, inplace=True)
+    df.drop(set(historical_columns) - set(deterministic_columns), axis=1, inplace=True)
 
 
     ######################################################
@@ -156,6 +189,12 @@ def prepare_data(df=None):
     #### Drop any rows that still have NA, set up outputs
     ######################################################
 
+    total_rows_predictors = df.dropna(subset=['Escherichia.coli'], axis=0).shape[0]
+    nonnan_rows_predictors = df.dropna(axis=0).shape[0]
+    print('Dropping {0:.4f}% of rows because predictors contain NANs'.format(
+        100.0 - 100.0 * nonnan_rows_predictors / total_rows_predictors
+    ))
+
     df.dropna(axis=0, inplace=True)
 
     predictors = df.drop(['Escherichia.coli', 'Full_date'], axis=1)
@@ -165,50 +204,58 @@ def prepare_data(df=None):
 
 
 if __name__ == '__main__':
-    predictors, meta_info = prepare_data()
+    df = rd.read_data(read_weather_station=False, read_water_sensor=False)
+    epa_model_df = df[['Drek_Prediction', 'Escherichia.coli']].dropna()
+    predictors, meta_info = prepare_data(df)
     timestamps = meta_info['Full_date']
     classes = meta_info['Escherichia.coli'] > 235
 
     print('Using the following columns as predictors:')
     for c in predictors.columns:
         print('\t' + str(c))
-    clfs = gbm(timestamps, predictors, classes)
+    hyperparams = {
+        # Parameters that effect computation
+        'n_estimators':250, 'max_depth':5,
+        # Misc parameters
+        'n_jobs':-1, 'verbose':False
+    }
+    clfs, roc_ax, pr_ax = model(timestamps, predictors, classes,
+                                classifier=sklearn.ensemble.RandomForestClassifier,
+                                hyperparams=hyperparams)
 
-    df2 = rd.read_data()
-    df2 = df2[['Drek_Prediction', 'Escherichia.coli']].dropna()
+    # Add the EPA model to the ROC and PR curves, prettify
+    c = roc_ax.get_lines()
+    for line in c:
+        line.set_alpha(.75)
 
+    auc_roc = viz.roc(epa_model_df['Drek_Prediction'], epa_model_df['Escherichia.coli'] > 235,
+                      ax=roc_ax, block_show=False)[3]
+    auc_roc = float(auc_roc)
+    epa_line = roc_ax.get_lines()[-2]
+    epa_line.set_color([0,0,0])
+    epa_line.set_ls('--')
+    epa_line.set_linewidth(3)
+    epa_line.set_alpha(.85)
+    epa_line.set_label('EPA Model - AUC: {0:.4f}'.format(auc_roc))
+    roc_ax.legend(loc=4)
+    roc_ax.grid(True, which='major')
 
-    # TODO: better document/automate this plotting business.
-    N = 18
+    c = pr_ax.get_children()
+    for line in c:
+        line.set_alpha(.75)
 
-    ax = plt.figure(1).get_axes()[0]
-    viz.roc(df2['Drek_Prediction'], df2['Escherichia.coli'] > 235,
-            ax=ax, block_show=False)
-    c = ax.get_children()
-    for i in range(N):
-        c[i].set_alpha(.5)
-    c[N].set_color([0,0,0])
-    c[N].set_ls('--')
-    c[N].set_linewidth(3)
-    c[N].set_alpha(.8)
-    ax.legend([c[i] for i in range(0,N+2,2)],
-              ['06', '07', '08', '09'] + [str(i) for i in range(10,15)] + ['EPA Model'],
-              loc=4)
-
-
-    ax = plt.figure(2).get_axes()[0]
-    viz.precision_recall(df2['Drek_Prediction'], df2['Escherichia.coli'] > 235,
-                         ax=ax, block_show=False)
-    c = ax.get_children()
-    for i in range(N):
-        c[i].set_alpha(.5)
-    c[N].set_color([0,0,0])
-    c[N].set_ls('--')
-    c[N].set_linewidth(3)
-    c[N].set_alpha(.8)
-    ax.legend([c[i] for i in range(0,N+2,2)],
-              ['06', '07', '08', '09'] + [str(i) for i in range(10,15)] + ['EPA Model'],
-              loc=1)
+    auc_pr = viz.precision_recall(epa_model_df['Drek_Prediction'],
+                                  epa_model_df['Escherichia.coli'] > 235,
+                                  ax=pr_ax, block_show=False)[3]
+    auc_pr = float(auc_pr)
+    epa_line = pr_ax.get_lines()[-2]
+    epa_line.set_color([0,0,0])
+    epa_line.set_ls('--')
+    epa_line.set_linewidth(3)
+    epa_line.set_alpha(.85)
+    epa_line.set_label('EPA Model - AUC: {0:.4f}'.format(auc_pr))
+    pr_ax.legend(loc=1)
+    pr_ax.grid(True, which='major')
 
     plt.draw()
     plt.show(block=True)

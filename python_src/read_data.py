@@ -226,6 +226,9 @@ def add_column_prior_data(df, colnames, ns, beach_col_name='Beach', timestamp_co
     if not hasattr(ns, '__getitem__'):
         ns = [ns]
 
+    if not colnames and ns:
+        return df.copy()
+
     dfc = df.copy()
     for colname in colnames:
         for n in ns:
@@ -688,11 +691,11 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
     if read_hourly_forecast:
         beach_names_new_to_short = dict(zip(cleanbeachnamesdf['New'],
                                             cleanbeachnamesdf['Short_Names']))
-        forecast_hourly = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
+        forecast_hourly = read_forecast_data(external_data_path + 'forecastio_hourly_weather.csv')
         forecast_hourly['Client.ID'] = forecast_hourly['Client.ID'].map(
             lambda x: beach_names_new_to_short[x]
         )
-        forecast_hourly = process_hourly_data(forecast_hourly, hours_offset=5)
+        forecast_hourly = process_hourly_data(forecast_hourly, hours_offset=-19)
         df = pd.merge(df, forecast_hourly, on=['Full_date', 'Client.ID'])
 
     if read_water_sensor:
