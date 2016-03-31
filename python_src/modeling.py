@@ -6,7 +6,7 @@ import visualizations as viz
 import matplotlib.pyplot as plt
 
 
-def model(timestamps, predictors, classes, classifier=None, hyperparams=None):
+def model(timestamps, predictors, classes, classifier=None, hyperparams=None, verbose=False):
     '''
     Creates several GBMs using leave-one-year-out cross validation.
 
@@ -23,6 +23,7 @@ def model(timestamps, predictors, classes, classifier=None, hyperparams=None):
                  and "predict_proba" at the least.
     hyperparams: Dictionary of hyper parameters to pass to the
                  classifier method.
+    verbose    : True if the clf.feature_importances_ should be printed
 
     Returns
     -------
@@ -56,19 +57,25 @@ def model(timestamps, predictors, classes, classifier=None, hyperparams=None):
 
         predictions = clf.predict_proba(predictors.ix[~train_indices,:])[:,1]
 
-        viz.roc(predictions, classes[~train_indices], block_show=False, ax=roc_ax)
-        viz.precision_recall(predictions, classes[~train_indices], block_show=False, ax=pr_ax)
+        auc_roc = viz.roc(predictions, classes[~train_indices],
+                          block_show=False, ax=roc_ax)[3]
+        auc_pr = viz.precision_recall(predictions, classes[~train_indices],
+                                      block_show=False, ax=pr_ax)[3]
 
-        roc_ax.get_lines()[-2].set_label(str(yr))
-        pr_ax.get_lines()[-2].set_label(str(yr))
+        auc_roc = float(auc_roc)
+        auc_pr = float(auc_pr)
+        roc_ax.get_lines()[-2].set_label(str(yr) + ' - AUC: {0:.4f}'.format(auc_roc))
+        pr_ax.get_lines()[-2].set_label(str(yr) + ' - AUC: {0:.4f}'.format(auc_pr))
 
-        print('Year ' + str(yr))
-        print('Feature importances:')
-        feat_imps = clf.feature_importances_
-        idxs = np.argsort(feat_imps)[::-1]
-        max_width = max([len(c) for c in predictors.columns])
-        for c, fi in zip(predictors.columns[idxs], feat_imps[idxs]):
-            print('  {0:<{1}} : {2:.5f}'.format(c, max_width+1, fi))
+        if verbose:
+            print('Year ' + str(yr))
+            print('Feature importances:')
+            feat_imps = clf.feature_importances_
+            idxs = np.argsort(feat_imps)[::-1]
+            max_width = max([len(c) for c in predictors.columns])
+
+            for c, fi in zip(predictors.columns[idxs], feat_imps[idxs]):
+                print('  {0:<{1}} : {2:.5f}'.format(c, max_width+1, fi))
 
     return clfs, roc_ax, pr_ax
 
@@ -114,7 +121,7 @@ def prepare_data(df=None):
     # Deterministic columns are known ahead of time, their actual values are used
     # with no previous days being used.
     deterministic_columns = [
-        'Client.ID', 'Weekday', 'sunriseTime', 'DayOfYear',
+        'Client.ID', 'Weekday', 'sunriseTime', 'DayOfYear'
     ]
     deterministic_hourly_columns = [
         'precipIntensity', 'temperature', 'windSpeed',
@@ -137,14 +144,14 @@ def prepare_data(df=None):
 
     # Each historical column will have the data from 1 day back, 2 days back,
     # ..., NUM_LOOKBACK_DAYS days back added to the predictors.
-    NUM_LOOKBACK_DAYS = 7
+    NUM_LOOKBACK_DAYS = 3
 
 
     ######################################################
     #### Get relevant columns, add historical data
     ######################################################
 
-    all_columns = meta_columns + deterministic_columns + historical_columns
+    all_columns = list(set(meta_columns + deterministic_columns + historical_columns))
 
     df = df[all_columns]
 
@@ -153,7 +160,7 @@ def prepare_data(df=None):
         beach_col_name='Client.ID', timestamp_col_name='Full_date'
     )
 
-    df.drop(historical_columns, axis=1, inplace=True)
+    df.drop(set(historical_columns) - set(deterministic_columns), axis=1, inplace=True)
 
 
     ######################################################
@@ -181,6 +188,12 @@ def prepare_data(df=None):
     ######################################################
     #### Drop any rows that still have NA, set up outputs
     ######################################################
+
+    total_rows_predictors = df.dropna(subset=['Escherichia.coli'], axis=0).shape[0]
+    nonnan_rows_predictors = df.dropna(axis=0).shape[0]
+    print('Dropping {0:.4f}% of rows because predictors contain NANs'.format(
+        100.0 - 100.0 * nonnan_rows_predictors / total_rows_predictors
+    ))
 
     df.dropna(axis=0, inplace=True)
 
@@ -210,18 +223,20 @@ if __name__ == '__main__':
                                 classifier=sklearn.ensemble.RandomForestClassifier,
                                 hyperparams=hyperparams)
 
+    # Add the EPA model to the ROC and PR curves, prettify
     c = roc_ax.get_lines()
     for line in c:
         line.set_alpha(.75)
 
-    viz.roc(epa_model_df['Drek_Prediction'], epa_model_df['Escherichia.coli'] > 235,
-            ax=roc_ax, block_show=False)
+    auc_roc = viz.roc(epa_model_df['Drek_Prediction'], epa_model_df['Escherichia.coli'] > 235,
+                      ax=roc_ax, block_show=False)[3]
+    auc_roc = float(auc_roc)
     epa_line = roc_ax.get_lines()[-2]
     epa_line.set_color([0,0,0])
     epa_line.set_ls('--')
     epa_line.set_linewidth(3)
     epa_line.set_alpha(.85)
-    epa_line.set_label('EPA Model')
+    epa_line.set_label('EPA Model - AUC: {0:.4f}'.format(auc_roc))
     roc_ax.legend(loc=4)
     roc_ax.grid(True, which='major')
 
@@ -229,14 +244,16 @@ if __name__ == '__main__':
     for line in c:
         line.set_alpha(.75)
 
-    viz.precision_recall(epa_model_df['Drek_Prediction'], epa_model_df['Escherichia.coli'] > 235,
-                         ax=pr_ax, block_show=False)
+    auc_pr = viz.precision_recall(epa_model_df['Drek_Prediction'],
+                                  epa_model_df['Escherichia.coli'] > 235,
+                                  ax=pr_ax, block_show=False)[3]
+    auc_pr = float(auc_pr)
     epa_line = pr_ax.get_lines()[-2]
     epa_line.set_color([0,0,0])
     epa_line.set_ls('--')
     epa_line.set_linewidth(3)
     epa_line.set_alpha(.85)
-    epa_line.set_label('EPA Model')
+    epa_line.set_label('EPA Model - AUC: {0:.4f}'.format(auc_pr))
     pr_ax.legend(loc=1)
     pr_ax.grid(True, which='major')
 
