@@ -85,6 +85,61 @@ def read_data_simplified():
 
     return df
 
+def group_beaches_geographically(data, beach_names_column='Client.ID', verbose=False):
+    '''
+    Creates geographical categorizations for the beaches.
+
+    The indicators are any of six groups and a north indicator (1 if North of the pier, 0 if South).
+    '''
+    df = data.copy()
+
+    # Mid North
+    group_1 = ['Montrose','Montrose Dog','Foster','Osterman','Leone','Thorndale']
+
+    # Rogers Park Area
+    group_2 = ['Juneway','Rogers','Howard','Marion','Leone','Pratt','Columbia','North Shore','Hartigan','Albion',
+            'Marion Mahoney Griffin','Loyola','Margaret T Burroughs','Lane','Jarvis']
+    # Near North Area
+    group_3 = ['Oak Street','Ohio','North Ave','North Avenue']
+
+    # Near South
+    group_4 = ['12th','31st']
+
+    # Mid South
+
+    group_5 = ['57th','63rd','41st','Oakwood','67th','South Shore','Rainbow', 'Humbolt']
+
+    # Calumet is way off to the side.
+    group_6 = ['Calumet']
+
+    north_group = group_1 + group_2 + group_3
+    south_group = group_4 + group_5 + group_6
+    all_groups = [group_1, group_2, group_3, group_4, group_5, group_6]
+
+    for ind in range(len(all_groups)):
+        var_name = 'flag_geographic_group_' + str(ind+1)
+        df[var_name] = df[beach_names_column].map(lambda x: beach_grouping(x,all_groups[ind]))
+
+    df['flag_geographically_a_north_beach'] = df[beach_names_column].map(lambda x: beach_grouping(x,north_group))
+    
+    # also want to add single columns, but that is harder.
+
+    return df
+
+def beach_grouping(beach_name, grouping):
+    '''Simple function that returns 1 if the beach name is in the applied list.
+
+    Input
+    -----
+    beach_name: string
+    grouping: list of strings
+    
+    '''
+
+    if beach_name in grouping:
+        return int(1)
+    else:
+        return int(0)
 
 def clean_up_beaches(data, beach_names_column='Beach', verbose=False):
     '''
@@ -512,7 +567,8 @@ def date_lookup(s, verbose=False):
 
 
 def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_station=True,
-              read_water_sensor=True, read_daily_forecast=True, read_hourly_forecast=True):
+              read_water_sensor=True, read_daily_forecast=True, read_hourly_forecast=True,
+        group_beaches=True):
     '''
     Read in the excel files for years 2006-2015 found in
     'data/ChicagoParkDistrict/raw/Standard 18 hr Testing'
@@ -616,9 +672,13 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
         df = pd.merge(df, holidaydata, on='Full_date', how='outer')
         df = days_since_holiday(df)
 
+    if group_beaches:
+        df = group_beaches_geographically(df)
+
     if read_daily_forecast:
         beach_names_new_to_short = dict(zip(cleanbeachnamesdf['New'],
                                             cleanbeachnamesdf['Short_Names']))
+
         forecast_daily = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
         forecast_daily['Client.ID'] = forecast_daily['Client.ID'].map(
             lambda x: beach_names_new_to_short[x]
