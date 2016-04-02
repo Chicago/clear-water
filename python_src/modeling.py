@@ -40,6 +40,10 @@ def model(timestamps, predictors, classes, classifier=None, hyperparams=None, ve
 
     start = timestamps.min()
     stop = timestamps.max()
+
+    print(start)
+    print(stop)
+
     stop = min(stop, 2014) # do not include 2015
 
     roc_ax = plt.subplots(1)[1]
@@ -108,7 +112,7 @@ def prepare_data(df=None):
     #### Add derived columns here
     ######################################################
 
-    df['DayOfYear'] = df['Full_date'].map(lambda x: x.dayofyear)
+    # df['DayOfYear'] = df['Full_date'].map(lambda x: x.dayofyear)
 
 
     ######################################################
@@ -121,14 +125,20 @@ def prepare_data(df=None):
     # Deterministic columns are known ahead of time, their actual values are used
     # with no previous days being used.
     deterministic_columns = [
-        'Client.ID', 'Weekday', 'sunriseTime', 'DayOfYear'
+        'Client.ID', 'sunriseTime',
+        'precipIntensity', 'precipIntensityMax',
+        'temperatureMin', 'temperatureMax',
+        'humidity', 'windSpeed', 'cloudCover'
     ]
-    deterministic_hourly_columns = [
-        'precipIntensity', 'temperature', 'windSpeed',
-        'windBearing', 'pressure', 'cloudCover'
-    ]
+    deterministic_hourly_columns = {
+        'temperature':[-16,-13,-12,-11,-9,-3,0],
+        'windSpeed':[1,2,3,4],
+        'windBearing':[1,2,3,4],
+        'pressure':[0],
+        'cloudCover':[0,2,4]
+    }
     for var in deterministic_hourly_columns:
-        for hr in [-12, -8, -4, 0, 4]:
+        for hr in deterministic_hourly_columns[var]:
             deterministic_columns.append(var + '_hour_' + str(hr))
 
     # Historical columns have their previous days' values added to the predictors,
@@ -137,14 +147,14 @@ def prepare_data(df=None):
     # fill NA values here, so if you wish to use columns with a high rate of data
     # loss, then you should add logic to fill the NA values.
     historical_columns = [
-        'precipIntensity', 'precipIntensityMax',
         'temperatureMin', 'temperatureMax',
-        'humidity', 'windSpeed', 'cloudCover'
+        'humidity', 'windSpeed', 'cloudCover',
+        'Escherichia.coli'
     ]
 
     # Each historical column will have the data from 1 day back, 2 days back,
     # ..., NUM_LOOKBACK_DAYS days back added to the predictors.
-    NUM_LOOKBACK_DAYS = 3
+    NUM_LOOKBACK_DAYS = 7
 
 
     ######################################################
@@ -160,7 +170,20 @@ def prepare_data(df=None):
         beach_col_name='Client.ID', timestamp_col_name='Full_date'
     )
 
-    df.drop(set(historical_columns) - set(deterministic_columns), axis=1, inplace=True)
+    df.drop((set(historical_columns) - set(deterministic_columns)) - set(meta_columns),
+            axis=1, inplace=True)
+
+
+    ######################################################
+    #### Average the historical column, fill in NaNs
+    ######################################################
+
+    for hist_col in historical_columns:
+        cname = str(NUM_LOOKBACK_DAYS) + '_day_average_' + hist_col
+        rnge = range(1, NUM_LOOKBACK_DAYS + 1)
+        df[cname] = df[[str(n) + '_day_prior_' + hist_col for n in rnge]].mean()
+        for n in rnge:
+            df[str(n) + '_day_prior_' + hist_col].fillna(df[cname], inplace=True)
 
 
     ######################################################
@@ -221,7 +244,8 @@ if __name__ == '__main__':
     }
     clfs, roc_ax, pr_ax = model(timestamps, predictors, classes,
                                 classifier=sklearn.ensemble.RandomForestClassifier,
-                                hyperparams=hyperparams)
+                                hyperparams=hyperparams,
+                                verbose=True)
 
     # Add the EPA model to the ROC and PR curves, prettify
     c = roc_ax.get_lines()
