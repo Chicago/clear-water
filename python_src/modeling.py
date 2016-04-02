@@ -121,8 +121,7 @@ def prepare_data(df=None):
     # Meta columns are not used as predictors
     meta_columns = ['Client.ID', 'Full_date', 'Escherichia.coli']
 
-    # Deterministic columns are known ahead of time, their actual values are used
-    # with no previous days being used.
+    # Deterministic columns are known ahead of time, their actual values can be used.
     deterministic_columns = [
         # 'Client.ID',
         'sunriseTime',
@@ -133,14 +132,23 @@ def prepare_data(df=None):
         'humidity',
         'windSpeed',
         'cloudCover',
+        'Days.Since.Last.Holiday',
         'flag_geographically_a_north_beach',
         # 'flag_geographic_group_1',
-        'flag_geographic_group_2',
+        # 'flag_geographic_group_2',
         # 'flag_geographic_group_3',
         # 'flag_geographic_group_4',
-        'flag_geographic_group_5',
+        # 'flag_geographic_group_5',
         # 'flag_geographic_group_6',
     ]
+
+    # Deterministic columns are known ahead of time, their actual values are used.
+    # These hourly variables have an additional parameter which defines what hours
+    # should be used. For example, below we have an entry
+    #   'temperature':[-16,-13,-12,-11,-9,-3,0]
+    # which indicates that the hourly temperature at offsets of
+    # [-16,-13,-12,-11,-9,-3,0] from MIDNIGHT of the day of should be included as
+    # variables in the model.
     deterministic_hourly_columns = {
         'temperature':[-16,-13,-12,-11,-9,-3,0],
         'windSpeed':[1,2,3,4],
@@ -155,12 +163,17 @@ def prepare_data(df=None):
     # Historical columns have their previous days' values added to the predictors,
     # but not the current day's value(s) unless the historical column also exists
     # in the deterministic columns list.
+    # Similar to the hourly columns, you need to specify which previous days
+    # to include as variables. For example, below we have an entry
+    #   'temperatureMax': range(1,4)
+    # which indicates that the max temperature from 1, 2, and 3 days previous
+    # should be included.
     historical_columns = {
         'temperatureMin': range(1,3),
-        'temperatureMax': range(1,8),
-        'humidity': range(1,3),
-        'windSpeed': range(1,8),
-        'cloudCover': range(1,8),
+        'temperatureMax': range(1,4),
+        # 'humidity': range(1,3),
+        # 'windSpeed': range(1,8),
+        # 'cloudCover': range(1,8),
         'Escherichia.coli': range(1,8)
     }
     historical_columns_list = list(historical_columns.keys())
@@ -185,15 +198,27 @@ def prepare_data(df=None):
 
 
     ######################################################
-    #### Average the historical column, fill in NaNs
+    #### Average the historical columns, fill in NaNs
     ######################################################
 
+    # Creates an "historical_average" column for each historical variable
+    # which is simply the mean of the previous day columns of that variable.
+    # NaN values for any previous day data is filled in by that mean value.
     for var in historical_columns:
         cname = 'historical_average_' + var
         rnge = historical_columns[var]
         df[cname] = df[[str(n) + '_day_prior_' + var for n in rnge]].mean(1)
         for n in rnge:
             df[str(n) + '_day_prior_' + var].fillna(df[cname], inplace=True)
+
+    # Doing the same thing on the hourly data did not seem to perform well...
+
+    # for var in deterministic_hourly_columns:
+    #     cname = 'average_of_hourly_' + var
+    #     rnge = deterministic_hourly_columns[var]
+    #     df[cname] = df[[var + '_hour_' + str(n) for n in rnge]].mean(1)
+    #     for n in rnge:
+    #         df[var + '_hour_' + str(n)].fillna(df[cname], inplace=True)
 
 
     ######################################################
@@ -217,9 +242,20 @@ def prepare_data(df=None):
 
     df = nonnumericCols(df)
 
+    # As a last NaN filling measure, we fill the NaNs of all columns
+    # that are NOT the E. coli column with the mean value of the column,
+    # the mean value taken over all data not from the same year as the
+    # year of the row we are filling. For example, if there is a NaN
+    # in the temperatureMax column in some row from 2010, then we will
+    # fill that value with the mean temperatureMax value from all years
+    # that are NOT 2010.
     cols = df.columns.tolist()
     cols.remove('Escherichia.coli')
-    df[cols] = df[cols].fillna(df[cols].mean())
+    years = df['Full_date'].map(lambda x: x.year)
+    for yr in years.unique():
+        not_yr = np.array(years != yr)
+        is_yr = np.array(years == yr)
+        df.ix[is_yr, cols] = df.ix[is_yr, cols].fillna(df.ix[not_yr, cols].mean())
 
 
     ######################################################
@@ -232,6 +268,8 @@ def prepare_data(df=None):
         100.0 - 100.0 * nonnan_rows_predictors / total_rows_predictors
     ))
 
+    # Any rows that still have NaNs are NaN b/c there is no E. coli reading
+    # We should drop these rows b/c there is nothing for us to predict.
     df.dropna(axis=0, inplace=True)
 
     predictors = df.drop(meta_columns, axis=1)
@@ -252,9 +290,11 @@ if __name__ == '__main__':
         print('\t' + str(c))
     hyperparams = {
         # Parameters that effect computation
-        'n_estimators':1000, 'max_depth':5,
+        'n_estimators':2000, # even with 2000, still moderate variance between runs
+        'max_depth':6,
         # Misc parameters
-        'n_jobs':-1, 'verbose':False
+        'n_jobs':-1,
+        'verbose':False
     }
     clfs, roc_ax, pr_ax = model(timestamps, predictors, classes,
                                 classifier=sklearn.ensemble.RandomForestClassifier,
@@ -264,7 +304,7 @@ if __name__ == '__main__':
     # Add the EPA model to the ROC and PR curves, prettify
     c = roc_ax.get_lines()
     for line in c:
-        line.set_alpha(.75)
+        line.set_alpha(.7)
 
     fpr, tpr, threshes, auc_roc = viz.roc(epa_model_df['Drek_Prediction'],
                                           epa_model_df['Escherichia.coli'] > 235,
@@ -279,21 +319,18 @@ if __name__ == '__main__':
 
     i = np.where(threshes < 235.0)[0][0]
 
-    print(fpr[i])
-    print(tpr[i])
-    print(threshes[i])
-
     roc_ax.plot(fpr[i], tpr[i], 'xk', label='EPA model at 235',
                 markersize=10.0, markeredgewidth=2.0)
 
     roc_ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     # roc_ax.set_xlim([0, .1])
-    # roc_ax.set_aspect('auto')
+    # roc_ax.set_ylim([0, .5])
+    roc_ax.set_aspect('auto')  # we are going to be zooming around, set it to auto
     roc_ax.grid(True, which='major')
 
     c = pr_ax.get_children()
     for line in c:
-        line.set_alpha(.75)
+        line.set_alpha(.7)
 
     tpr, ppv, threshes, auc_pr = viz.precision_recall(epa_model_df['Drek_Prediction'],
                                                       epa_model_df['Escherichia.coli'] > 235,
@@ -308,13 +345,8 @@ if __name__ == '__main__':
 
     i = np.where(threshes < 235.0)[0][0]
 
-    print(tpr[i])
-    print(ppv[i])
-    print(threshes[i])
-
     pr_ax.plot(tpr[i], ppv[i], 'xk', label='EPA model at 235',
                markersize=10.0, markeredgewidth=2.0)
-
 
     pr_ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     pr_ax.grid(True, which='major')
