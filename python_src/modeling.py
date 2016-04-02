@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 def model(timestamps, predictors, classes, classifier=None, hyperparams=None, verbose=False):
     '''
-    Creates several GBMs using leave-one-year-out cross validation.
+    Creates several models using leave-one-year-out cross validation.
 
     ROC and PR curves are plotted as a side-effect.
 
@@ -41,9 +41,6 @@ def model(timestamps, predictors, classes, classifier=None, hyperparams=None, ve
     start = timestamps.min()
     stop = timestamps.max()
 
-    print(start)
-    print(stop)
-
     stop = min(stop, 2014) # do not include 2015
 
     roc_ax = plt.subplots(1)[1]
@@ -52,9 +49,11 @@ def model(timestamps, predictors, classes, classifier=None, hyperparams=None, ve
     clfs = dict()
 
     for yr in range(start, stop+1):
-        train_indices = np.array((timestamps < yr) | (timestamps > yr))
+        is_not_yr = (timestamps < yr) | (timestamps > yr)
+        is_not_2007 = (timestamps != 2007)
+        train_indices = np.array(is_not_yr & is_not_2007)
 
-        clf = classifier(**hyperparams)
+        clf = sklearn.base.clone(classifier(**hyperparams))
         clf.fit(predictors.ix[train_indices,:], classes[train_indices])
 
         clfs[yr] = clf
@@ -120,15 +119,27 @@ def prepare_data(df=None):
     ######################################################
 
     # Meta columns are not used as predictors
-    meta_columns = ['Full_date', 'Escherichia.coli']
+    meta_columns = ['Client.ID', 'Full_date', 'Escherichia.coli']
 
     # Deterministic columns are known ahead of time, their actual values are used
     # with no previous days being used.
     deterministic_columns = [
-        'Client.ID', 'sunriseTime',
-        'precipIntensity', 'precipIntensityMax',
-        'temperatureMin', 'temperatureMax',
-        'humidity', 'windSpeed', 'cloudCover'
+        # 'Client.ID',
+        'sunriseTime',
+        'precipIntensity',
+        'precipIntensityMax',
+        'temperatureMin',
+        'temperatureMax',
+        'humidity',
+        'windSpeed',
+        'cloudCover',
+        'flag_geographically_a_north_beach',
+        # 'flag_geographic_group_1',
+        'flag_geographic_group_2',
+        # 'flag_geographic_group_3',
+        # 'flag_geographic_group_4',
+        'flag_geographic_group_5',
+        # 'flag_geographic_group_6',
     ]
     deterministic_hourly_columns = {
         'temperature':[-16,-13,-12,-11,-9,-3,0],
@@ -142,35 +153,34 @@ def prepare_data(df=None):
             deterministic_columns.append(var + '_hour_' + str(hr))
 
     # Historical columns have their previous days' values added to the predictors,
-    # but not the current day's value(s). The value NUM_LOOKBACK_DAYS set below
-    # controls the number of previous days added. Nothing is currently done to
-    # fill NA values here, so if you wish to use columns with a high rate of data
-    # loss, then you should add logic to fill the NA values.
-    historical_columns = [
-        'temperatureMin', 'temperatureMax',
-        'humidity', 'windSpeed', 'cloudCover',
-        'Escherichia.coli'
-    ]
-
-    # Each historical column will have the data from 1 day back, 2 days back,
-    # ..., NUM_LOOKBACK_DAYS days back added to the predictors.
-    NUM_LOOKBACK_DAYS = 7
+    # but not the current day's value(s) unless the historical column also exists
+    # in the deterministic columns list.
+    historical_columns = {
+        'temperatureMin': range(1,3),
+        'temperatureMax': range(1,8),
+        'humidity': range(1,3),
+        'windSpeed': range(1,8),
+        'cloudCover': range(1,8),
+        'Escherichia.coli': range(1,8)
+    }
+    historical_columns_list = list(historical_columns.keys())
 
 
     ######################################################
     #### Get relevant columns, add historical data
     ######################################################
 
-    all_columns = list(set(meta_columns + deterministic_columns + historical_columns))
+    all_columns = list(set(meta_columns + deterministic_columns + historical_columns_list))
 
     df = df[all_columns]
 
-    df = rd.add_column_prior_data(
-        df, historical_columns, range(1, NUM_LOOKBACK_DAYS + 1),
-        beach_col_name='Client.ID', timestamp_col_name='Full_date'
-    )
+    for var in historical_columns:
+        df = rd.add_column_prior_data(
+            df, var, historical_columns[var],
+            beach_col_name='Client.ID', timestamp_col_name='Full_date'
+        )
 
-    df.drop((set(historical_columns) - set(deterministic_columns)) - set(meta_columns),
+    df.drop((set(historical_columns_list) - set(deterministic_columns)) - set(meta_columns),
             axis=1, inplace=True)
 
 
@@ -178,12 +188,12 @@ def prepare_data(df=None):
     #### Average the historical column, fill in NaNs
     ######################################################
 
-    for hist_col in historical_columns:
-        cname = str(NUM_LOOKBACK_DAYS) + '_day_average_' + hist_col
-        rnge = range(1, NUM_LOOKBACK_DAYS + 1)
-        df[cname] = df[[str(n) + '_day_prior_' + hist_col for n in rnge]].mean()
+    for var in historical_columns:
+        cname = 'historical_average_' + var
+        rnge = historical_columns[var]
+        df[cname] = df[[str(n) + '_day_prior_' + var for n in rnge]].mean(1)
         for n in rnge:
-            df[str(n) + '_day_prior_' + hist_col].fillna(df[cname], inplace=True)
+            df[str(n) + '_day_prior_' + var].fillna(df[cname], inplace=True)
 
 
     ######################################################
@@ -207,6 +217,10 @@ def prepare_data(df=None):
 
     df = nonnumericCols(df)
 
+    cols = df.columns.tolist()
+    cols.remove('Escherichia.coli')
+    df[cols] = df[cols].fillna(df[cols].mean())
+
 
     ######################################################
     #### Drop any rows that still have NA, set up outputs
@@ -220,8 +234,8 @@ def prepare_data(df=None):
 
     df.dropna(axis=0, inplace=True)
 
-    predictors = df.drop(['Escherichia.coli', 'Full_date'], axis=1)
-    meta_info = df[['Escherichia.coli', 'Full_date']]
+    predictors = df.drop(meta_columns, axis=1)
+    meta_info = df[meta_columns]
 
     return predictors, meta_info
 
@@ -238,7 +252,7 @@ if __name__ == '__main__':
         print('\t' + str(c))
     hyperparams = {
         # Parameters that effect computation
-        'n_estimators':250, 'max_depth':5,
+        'n_estimators':1000, 'max_depth':5,
         # Misc parameters
         'n_jobs':-1, 'verbose':False
     }
@@ -252,8 +266,9 @@ if __name__ == '__main__':
     for line in c:
         line.set_alpha(.75)
 
-    auc_roc = viz.roc(epa_model_df['Drek_Prediction'], epa_model_df['Escherichia.coli'] > 235,
-                      ax=roc_ax, block_show=False)[3]
+    fpr, tpr, threshes, auc_roc = viz.roc(epa_model_df['Drek_Prediction'],
+                                          epa_model_df['Escherichia.coli'] > 235,
+                                          ax=roc_ax, block_show=False)
     auc_roc = float(auc_roc)
     epa_line = roc_ax.get_lines()[-2]
     epa_line.set_color([0,0,0])
@@ -261,16 +276,28 @@ if __name__ == '__main__':
     epa_line.set_linewidth(3)
     epa_line.set_alpha(.85)
     epa_line.set_label('EPA Model - AUC: {0:.4f}'.format(auc_roc))
-    roc_ax.legend(loc=4)
+
+    i = np.where(threshes < 235.0)[0][0]
+
+    print(fpr[i])
+    print(tpr[i])
+    print(threshes[i])
+
+    roc_ax.plot(fpr[i], tpr[i], 'xk', label='EPA model at 235',
+                markersize=10.0, markeredgewidth=2.0)
+
+    roc_ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+    # roc_ax.set_xlim([0, .1])
+    # roc_ax.set_aspect('auto')
     roc_ax.grid(True, which='major')
 
     c = pr_ax.get_children()
     for line in c:
         line.set_alpha(.75)
 
-    auc_pr = viz.precision_recall(epa_model_df['Drek_Prediction'],
-                                  epa_model_df['Escherichia.coli'] > 235,
-                                  ax=pr_ax, block_show=False)[3]
+    tpr, ppv, threshes, auc_pr = viz.precision_recall(epa_model_df['Drek_Prediction'],
+                                                      epa_model_df['Escherichia.coli'] > 235,
+                                                      ax=pr_ax, block_show=False)
     auc_pr = float(auc_pr)
     epa_line = pr_ax.get_lines()[-2]
     epa_line.set_color([0,0,0])
@@ -278,7 +305,18 @@ if __name__ == '__main__':
     epa_line.set_linewidth(3)
     epa_line.set_alpha(.85)
     epa_line.set_label('EPA Model - AUC: {0:.4f}'.format(auc_pr))
-    pr_ax.legend(loc=1)
+
+    i = np.where(threshes < 235.0)[0][0]
+
+    print(tpr[i])
+    print(ppv[i])
+    print(threshes[i])
+
+    pr_ax.plot(tpr[i], ppv[i], 'xk', label='EPA model at 235',
+               markersize=10.0, markeredgewidth=2.0)
+
+
+    pr_ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     pr_ax.grid(True, which='major')
 
     plt.draw()
