@@ -1,12 +1,19 @@
 import numpy as np
-import sklearn
-import sklearn.ensemble
 import read_data as rd
 import visualizations as viz
 import matplotlib.pyplot as plt
 
+# sklearn imports, may need to add more to use different models
+import sklearn
+import sklearn.ensemble
+import sklearn.linear_model
 
-def model(timestamps, predictors, classes, classifier=None, hyperparams=None, verbose=False):
+
+def model(timestamps, predictors, classes,
+          classifier=None,
+          prediction_attribute='predict_proba',
+          hyperparams=None,
+          verbose=False):
     '''
     Creates several models using leave-one-year-out cross validation.
 
@@ -48,17 +55,18 @@ def model(timestamps, predictors, classes, classifier=None, hyperparams=None, ve
 
     clfs = dict()
 
+    is_not_2007 = (timestamps != 2007)
+    is_not_2006 = (timestamps != 2006)
     for yr in range(start, stop+1):
         is_not_yr = (timestamps < yr) | (timestamps > yr)
-        is_not_2007 = (timestamps != 2007)
-        train_indices = np.array(is_not_yr & is_not_2007)
+        train_indices = np.array(is_not_yr & is_not_2007 & is_not_2006)
 
-        clf = sklearn.base.clone(classifier(**hyperparams))
+        clf = classifier(**hyperparams)
         clf.fit(predictors.ix[train_indices,:], classes[train_indices])
 
         clfs[yr] = clf
 
-        predictions = clf.predict_proba(predictors.ix[~train_indices,:])[:,1]
+        predictions = getattr(clf, prediction_attribute)(predictors.ix[~train_indices,:])[:,1]
 
         auc_roc = viz.roc(predictions, classes[~train_indices],
                           block_show=False, ax=roc_ax)[3]
@@ -135,10 +143,10 @@ def prepare_data(df=None):
         'Days.Since.Last.Holiday',
         'flag_geographically_a_north_beach',
         # 'flag_geographic_group_1',
-        # 'flag_geographic_group_2',
+        'flag_geographic_group_2',
         # 'flag_geographic_group_3',
         # 'flag_geographic_group_4',
-        # 'flag_geographic_group_5',
+        'flag_geographic_group_5',
         # 'flag_geographic_group_6',
     ]
 
@@ -152,7 +160,7 @@ def prepare_data(df=None):
     deterministic_hourly_columns = {
         'temperature':[-16,-13,-12,-11,-9,-3,0],
         'windSpeed':[1,2,3,4],
-        'windBearing':[1,2,3,4],
+        'windBearing':[4],
         'pressure':[0],
         'cloudCover':[0,2,4]
     }
