@@ -123,8 +123,28 @@ def group_beaches_geographically(data, beach_names_column='Client.ID', verbose=F
     df['flag_geographically_a_north_beach'] = df[beach_names_column].map(lambda x: beach_grouping(x,north_group))
     
     # also want to add single columns, but that is harder.
+    df['categorical_beach_grouping'] = df[beach_names_column].map(lambda x: single_grouping(x,all_groups))
+    
+
+    
+
+
 
     return df
+
+def single_grouping(beach_name, groups):
+    '''Takes list of lists of strings, and sees if thed given beach_name matches any of those.  It then reports which of the initial lists it was in.  If none are found, it returns an N+1th category.
+
+    Inputs
+    ------
+    beach_name: string
+    groups: list of length N, of lists of strings
+    '''
+
+    for beach_group in range(len(groups)):
+        if beach_name in groups[beach_group]:
+            return 'beach_in_grouping_' + str(beach_group + 1)
+    return 'beach_not_in_any_grouping'
 
 def beach_grouping(beach_name, grouping):
     '''Simple function that returns 1 if the beach name is in the applied list.
