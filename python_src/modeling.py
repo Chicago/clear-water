@@ -55,8 +55,8 @@ def model(timestamps, predictors, classes,
 
     clfs = dict()
 
-    is_not_2007 = (timestamps != 2007)
     is_not_2006 = (timestamps != 2006)
+    is_not_2007 = (timestamps != 2007)
     for yr in range(start, stop+1):
         is_not_yr = (timestamps < yr) | (timestamps > yr)
         train_indices = np.array(is_not_yr & is_not_2007 & is_not_2006)
@@ -103,10 +103,11 @@ def prepare_data(df=None):
     Returns
     -------
     predictors : NxM DataFrame of the predictors for the classification problem.
-    meta_info  : Nx2 DataFrame containing the columns 'Escherichia.coli' and
+    meta_info  : Nx3 DataFrame containing the columns 'Escherichia.coli' and
                  'Full_date', to be used, e.g., for leave-one-year-out cross
                  validation and creating the true class labels (elevated vs.
-                 not elevated E. coli levels).
+                 not elevated E. coli levels). The column 'Client.ID' is also
+                 returned here, but is currently only used internally in this function.
     '''
     if df is None:
         df = rd.read_data()
@@ -119,7 +120,8 @@ def prepare_data(df=None):
     #### Add derived columns here
     ######################################################
 
-    # df['DayOfYear'] = df['Full_date'].map(lambda x: x.dayofyear)
+    df['DayOfYear'] = df['Full_date'].map(lambda x: x.dayofyear)
+    derived_columns = ['DayOfYear']
 
 
     ######################################################
@@ -131,8 +133,8 @@ def prepare_data(df=None):
 
     # Deterministic columns are known ahead of time, their actual values can be used.
     deterministic_columns = [
-        # 'Client.ID',
-        'sunriseTime',
+        # 'Client.ID',  # subsumed by the geographic flags
+
         'precipIntensity',
         'precipIntensityMax',
         'temperatureMin',
@@ -140,7 +142,11 @@ def prepare_data(df=None):
         'humidity',
         'windSpeed',
         'cloudCover',
-        'Days.Since.Last.Holiday',
+
+        # 'sunriseTime',  # commenting for now since it is in absolute UNIX time
+
+        # 'Days.Since.Last.Holiday',
+
         'flag_geographically_a_north_beach',
         # 'flag_geographic_group_1',
         'flag_geographic_group_2',
@@ -152,17 +158,19 @@ def prepare_data(df=None):
 
     # Deterministic columns are known ahead of time, their actual values are used.
     # These hourly variables have an additional parameter which defines what hours
-    # should be used. For example, below we have an entry
+    # should be used. For example, an entry
     #   'temperature':[-16,-13,-12,-11,-9,-3,0]
-    # which indicates that the hourly temperature at offsets of
-    # [-16,-13,-12,-11,-9,-3,0] from MIDNIGHT of the day of should be included as
+    # would indicate that the hourly temperature at offsets of
+    # [-16,-13,-12,-11,-9,-3,0] from MIDNIGHT the day of should be included as
     # variables in the model.
     deterministic_hourly_columns = {
-        'temperature':[-16,-13,-12,-11,-9,-3,0],
+        'temperature':range(-19,5),
         'windSpeed':[1,2,3,4],
         'windBearing':[4],
         'pressure':[0],
-        'cloudCover':[0,2,4]
+        'cloudCover':[4],
+        'humidity':[4],
+        'precipIntensity':[-14,-13,-12,-11,-10,0,4]
     }
     for var in deterministic_hourly_columns:
         for hr in deterministic_hourly_columns[var]:
@@ -191,7 +199,8 @@ def prepare_data(df=None):
     #### Get relevant columns, add historical data
     ######################################################
 
-    all_columns = list(set(meta_columns + deterministic_columns + historical_columns_list))
+    all_columns = meta_columns + deterministic_columns + historical_columns_list + derived_columns
+    all_columns = list(set(all_columns))
 
     df = df[all_columns]
 
@@ -209,24 +218,27 @@ def prepare_data(df=None):
     #### Average the historical columns, fill in NaNs
     ######################################################
 
-    # Creates an "historical_average" column for each historical variable
+    # Creates a "trailing_average_daily_" column for each historical variable
     # which is simply the mean of the previous day columns of that variable.
     # NaN values for any previous day data is filled in by that mean value.
     for var in historical_columns:
-        cname = 'historical_average_' + var
+        cname = 'trailing_average_daily_' + var
         rnge = historical_columns[var]
+        if len(rnge) == 1:  # no need to create a trailing average of a single number...
+            continue
         df[cname] = df[[str(n) + '_day_prior_' + var for n in rnge]].mean(1)
         for n in rnge:
             df[str(n) + '_day_prior_' + var].fillna(df[cname], inplace=True)
 
-    # Doing the same thing on the hourly data did not seem to perform well...
-
-    # for var in deterministic_hourly_columns:
-    #     cname = 'average_of_hourly_' + var
-    #     rnge = deterministic_hourly_columns[var]
-    #     df[cname] = df[[var + '_hour_' + str(n) for n in rnge]].mean(1)
-    #     for n in rnge:
-    #         df[var + '_hour_' + str(n)].fillna(df[cname], inplace=True)
+    # Do a similar process for the hourly data.
+    for var in deterministic_hourly_columns:
+        cname = 'trailing_average_hourly_' + var
+        rnge = deterministic_hourly_columns[var]
+        if len(rnge) == 1:  # no need to create a trailing average of a single number...
+            continue
+        df[cname] = df[[var + '_hour_' + str(n) for n in rnge]].mean(1)
+        for n in rnge:
+            df[var + '_hour_' + str(n)].fillna(df[cname], inplace=True)
 
 
     ######################################################
@@ -270,6 +282,11 @@ def prepare_data(df=None):
     #### Drop any rows that still have NA, set up outputs
     ######################################################
 
+    # The following lines will print the % of rows that:
+    #  (a) have a NaN value in some column other than Escherichia.coli, AND
+    #  (b) the column Escherichia.coli is NOT NaN.
+    # Since we are now filling NaNs with column averages above, this should
+    # always report 0%. I'm leaving the check in here just to be sure, though.
     total_rows_predictors = df.dropna(subset=['Escherichia.coli'], axis=0).shape[0]
     nonnan_rows_predictors = df.dropna(axis=0).shape[0]
     print('Dropping {0:.4f}% of rows because predictors contain NANs'.format(
