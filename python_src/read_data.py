@@ -103,11 +103,11 @@ def group_beaches_geographically(data, beach_names_column='Client.ID', verbose=F
     group_3 = ['Oak Street','Ohio','North Ave','North Avenue']
 
     # Near South
-    group_4 = ['12th','31st','39th']
+    group_4 = ['12th','31st']
 
     # Mid South
 
-    group_5 = ['57th','63rd','41st','Oakwood','67th','South Shore','Rainbow', 'Humbolt']
+    group_5 = ['57th','63rd','41st','39th','Oakwood','67th','South Shore','Rainbow', 'Humbolt']
 
     # Calumet is way off to the side.
     group_6 = ['Calumet']
