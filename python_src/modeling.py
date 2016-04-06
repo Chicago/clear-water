@@ -30,13 +30,18 @@ def model(timestamps, predictors, classes,
                  and "predict_proba" at the least.
     hyperparams: Dictionary of hyper parameters to pass to the
                  classifier method.
+    prediction_attribute:
+                 Name of the attribute of the classifier that returns
+                 the probability of belonging to the positive class.
     verbose    : True if the clf.feature_importances_ should be printed
 
     Returns
     -------
-    clfs : Dictionary of (year, classifier) pairs, where the classifier
-           is the model found by leaving the specified year out of the
-           training set.
+    clfs   : Dictionary of (year, classifier) pairs, where the classifier
+             is the model found by leaving the specified year out of the
+             training set.
+    roc_ax : the matplotlib axes object containing all of the ROC curves.
+    pr_ax  : the matplotlib axes object containing all of the PR curves.
     '''
     if classifier is None:
         classifier = sklearn.ensemble.GradientBoostingClassifier
