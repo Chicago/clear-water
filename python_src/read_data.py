@@ -103,7 +103,7 @@ def group_beaches_geographically(data, beach_names_column='Client.ID', verbose=F
     group_3 = ['Oak Street','Ohio','North Ave','North Avenue']
 
     # Near South
-    group_4 = ['12th','31st']
+    group_4 = ['12th','31st','39th']
 
     # Mid South
 
@@ -124,11 +124,6 @@ def group_beaches_geographically(data, beach_names_column='Client.ID', verbose=F
     
     # also want to add single columns, but that is harder.
     df['categorical_beach_grouping'] = df[beach_names_column].map(lambda x: single_grouping(x,all_groups))
-    
-
-    
-
-
 
     return df
 
@@ -144,6 +139,7 @@ def single_grouping(beach_name, groups):
     for beach_group in range(len(groups)):
         if beach_name in groups[beach_group]:
             return 'beach_in_grouping_' + str(beach_group + 1)
+    #print('no category: ' + str(beach_name)) #line used in debugging.
     return 'beach_not_in_any_grouping'
 
 def beach_grouping(beach_name, grouping):
