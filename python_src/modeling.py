@@ -2,6 +2,8 @@ import numpy as np
 import read_data as rd
 import visualizations as viz
 import matplotlib.pyplot as plt
+import argparse
+import pandas as pd
 
 # sklearn imports, may need to add more to use different models
 import sklearn
@@ -309,7 +311,19 @@ def prepare_data(df=None):
 
 
 if __name__ == '__main__':
-    df = rd.read_data(read_weather_station=False, read_water_sensor=False)
+    parser = argparse.ArgumentParser(description='Process beach data.')
+    parser.add_argument('-i', '--input', type=str,
+                        metavar='input_filename', help='input CSV filename')
+    parser.add_argument('-v', '--verbose', action='count', default=0)
+
+    args = parser.parse_args()
+
+    if args.input:
+        df = pd.read_csv(args.input, parse_dates='Full_date')
+        df['Full_date'] = rd.date_lookup(df['Full_date'])
+    else:
+        df = rd.read_data(read_weather_station=False, read_water_sensor=False)
+
     epa_model_df = df[['Drek_Prediction', 'Escherichia.coli']].dropna()
     predictors, meta_info = prepare_data(df)
     timestamps = meta_info['Full_date']
@@ -324,12 +338,12 @@ if __name__ == '__main__':
         'max_depth':6,
         # Misc parameters
         'n_jobs':-1,
-        'verbose':False
+        'verbose':args.verbose
     }
     clfs, roc_ax, pr_ax = model(timestamps, predictors, classes,
                                 classifier=sklearn.ensemble.RandomForestClassifier,
                                 hyperparams=hyperparams,
-                                verbose=True)
+                                verbose=args.verbose)
 
     # Add the EPA model to the ROC and PR curves, prettify
     c = roc_ax.get_lines()
