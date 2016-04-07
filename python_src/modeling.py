@@ -336,6 +336,7 @@ if __name__ == '__main__':
         # Parameters that effect computation
         'n_estimators':2000, # even with 2000, still moderate variance between runs
         'max_depth':6,
+        'class_weight': {0: 1.0, 1: 1/.15},
         # Misc parameters
         'n_jobs':-1,
         'verbose':args.verbose
