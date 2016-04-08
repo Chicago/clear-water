@@ -15,6 +15,7 @@ def model(timestamps, predictors, classes,
           classifier=None,
           prediction_attribute='predict_proba',
           hyperparams=None,
+          roc_bounds=None,
           verbose=False):
     '''
     Creates several models using leave-one-year-out cross validation.
@@ -35,6 +36,7 @@ def model(timestamps, predictors, classes,
     prediction_attribute:
                  Name of the attribute of the classifier that returns
                  the probability of belonging to the positive class.
+    roc_bounds : [min, max] values to use when computing partial AUC.
     verbose    : True if the clf.feature_importances_ should be printed
 
     Returns
@@ -61,11 +63,12 @@ def model(timestamps, predictors, classes,
     pr_ax = plt.subplots(1)[1]
 
     clfs = dict()
+    auc_rocs = []
 
     is_not_2006 = (timestamps != 2006)
     is_not_2007 = (timestamps != 2007)
     for yr in range(start, stop+1):
-        is_not_yr = (timestamps < yr) | (timestamps > yr)
+        is_not_yr = timestamps != yr
         train_indices = np.array(is_not_yr & is_not_2007 & is_not_2006)
 
         clf = classifier(**hyperparams)
@@ -75,13 +78,18 @@ def model(timestamps, predictors, classes,
 
         predictions = getattr(clf, prediction_attribute)(predictors.ix[~train_indices,:])[:,1]
 
-        auc_roc = viz.roc(predictions, classes[~train_indices],
-                          block_show=False, ax=roc_ax)[3]
+        auc_roc = viz.roc(predictions,
+                          classes[~train_indices],
+                          block_show=False,
+                          ax=roc_ax,
+                          bounds=roc_bounds)[3]
         auc_pr = viz.precision_recall(predictions, classes[~train_indices],
                                       block_show=False, ax=pr_ax)[3]
 
         auc_roc = float(auc_roc)
+        auc_rocs.append(auc_roc)
         auc_pr = float(auc_pr)
+
         roc_ax.get_lines()[-2].set_label(str(yr) + ' - AUC: {0:.4f}'.format(auc_roc))
         pr_ax.get_lines()[-2].set_label(str(yr) + ' - AUC: {0:.4f}'.format(auc_pr))
 
@@ -95,7 +103,7 @@ def model(timestamps, predictors, classes,
             for c, fi in zip(predictors.columns[idxs], feat_imps[idxs]):
                 print('  {0:<{1}} : {2:.5f}'.format(c, max_width+1, fi))
 
-    return clfs, roc_ax, pr_ax
+    return clfs, auc_rocs, roc_ax, pr_ax
 
 
 def prepare_data(df=None):
@@ -311,6 +319,7 @@ def prepare_data(df=None):
 
 
 if __name__ == '__main__':
+    # Command Line Argument parsing
     parser = argparse.ArgumentParser(description='Process beach data.')
     parser.add_argument('-i', '--input', type=str,
                         metavar='input_filename', help='input CSV filename')
@@ -318,13 +327,17 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    # Load the data
     if args.input:
         df = pd.read_csv(args.input, parse_dates='Full_date')
         df['Full_date'] = rd.date_lookup(df['Full_date'])
     else:
         df = rd.read_data(read_weather_station=False, read_water_sensor=False)
 
+    # Extract the EPA (technically USGS) model performance from the data
     epa_model_df = df[['Drek_Prediction', 'Escherichia.coli']].dropna()
+
+    # Prepare the data
     predictors, meta_info = prepare_data(df)
     timestamps = meta_info['Full_date']
     classes = meta_info['Escherichia.coli'] > 235
@@ -332,6 +345,8 @@ if __name__ == '__main__':
     print('Using the following columns as predictors:')
     for c in predictors.columns:
         print('\t' + str(c))
+
+    # Set up model parameters
     hyperparams = {
         # Parameters that effect computation
         'n_estimators':2000, # even with 2000, still moderate variance between runs
@@ -339,21 +354,28 @@ if __name__ == '__main__':
         'class_weight': {0: 1.0, 1: 1/.15},
         # Misc parameters
         'n_jobs':-1,
-        'verbose':args.verbose
+        'verbose':False
     }
-    clfs, roc_ax, pr_ax = model(timestamps, predictors, classes,
-                                classifier=sklearn.ensemble.RandomForestClassifier,
-                                hyperparams=hyperparams,
-                                verbose=args.verbose)
+    partial_auc_bounds = [0.005, 0.05]
+    clfs, auc_rocs, roc_ax, pr_ax = model(timestamps, predictors, classes,
+                                          classifier=sklearn.ensemble.RandomForestClassifier,
+                                          hyperparams=hyperparams,
+                                          roc_bounds=partial_auc_bounds,
+                                          verbose=args.verbose)
 
-    # Add the EPA model to the ROC and PR curves, prettify
+    # Plotting
+    ## ROC
+    ### Make ROC yearly lines more transparent
     c = roc_ax.get_lines()
     for line in c:
         line.set_alpha(.7)
 
+    ### Plot ROC curve for EPA model
     fpr, tpr, threshes, auc_roc = viz.roc(epa_model_df['Drek_Prediction'],
                                           epa_model_df['Escherichia.coli'] > 235,
-                                          ax=roc_ax, block_show=False)
+                                          ax=roc_ax, block_show=False,
+                                          bounds=partial_auc_bounds)
+    ### Format the EPA line
     auc_roc = float(auc_roc)
     epa_line = roc_ax.get_lines()[-2]
     epa_line.set_color([0,0,0])
@@ -362,24 +384,29 @@ if __name__ == '__main__':
     epa_line.set_alpha(.85)
     epa_line.set_label('EPA Model - AUC: {0:.4f}'.format(auc_roc))
 
+    ### Plot an X where the current model is performing
     i = np.where(threshes < 235.0)[0][0]
-
     roc_ax.plot(fpr[i], tpr[i], 'xk', label='EPA model at 235',
                 markersize=10.0, markeredgewidth=2.0)
 
+    ### Prettify the axis
     roc_ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-    # roc_ax.set_xlim([0, .1])
-    # roc_ax.set_ylim([0, .5])
     roc_ax.set_aspect('auto')  # we are going to be zooming around, set it to auto
     roc_ax.grid(True, which='major')
+    roc_ax.set_title('ROC - mean pAUC: {0:.4f}'.format(sum(auc_rocs)/float(len(auc_rocs))))
+    roc_ax.set_ylim([0, .5])
 
+    ## Precision-Recall curve
+    ### Make PR yearly lines more transparent
     c = pr_ax.get_children()
     for line in c:
         line.set_alpha(.7)
 
+    ### Plot PR curve for EPA model
     tpr, ppv, threshes, auc_pr = viz.precision_recall(epa_model_df['Drek_Prediction'],
                                                       epa_model_df['Escherichia.coli'] > 235,
                                                       ax=pr_ax, block_show=False)
+    ### Format the EPA line
     auc_pr = float(auc_pr)
     epa_line = pr_ax.get_lines()[-2]
     epa_line.set_color([0,0,0])
@@ -388,13 +415,15 @@ if __name__ == '__main__':
     epa_line.set_alpha(.85)
     epa_line.set_label('EPA Model - AUC: {0:.4f}'.format(auc_pr))
 
+    ### Plot an X where the current model is performing
     i = np.where(threshes < 235.0)[0][0]
-
     pr_ax.plot(tpr[i], ppv[i], 'xk', label='EPA model at 235',
                markersize=10.0, markeredgewidth=2.0)
 
+    ### Prettify the axis
     pr_ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     pr_ax.grid(True, which='major')
 
+    ## Update plots
     plt.draw()
     plt.show(block=True)
