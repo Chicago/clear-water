@@ -8,7 +8,7 @@ import pandas as pd
 TO_BLOCK = True
 
 
-def roc(scores, labels, block_show=TO_BLOCK, ax=None):
+def roc(scores, labels, block_show=TO_BLOCK, ax=None, bounds=None):
     '''
     Plots the Receiver Operator Characteristic (ROC) curve of the results
     from a binary classification system.
@@ -32,6 +32,9 @@ def roc(scores, labels, block_show=TO_BLOCK, ax=None):
     tpr      : Mx1 array of true positive rates
     threshes : Mx1 array of the thresholds on the scores variable
                used to create the corresponding fpr and tpr values.
+    bounds   : [min, max] bounds of the ROC curve, used for setting
+               axis limits as well as computing the AUC. If None, the
+               bounds [0, 1] are used.
 
     Example
     -------
@@ -64,11 +67,18 @@ def roc(scores, labels, block_show=TO_BLOCK, ax=None):
     ax.set_xlabel('False Positive Rate')
     ax.set_ylabel('True Positive Rate')
     ax.set_title('ROC curve')
-    ax.set_aspect('equal')
+    if bounds:
+        ax.set_xlim(bounds)
+        flt = (fpr >= bounds[0]) & (fpr <= bounds[1])
+        ax.set_ylim([0, min(1, max(tpr[flt]) * 1.1)])
+        auc = np.trapz(tpr[flt], x=fpr[flt])
+    else:
+        ax.set_aspect('equal')
+        auc = np.trapz(tpr, x=fpr)
 
+    plt.draw()
     plt.show(block=block_show)
 
-    auc = np.trapz(tpr, x=fpr)
 
     return fpr, tpr, scores[threshold_idxs], auc
 
