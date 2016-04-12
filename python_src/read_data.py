@@ -1,5 +1,6 @@
 from __future__ import print_function
 import pandas as pd
+import numpy as np
 import logging
 import argparse
 import six
@@ -298,7 +299,7 @@ def add_columns_each_beach(df, beach_col_name='Beach', timestamp_col_name='Times
                  '7_day_prior_'+ecoli_col_name]
     temp = dfc[col_list].copy()
     dfc['7_day_moving_avg'] = temp.mean(axis=1)
-    dfc['previous_reading'] =  pd.Series(map((  lambda x,y: y if isnan(x) else x  ), dfc['1_day_prior_'+ecoli_col_name], dfc['7_day_moving_avg'])  )
+    dfc['previous_reading'] =  pd.Series(map((  lambda x,y: y if np.isnan(x) else x  ), dfc['1_day_prior_'+ecoli_col_name], dfc['7_day_moving_avg'])  )
     beaches = list(pd.Series(dfc[beach_col_name].value_counts().index))
     for j in range(len(beaches)):
         beach2 = dfc.ix[dfc[beach_col_name]==beaches[j],[timestamp_col_name,beach_col_name,'previous_reading']].reset_index()
