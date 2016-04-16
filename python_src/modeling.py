@@ -185,7 +185,7 @@ def prepare_data(df=None):
         'pressure':[0],
         'cloudCover':[4],
         'humidity':[4],
-        'precipIntensity':[-14,-13,-12,-11,-10,0,4]
+        'precipIntensity':[0,4]
     }
     for var in deterministic_hourly_columns:
         for hr in deterministic_hourly_columns[var]:
@@ -205,9 +205,28 @@ def prepare_data(df=None):
         # 'humidity': range(1,3),
         # 'windSpeed': range(1,8),
         # 'cloudCover': range(1,8),
+        # 'precipIntensity': [1],
         'Escherichia.coli': range(1,8)
     }
     historical_columns_list = list(historical_columns.keys())
+
+    # Specific geo group average columns will have their means calculated
+    # for each of the 6 geographic groups, and these values will be used as
+    # predictors everywhere.
+    specific_geo_group_average_columns = [
+        '1_day_prior_Escherichia.coli',
+        # 'trailing_average_daily_Escherichia.coli',
+        # '1_day_prior_precipIntensity'
+    ]
+
+    # Binary geo group average columns will have their means calculated
+    # for the beaches North and South of Navy Pier separately, and these
+    # values will be used as predictors everywhere.
+    binary_geo_group_average_columns = [
+        '1_day_prior_Escherichia.coli',
+        # 'trailing_average_daily_Escherichia.coli',
+        # '1_day_prior_precipIntensity'
+    ]
 
 
     ######################################################
@@ -257,6 +276,29 @@ def prepare_data(df=None):
 
 
     ######################################################
+    #### Group Average Variables
+    ######################################################
+
+    for var in specific_geo_group_average_columns:
+        df2 = df[['Full_date', 'categorical_beach_grouping', var]]
+        grp_df = df2.groupby(['Full_date', 'categorical_beach_grouping']).mean().unstack()
+
+        # flatten the hierarchical column index
+        grp_df.columns = ['_'.join(col) for col in grp_df.columns.values]
+
+        df = df.merge(grp_df, how='left', left_on='Full_date', right_index=True)
+
+    for var in binary_geo_group_average_columns:
+        df2 = df[['Full_date', 'flag_geographically_a_north_beach', var]]
+        grp_df = df2.groupby(['Full_date', 'flag_geographically_a_north_beach']).mean().unstack()
+
+        # flatten the hierarchical column index
+        grp_df.columns = ['_'.join([str(x) for x in col]) for col in grp_df.columns.values]
+
+        df = df.merge(grp_df, how='left', left_on='Full_date', right_index=True)
+
+
+    ######################################################
     #### Process non-numeric columns
     ######################################################
 
@@ -276,6 +318,11 @@ def prepare_data(df=None):
         return data
 
     df = nonnumericCols(df)
+
+
+    ######################################################
+    #### More NaN filling
+    ######################################################
 
     # As a last NaN filling measure, we fill the NaNs of all columns
     # that are NOT the E. coli column with the mean value of the column,
@@ -346,13 +393,14 @@ if __name__ == '__main__':
     for c in predictors.columns:
         print('\t' + str(c))
 
-    # Set up model parameters
+    # Set up model parameters, these will be passed to the
+    # classifier as keyword arguments
     hyperparams = {
-        # Parameters that effect computation
-        'n_estimators':2000, # even with 2000, still moderate variance between runs
-        'max_depth':6,
-        'class_weight': {0: 1.0, 1: 1/.15},
-        # Misc parameters
+        ## Parameters that effect computation
+        'n_estimators':500,
+        'max_depth':5,
+        'class_weight':{0: 1.0, 1: 1/.15},
+        ## Misc parameters
         'n_jobs':-1,
         'verbose':False
     }
