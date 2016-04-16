@@ -163,12 +163,7 @@ def prepare_data(df=None):
         # 'Days.Since.Last.Holiday',
 
         'flag_geographically_a_north_beach',
-        # 'flag_geographic_group_1',
-        'flag_geographic_group_2',
-        # 'flag_geographic_group_3',
-        # 'flag_geographic_group_4',
-        'flag_geographic_group_5',
-        # 'flag_geographic_group_6',
+        'categorical_beach_grouping'
     ]
 
     # Deterministic columns are known ahead of time, their actual values are used.
