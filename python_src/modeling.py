@@ -59,8 +59,11 @@ def model(timestamps, predictors, classes,
 
     stop = min(stop, 2014) # do not include 2015
 
-    roc_ax = plt.subplots(1)[1]
-    pr_ax = plt.subplots(1)[1]
+    roc_fig, roc_ax = plt.subplots(1, figsize=[12, 9])
+    pr_fig, pr_ax = plt.subplots(1, figsize=[12, 9])
+
+    roc_fig.subplots_adjust(left=0.07, right=0.67)
+    pr_fig.subplots_adjust(left=0.07, right=0.67)
 
     clfs = dict()
     auc_rocs = []
@@ -83,15 +86,17 @@ def model(timestamps, predictors, classes,
                           block_show=False,
                           ax=roc_ax,
                           bounds=roc_bounds)[3]
-        auc_pr = viz.precision_recall(predictions, classes[~train_indices],
-                                      block_show=False, ax=pr_ax)[3]
+        auc_pr = viz.precision_recall(predictions,
+                                      classes[~train_indices],
+                                      block_show=False,
+                                      ax=pr_ax)[3]
 
         auc_roc = float(auc_roc)
         auc_rocs.append(auc_roc)
         auc_pr = float(auc_pr)
 
-        roc_ax.get_lines()[-2].set_label(str(yr) + ' - AUC: {0:.4f}'.format(auc_roc))
-        pr_ax.get_lines()[-2].set_label(str(yr) + ' - AUC: {0:.4f}'.format(auc_pr))
+        roc_ax.get_lines()[-2].set_label(str(yr) + ' - AUC: {0:.5f}'.format(auc_roc))
+        pr_ax.get_lines()[-2].set_label(str(yr) + ' - AUC: {0:.5f}'.format(auc_pr))
 
         if verbose:
             print('Year ' + str(yr))
@@ -369,20 +374,17 @@ if __name__ == '__main__':
     fpr, tpr, threshes, auc_roc = viz.roc(epa_model_df['Drek_Prediction'],
                                           epa_model_df['Escherichia.coli'] > 235,
                                           ax=roc_ax, block_show=False,
-                                          bounds=partial_auc_bounds)
+                                          bounds=partial_auc_bounds,
+                                          mark_threshes=[235.0])
     ### Format the EPA line
     auc_roc = float(auc_roc)
-    epa_line = roc_ax.get_lines()[-2]
+    epa_line = roc_ax.get_lines()[-3]
     epa_line.set_color([0,0,0])
     epa_line.set_ls('--')
     epa_line.set_linewidth(3)
     epa_line.set_alpha(.85)
     epa_line.set_label('EPA Model - AUC: {0:.4f}'.format(auc_roc))
-
-    ### Plot an X where the current model is performing
-    i = np.where(threshes < 235.0)[0][0]
-    roc_ax.plot(fpr[i], tpr[i], 'xk', label='EPA model at 235',
-                markersize=10.0, markeredgewidth=2.0)
+    roc_ax.get_lines()[-2].set_label('EPA Model @ 235.0')
 
     ### Prettify the axis
     roc_ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)

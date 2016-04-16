@@ -8,7 +8,7 @@ import pandas as pd
 TO_BLOCK = True
 
 
-def roc(scores, labels, block_show=TO_BLOCK, ax=None, bounds=None):
+def roc(scores, labels, block_show=TO_BLOCK, ax=None, bounds=None, mark_threshes=None):
     '''
     Plots the Receiver Operator Characteristic (ROC) curve of the results
     from a binary classification system.
@@ -25,6 +25,10 @@ def roc(scores, labels, block_show=TO_BLOCK, ax=None, bounds=None):
                  will block further computation until the window is closed.
     ax         : Will be plotted to the specified axis, or a new axis
                  if ax is None.
+    bounds     : The x limits (FPR limits) of the ROC curve are restricted
+                 to these specified bounds. If None, then [0, 1] are used.
+    mark_threshes :
+                 A list of thresholds to mark with an X.
 
     Returns
     -------
@@ -62,6 +66,9 @@ def roc(scores, labels, block_show=TO_BLOCK, ax=None, bounds=None):
         ax = plt.subplots(1)[1]
 
     ax.plot(fpr, tpr)
+    if mark_threshes:
+        idxs = [np.where(scores[threshold_idxs] < t)[0][0] for t in mark_threshes]
+        ax.plot(fpr[idxs], tpr[idxs], 'xk', markersize=10.0, markeredgewidth=2.0)
     ax.hold(True)
     ax.plot([0, 1], [0, 1], 'r--')
     ax.set_xlabel('False Positive Rate')
