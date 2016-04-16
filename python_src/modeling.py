@@ -393,7 +393,8 @@ if __name__ == '__main__':
     roc_ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     roc_ax.set_aspect('auto')  # we are going to be zooming around, set it to auto
     roc_ax.grid(True, which='major')
-    roc_ax.set_title('ROC - mean pAUC: {0:.4f}'.format(sum(auc_rocs)/float(len(auc_rocs))))
+    roc_ax.set_title('ROC - mean pAUC: {0:.7f} $\pm$ {1:.7f}'.format(
+        np.mean(auc_rocs), np.std(auc_rocs)))
     roc_ax.set_ylim([0, .5])
 
     ## Precision-Recall curve
