@@ -68,26 +68,25 @@ def model(timestamps, predictors, classes,
     clfs = dict()
     auc_rocs = []
 
-    is_not_2006 = (timestamps != 2006)
-    is_not_2007 = (timestamps != 2007)
     for yr in range(start, stop+1):
         is_not_yr = timestamps != yr
-        train_indices = np.array(is_not_yr & is_not_2007 & is_not_2006)
+        train_indices = np.array(is_not_yr)
+        test_indices = np.array(~is_not_yr)
 
         clf = classifier(**hyperparams)
         clf.fit(predictors.ix[train_indices,:], classes[train_indices])
 
         clfs[yr] = clf
 
-        predictions = getattr(clf, prediction_attribute)(predictors.ix[~train_indices,:])[:,1]
+        predictions = getattr(clf, prediction_attribute)(predictors.ix[test_indices,:])[:,1]
 
         auc_roc = viz.roc(predictions,
-                          classes[~train_indices],
+                          classes[test_indices],
                           block_show=False,
                           ax=roc_ax,
                           bounds=roc_bounds)[3]
         auc_pr = viz.precision_recall(predictions,
-                                      classes[~train_indices],
+                                      classes[test_indices],
                                       block_show=False,
                                       ax=pr_ax)[3]
 
@@ -431,7 +430,7 @@ if __name__ == '__main__':
     epa_line.set_ls('--')
     epa_line.set_linewidth(3)
     epa_line.set_alpha(.85)
-    epa_line.set_label('EPA Model - AUC: {0:.4f}'.format(auc_roc))
+    epa_line.set_label('EPA Model - AUC: {0:.5f}'.format(auc_roc))
     roc_ax.get_lines()[-2].set_label('EPA Model @ 235.0')
 
     ### Prettify the axis
@@ -459,7 +458,7 @@ if __name__ == '__main__':
     epa_line.set_ls('--')
     epa_line.set_linewidth(3)
     epa_line.set_alpha(.85)
-    epa_line.set_label('EPA Model - AUC: {0:.4f}'.format(auc_pr))
+    epa_line.set_label('EPA Model - AUC: {0:.5f}'.format(auc_pr))
 
     ### Plot an X where the current model is performing
     i = np.where(threshes < 235.0)[0][0]
