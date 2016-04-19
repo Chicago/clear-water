@@ -3,12 +3,13 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 import pandas as pd
+import sklearn.metrics
 
 # Should we block the matplotlib plots?
 TO_BLOCK = True
 
 
-def roc(scores, labels, block_show=TO_BLOCK, ax=None, bounds=None):
+def roc(scores, labels, block_show=TO_BLOCK, ax=None, bounds=None, mark_threshes=None):
     '''
     Plots the Receiver Operator Characteristic (ROC) curve of the results
     from a binary classification system.
@@ -25,6 +26,10 @@ def roc(scores, labels, block_show=TO_BLOCK, ax=None, bounds=None):
                  will block further computation until the window is closed.
     ax         : Will be plotted to the specified axis, or a new axis
                  if ax is None.
+    bounds     : The x limits (FPR limits) of the ROC curve are restricted
+                 to these specified bounds. If None, then [0, 1] are used.
+    mark_threshes :
+                 A list of thresholds to mark with an X.
 
     Returns
     -------
@@ -49,24 +54,18 @@ def roc(scores, labels, block_show=TO_BLOCK, ax=None, bounds=None):
     >>> # using today's data, this is not a viable model!
     '''
 
-    scores, labels, threshold_idxs = _massage_scores_labels(scores, labels)
-
-    # accumulate the true positives with decreasing threshold
-    tps = labels.cumsum()[threshold_idxs]
-    fps = 1 + threshold_idxs - tps
-
-    tpr = tps / float(tps[-1])
-    fpr = fps / float(fps[-1])
-
-    if ax is None:
-        ax = plt.subplots(1)[1]
+    fpr, tpr, threshes = sklearn.metrics.roc_curve(labels, scores)
 
     ax.plot(fpr, tpr)
+    if mark_threshes:
+        idxs = [np.where(threshes < t)[0][0] for t in mark_threshes]
+        ax.plot(fpr[idxs], tpr[idxs], 'xk', markersize=10.0, markeredgewidth=2.0)
     ax.hold(True)
     ax.plot([0, 1], [0, 1], 'r--')
     ax.set_xlabel('False Positive Rate')
     ax.set_ylabel('True Positive Rate')
     ax.set_title('ROC curve')
+
     if bounds:
         ax.set_xlim(bounds)
         flt = (fpr >= bounds[0]) & (fpr <= bounds[1])
@@ -80,7 +79,7 @@ def roc(scores, labels, block_show=TO_BLOCK, ax=None, bounds=None):
     plt.show(block=block_show)
 
 
-    return fpr, tpr, scores[threshold_idxs], auc
+    return fpr, tpr, threshes, auc
 
 
 def precision_recall(scores, labels, block_show=TO_BLOCK, ax=None):
@@ -121,14 +120,7 @@ def precision_recall(scores, labels, block_show=TO_BLOCK, ax=None):
     >>> # using today's data, this is not a viable model!
     '''
 
-    scores, labels, threshold_idxs = _massage_scores_labels(scores, labels)
-
-    ppv = np.zeros(threshold_idxs.size)
-    tpr = np.zeros(threshold_idxs.size)
-    for i, thresh in enumerate(scores[threshold_idxs]):
-        predict_pos = (scores >= thresh)
-        ppv[i] = (predict_pos & labels).sum() / float(predict_pos.sum())
-        tpr[i] = (predict_pos & labels).sum() / float(labels.sum())
+    ppv, tpr, threshes = sklearn.metrics.precision_recall_curve(labels, scores)
 
     if ax is None:
         ax = plt.subplots(1)[1]
@@ -145,9 +137,9 @@ def precision_recall(scores, labels, block_show=TO_BLOCK, ax=None):
 
     plt.show(block=block_show)
 
-    auc = np.trapz(ppv, x=tpr)
+    auc = np.trapz(ppv, x=tpr[::-1])
 
-    return tpr, ppv, scores[threshold_idxs], auc
+    return tpr, ppv, threshes, auc
 
 
 def beach_hist(col='Escherichia.coli', beaches=None,
@@ -430,48 +422,3 @@ def plot_beach(columns, df=None, beaches=None, separate_beaches=False, **kwds):
     plt.show(block=TO_BLOCK)
 
     return fig, ax
-
-
-def _massage_scores_labels(scores, labels):
-    '''
-    Adjusts the scores and labels, and gets the indexes of the distinct
-    thresholds in the scores array.
-    '''
-    scores = np.array(scores)
-    labels = np.array(labels)
-
-    sort_inds = np.argsort(scores)[::-1]
-    scores = scores[sort_inds]
-    labels = labels[sort_inds]
-
-    labels = labels.astype('bool')
-
-    # Adapted from sklearn.metrics._binary_clf_curve:
-    # scores typically has many tied values. Here we extract
-    # the indices associated with the distinct values. We also
-    # concatenate a value for the end of the curve.
-    # We need to use isclose to avoid spurious repeated thresholds
-    # stemming from floating point roundoff errors.
-    distinct_value_indices = np.where(np.logical_not(np.abs(
-        np.diff(scores)) < 0.00001))[0]
-    threshold_idxs = np.r_[distinct_value_indices, labels.size - 1]
-
-    return scores, labels, threshold_idxs
-
-if __name__ == '__main__':
-
-    TO_BLOCK = False
-
-    df = read_data.read_data()
-
-    scores = df[['Reading.1', 'Escherichia.coli']].dropna()['Reading.1']
-    labels = df[['Reading.1', 'Escherichia.coli']].dropna()['Escherichia.coli']
-    labels = labels >= 235.0
-    roc(scores, labels)
-    precision_recall(scores, labels)
-
-    beach_hist(transform=lambda x: np.log(x + 1), df=df, subplots=[7, 4])
-
-    movie(df=df)
-
-    plt.show()

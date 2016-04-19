@@ -59,39 +59,43 @@ def model(timestamps, predictors, classes,
 
     stop = min(stop, 2014) # do not include 2015
 
-    roc_ax = plt.subplots(1)[1]
-    pr_ax = plt.subplots(1)[1]
+    roc_fig, roc_ax = plt.subplots(1, figsize=[12, 9])
+    pr_fig, pr_ax = plt.subplots(1, figsize=[12, 9])
+
+    roc_fig.subplots_adjust(left=0.07, right=0.67)
+    pr_fig.subplots_adjust(left=0.07, right=0.67)
 
     clfs = dict()
     auc_rocs = []
 
-    is_not_2006 = (timestamps != 2006)
-    is_not_2007 = (timestamps != 2007)
     for yr in range(start, stop+1):
         is_not_yr = timestamps != yr
-        train_indices = np.array(is_not_yr & is_not_2007 & is_not_2006)
+        train_indices = np.array(is_not_yr)
+        test_indices = np.array(~is_not_yr)
 
         clf = classifier(**hyperparams)
         clf.fit(predictors.ix[train_indices,:], classes[train_indices])
 
         clfs[yr] = clf
 
-        predictions = getattr(clf, prediction_attribute)(predictors.ix[~train_indices,:])[:,1]
+        predictions = getattr(clf, prediction_attribute)(predictors.ix[test_indices,:])[:,1]
 
         auc_roc = viz.roc(predictions,
-                          classes[~train_indices],
+                          classes[test_indices],
                           block_show=False,
                           ax=roc_ax,
                           bounds=roc_bounds)[3]
-        auc_pr = viz.precision_recall(predictions, classes[~train_indices],
-                                      block_show=False, ax=pr_ax)[3]
+        auc_pr = viz.precision_recall(predictions,
+                                      classes[test_indices],
+                                      block_show=False,
+                                      ax=pr_ax)[3]
 
         auc_roc = float(auc_roc)
         auc_rocs.append(auc_roc)
         auc_pr = float(auc_pr)
 
-        roc_ax.get_lines()[-2].set_label(str(yr) + ' - AUC: {0:.4f}'.format(auc_roc))
-        pr_ax.get_lines()[-2].set_label(str(yr) + ' - AUC: {0:.4f}'.format(auc_pr))
+        roc_ax.get_lines()[-2].set_label(str(yr) + ' - AUC: {0:.5f}'.format(auc_roc))
+        pr_ax.get_lines()[-2].set_label(str(yr) + ' - AUC: {0:.5f}'.format(auc_pr))
 
         if verbose:
             print('Year ' + str(yr))
@@ -163,12 +167,7 @@ def prepare_data(df=None):
         # 'Days.Since.Last.Holiday',
 
         'flag_geographically_a_north_beach',
-        # 'flag_geographic_group_1',
-        'flag_geographic_group_2',
-        # 'flag_geographic_group_3',
-        # 'flag_geographic_group_4',
-        'flag_geographic_group_5',
-        # 'flag_geographic_group_6',
+        'categorical_beach_grouping'
     ]
 
     # Deterministic columns are known ahead of time, their actual values are used.
@@ -185,7 +184,7 @@ def prepare_data(df=None):
         'pressure':[0],
         'cloudCover':[4],
         'humidity':[4],
-        'precipIntensity':[-14,-13,-12,-11,-10,0,4]
+        'precipIntensity':[0,4]
     }
     for var in deterministic_hourly_columns:
         for hr in deterministic_hourly_columns[var]:
@@ -205,9 +204,28 @@ def prepare_data(df=None):
         # 'humidity': range(1,3),
         # 'windSpeed': range(1,8),
         # 'cloudCover': range(1,8),
+        # 'precipIntensity': [1],
         'Escherichia.coli': range(1,8)
     }
     historical_columns_list = list(historical_columns.keys())
+
+    # Specific geo group average columns will have their means calculated
+    # for each of the 6 geographic groups, and these values will be used as
+    # predictors everywhere.
+    specific_geo_group_average_columns = [
+        '1_day_prior_Escherichia.coli',
+        # 'trailing_average_daily_Escherichia.coli',
+        # '1_day_prior_precipIntensity'
+    ]
+
+    # Binary geo group average columns will have their means calculated
+    # for the beaches North and South of Navy Pier separately, and these
+    # values will be used as predictors everywhere.
+    binary_geo_group_average_columns = [
+        '1_day_prior_Escherichia.coli',
+        # 'trailing_average_daily_Escherichia.coli',
+        # '1_day_prior_precipIntensity'
+    ]
 
 
     ######################################################
@@ -257,6 +275,29 @@ def prepare_data(df=None):
 
 
     ######################################################
+    #### Group Average Variables
+    ######################################################
+
+    for var in specific_geo_group_average_columns:
+        df2 = df[['Full_date', 'categorical_beach_grouping', var]]
+        grp_df = df2.groupby(['Full_date', 'categorical_beach_grouping']).mean().unstack()
+
+        # flatten the hierarchical column index
+        grp_df.columns = ['_'.join(col) for col in grp_df.columns.values]
+
+        df = df.merge(grp_df, how='left', left_on='Full_date', right_index=True)
+
+    for var in binary_geo_group_average_columns:
+        df2 = df[['Full_date', 'flag_geographically_a_north_beach', var]]
+        grp_df = df2.groupby(['Full_date', 'flag_geographically_a_north_beach']).mean().unstack()
+
+        # flatten the hierarchical column index
+        grp_df.columns = ['_'.join([str(x) for x in col]) for col in grp_df.columns.values]
+
+        df = df.merge(grp_df, how='left', left_on='Full_date', right_index=True)
+
+
+    ######################################################
     #### Process non-numeric columns
     ######################################################
 
@@ -276,6 +317,11 @@ def prepare_data(df=None):
         return data
 
     df = nonnumericCols(df)
+
+
+    ######################################################
+    #### More NaN filling
+    ######################################################
 
     # As a last NaN filling measure, we fill the NaNs of all columns
     # that are NOT the E. coli column with the mean value of the column,
@@ -346,13 +392,14 @@ if __name__ == '__main__':
     for c in predictors.columns:
         print('\t' + str(c))
 
-    # Set up model parameters
+    # Set up model parameters, these will be passed to the
+    # classifier as keyword arguments
     hyperparams = {
-        # Parameters that effect computation
-        'n_estimators':2000, # even with 2000, still moderate variance between runs
-        'max_depth':6,
-        'class_weight': {0: 1.0, 1: 1/.15},
-        # Misc parameters
+        ## Parameters that effect computation
+        'n_estimators':500,
+        'max_depth':5,
+        'class_weight':{0: 1.0, 1: 1/.15},
+        ## Misc parameters
         'n_jobs':-1,
         'verbose':False
     }
@@ -374,26 +421,24 @@ if __name__ == '__main__':
     fpr, tpr, threshes, auc_roc = viz.roc(epa_model_df['Drek_Prediction'],
                                           epa_model_df['Escherichia.coli'] > 235,
                                           ax=roc_ax, block_show=False,
-                                          bounds=partial_auc_bounds)
+                                          bounds=partial_auc_bounds,
+                                          mark_threshes=[235.0])
     ### Format the EPA line
     auc_roc = float(auc_roc)
-    epa_line = roc_ax.get_lines()[-2]
+    epa_line = roc_ax.get_lines()[-3]
     epa_line.set_color([0,0,0])
     epa_line.set_ls('--')
     epa_line.set_linewidth(3)
     epa_line.set_alpha(.85)
-    epa_line.set_label('EPA Model - AUC: {0:.4f}'.format(auc_roc))
-
-    ### Plot an X where the current model is performing
-    i = np.where(threshes < 235.0)[0][0]
-    roc_ax.plot(fpr[i], tpr[i], 'xk', label='EPA model at 235',
-                markersize=10.0, markeredgewidth=2.0)
+    epa_line.set_label('EPA Model - AUC: {0:.5f}'.format(auc_roc))
+    roc_ax.get_lines()[-2].set_label('EPA Model @ 235.0')
 
     ### Prettify the axis
     roc_ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
     roc_ax.set_aspect('auto')  # we are going to be zooming around, set it to auto
     roc_ax.grid(True, which='major')
-    roc_ax.set_title('ROC - mean pAUC: {0:.4f}'.format(sum(auc_rocs)/float(len(auc_rocs))))
+    roc_ax.set_title('ROC - mean pAUC: {0:.7f} $\pm$ {1:.7f}'.format(
+        np.mean(auc_rocs), np.std(auc_rocs)))
     roc_ax.set_ylim([0, .5])
 
     ## Precision-Recall curve
@@ -413,7 +458,7 @@ if __name__ == '__main__':
     epa_line.set_ls('--')
     epa_line.set_linewidth(3)
     epa_line.set_alpha(.85)
-    epa_line.set_label('EPA Model - AUC: {0:.4f}'.format(auc_pr))
+    epa_line.set_label('EPA Model - AUC: {0:.5f}'.format(auc_pr))
 
     ### Plot an X where the current model is performing
     i = np.where(threshes < 235.0)[0][0]
