@@ -137,7 +137,7 @@ def precision_recall(scores, labels, block_show=TO_BLOCK, ax=None):
 
     plt.show(block=block_show)
 
-    auc = np.trapz(ppv, x=tpr)
+    auc = np.trapz(ppv, x=tpr[::-1])
 
     return tpr, ppv, threshes, auc
 
