@@ -1,8 +1,9 @@
 from __future__ import print_function
 import pandas as pd
-import os
 import logging
 import argparse
+import six
+import datetime as dt
 
 '''
 This file reads in data related E. coli levels
@@ -12,31 +13,14 @@ such that the dataframe loaded here will match
 the R dataframe code exactly.
 '''
 
-# TODO: use multi-level index on date/beach ?
-# TODO: standardize on inplace=True or not inplace
-# TODO: how much consistency do we want between python columns
-#       and the R columns?
-# TODO: create better docstrings
-# TODO: repeats on 2015-06-16 ?
-#       and some of 2012?
-#       Just check for these everywhere, why is it happening?
-#       follow-up 2015-06-16 has two samples in Excel, one
-#       labeled as a "PM" sample...
-
-# Added functions:
-    # addColumnPriorData(df, colName , NdaysPrior):
-        # Returns a new dataframe with an additional column of data N days Prior to current.
-    # cleanUpBeaches(data):
-        # Uses cleanbeachnames2.csv file for cleaning names. 
-        # Also checks for duplicate readings at a given beach for a given day and takes the higher reading. 
-    # read_data_simplified():
-        # Simplifies data reading (no more need for split_sheets or date_lookup functions).
-        # Also sorts Reading1 and Reading2 into lowReading and highReading columns.
-        # Does minimal cleaning of data. 
-        # No merging onto Drek or weather data.
 
 def read_data_simplified():
-    cpd_data_path = './data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
+    '''
+    Simple function to read in the data from the excel files.
+
+    Returns a dataframe that has only been minimally cleaned.
+    '''
+    cpd_data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
     df =[]
     dfs =[]
     for yr in range(2002,2015):
@@ -56,20 +40,22 @@ def read_data_simplified():
                     dfx = dfx.dropna(axis=0, how='any', subset=['Escherichia coli','Client ID'])
                     dfx.insert(0, u'Date', sheet_name)
                     dfx.insert(0, u'Year', str(yr))
-                    discard_cols = set(dfx.columns) - set(['Year','Date','Client ID','Reading 1','Reading 2','Escherichia coli'])
+                    discard_cols = set(dfx.columns) - set(['Year','Date','Client ID','Reading 1',
+                                                           'Reading 2','Escherichia coli'])
                     if len(list(discard_cols))>0 :
                         dfx.drop(discard_cols, axis=1, inplace=True)
                     if len(dfx)>0 :
                         dfs.append(dfx)
                 except KeyError:
                     continue
-                    #print('Trouble processing :', sheet_name, yr)
-                    #checked all trouble sheets and verified bad data
+                    # print('Trouble processing :', sheet_name, yr)
+                    # checked all trouble sheets and verified bad data
     df = pd.concat(dfs)
 
     # Do minimal processing of data
-    df=df.rename(columns = {'Client ID':'Beach', 'Escherichia coli':'Ecoli_geomean', 'Reading 1':'Reading1'  ,'Reading 2': 'Reading2'})
-    
+    df=df.rename(columns = {'Client ID':'Beach', 'Escherichia coli':'Ecoli_geomean',
+                            'Reading 1':'Reading1'  ,'Reading 2': 'Reading2'})
+
     df['Reading1'] = df['Reading1'].map(lambda x: str(x).replace('<', '').replace('>', '') )
     df['Reading1'] = pd.to_numeric(df['Reading1'], errors='coerce')
     df['Reading2'] = df['Reading2'].map(lambda x: str(x).replace('<', '').replace('>', '') )
@@ -89,31 +75,115 @@ def read_data_simplified():
     df.insert(0, 'Weekday', df['Timestamp'].dt.dayofweek.apply(lambda x: days[int(x)]) )
     df.insert(0, 'DayofMonth', df['Timestamp'].dt.day)
     df.drop(['Date'], axis=1,inplace=True )
-    
+
     df['Beach'] = df['Beach'].map(lambda x: x.strip())
-    
-    
-    df = df[['Full_date','Timestamp','Beach','Year','Month','DayofMonth','Weekday','lowReading','highReading','Ecoli_geomean']]
+
+    df = df[['Full_date','Timestamp','Beach','Year','Month','DayofMonth',
+             'Weekday','lowReading','highReading','Ecoli_geomean']]
     df = df.reset_index()
     df.drop(['index'], axis=1, inplace=True)
-    
-    df = cleanUpBeaches(df)
-    
+
     return df
 
+def group_beaches_geographically(data, beach_names_column='Client.ID', verbose=False):
+    '''
+    Creates geographical categorizations for the beaches.
 
-def cleanUpBeaches(data):
+    The indicators are any of six groups and a north indicator (1 if North of the pier, 0 if South).
+    '''
     df = data.copy()
-    cpd_data_path = './data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
+
+    # Mid North
+    group_1 = ['Montrose','Montrose Dog','Foster','Osterman','Leone','Thorndale']
+
+    # Rogers Park Area
+    group_2 = ['Juneway','Rogers','Howard','Marion','Leone','Pratt','Columbia','North Shore','Hartigan','Albion',
+            'Marion Mahoney Griffin','Loyola','Margaret T Burroughs','Lane','Jarvis']
+    # Near North Area
+    group_3 = ['Oak Street','Ohio','North Ave','North Avenue']
+
+    # Near South
+    group_4 = ['12th','31st']
+
+    # Mid South
+
+    group_5 = ['57th','63rd','41st','39th','Oakwood','67th','South Shore','Rainbow', 'Humbolt']
+
+    # Calumet is way off to the side.
+    group_6 = ['Calumet']
+
+    north_group = group_1 + group_2 + group_3
+    south_group = group_4 + group_5 + group_6
+    all_groups = [group_1, group_2, group_3, group_4, group_5, group_6]
+
+    for ind in range(len(all_groups)):
+        var_name = 'flag_geographic_group_' + str(ind+1)
+        df[var_name] = df[beach_names_column].map(lambda x: beach_grouping(x,all_groups[ind]))
+
+    df['flag_geographically_a_north_beach'] = df[beach_names_column].map(lambda x: beach_grouping(x,north_group))
+    
+    # also want to add single columns, but that is harder.
+    df['categorical_beach_grouping'] = df[beach_names_column].map(lambda x: single_grouping(x,all_groups))
+
+    return df
+
+def single_grouping(beach_name, groups):
+    '''Takes list of lists of strings, and sees if thed given beach_name matches any of those.  It then reports which of the initial lists it was in.  If none are found, it returns an N+1th category.
+
+    Inputs
+    ------
+    beach_name: string
+    groups: list of length N, of lists of strings
+    '''
+
+    for beach_group in range(len(groups)):
+        if beach_name in groups[beach_group]:
+            return 'beach_in_grouping_' + str(beach_group + 1)
+    #print('no category: ' + str(beach_name)) #line used in debugging.
+    return 'beach_not_in_any_grouping'
+
+def beach_grouping(beach_name, grouping):
+    '''Simple function that returns 1 if the beach name is in the applied list.
+
+    Input
+    -----
+    beach_name: string
+    grouping: list of strings
+    
+    '''
+
+    if beach_name in grouping:
+        return int(1)
+    else:
+        return int(0)
+
+def clean_up_beaches(data, beach_names_column='Beach', verbose=False):
+    '''
+    Merge beach names to prevent duplicate readings.
+
+    Parameters
+    ==========
+    data               : A dataframe containing a column of beach names
+    beach_names_column : The name of the column containing the beach names
+    verbose            : Print information if True
+
+    Output
+    ======
+    df : Dataframe with cleaned beach names.
+    '''
+    df = data.copy()
+    cpd_data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
     cleanbeachnames = pd.read_csv(cpd_data_path + 'cleanbeachnames2.csv')
     cleanbeachnames = dict(zip(cleanbeachnames['Old'], cleanbeachnames['New']))
-    df['Beach'] = df['Beach'].map(lambda x: cleanbeachnames[x])
-    df = df.dropna(axis=0,  subset=['Beach'])
-    df['Beach-Date'] = list(map((lambda x,y: str(x)+" : "+str(y)),df.Beach, df.Full_date))
-    
+    df[beach_names_column] = df[beach_names_column].map(lambda x: cleanbeachnames[x])
+    df = df.dropna(axis=0,  subset=[beach_names_column])
+    df['Beach-Date'] = list(map((lambda x,y: str(x)+" : "+str(y)),
+                                df[beach_names_column], df.Full_date))
+
     dupIndx=list(df.ix[df.duplicated(['Beach-Date'])].index)
-    print('Colapsing {0} records by taking highest reading'.format( len(dupIndx) ))
-    
+    if verbose:
+        print('Colapsing {0} records by taking highest reading'.format( len(dupIndx) ))
+
     # assuming that the name-date conflict is for at most two records
     for idx in range(len(dupIndx)):
         BD = df.ix[dupIndx[idx],['Beach-Date']]
@@ -124,28 +194,130 @@ def cleanUpBeaches(data):
             df.drop(TmpIndx[0],axis=0,inplace=True)
         else:
             df.drop(TmpIndx[1],axis=0,inplace=True)
-            
+
     return df
 
 
+def add_column_prior_data(df, colnames, ns, beach_col_name='Beach', timestamp_col_name='Timestamp'):
+    '''
+    Adds data from previous days to the dataframe.
 
-def addColumnPriorData(df, colName , NdaysPrior):
-    import datetime as dt
-    newColName = str(NdaysPrior) + '_daysPrior_'+ colName
-    temp = df.ix[:,['Beach','Timestamp',colName]].reset_index()
-    temp['TempDate']= df['Timestamp'] + dt.timedelta(days=NdaysPrior)
-    temp[newColName] = temp[colName]
-    temp.drop(['index','Timestamp',colName], axis=1, inplace=True)
-    df = pd.merge(df, temp, left_on=['Beach', 'Timestamp'], right_on=['Beach', 'TempDate'], how='left')
-    df.drop(['TempDate'], 1, inplace=True)
-    
+    Parameters
+    ==========
+    df       : Dataframe of data.
+    colnames : Can be a string, integer, or list-like of strings and integers.
+               If a list-like type is specified, then prior data will be added
+               for each specified column.
+    ns       : Can be an integer, or list-like of integers. This specifies how
+               many days back the prior data should be added from. For example,
+               if ns is 1, then data from the previous day will be added (if the
+               previous day is unavailable, then a nan is inserted).
+               If a list-like type is specified, then for each n in ns,
+               the data from n days back is added.
+
+    Keyword Arguments
+    =================
+    beach_col_name='Beach'
+        The name of the column containing the beach names in df.
+    timestamp_col_name='Timestamp'
+        The name of the column containing the timestamp in df.
+
+    Output
+    ======
+    df : Dataframe with the previous data merged onto (a copy of) the input dataframe.
+
+    Example
+    =======
+    >>> import read_data as rd
+    >>> df = rd.read_data(read_weather_station=False, read_water_sensor=False)
+    >>> df2 = rd.add_column_prior_data(df, 'Escherichia.coli', 1,
+    >>>                                beach_col_name='Client.ID', timestamp_col_name='Full_date')
+    >>> df3 = rd.add_column_prior_data(df, 'Escherichia.coli', [1,2,3,4,5,6,7],
+    >>>                                beach_col_name='Client.ID', timestamp_col_name='Full_date')
+    >>> df4 = rd.add_column_prior_data(df, ['summary', 'icon'], [1, 2],
+    >>>                                beach_col_name='Client.ID', timestamp_col_name='Full_date')
+    '''
+    if not hasattr(colnames, '__getitem__') or isinstance(colnames, six.string_types):
+        colnames = [colnames]
+    if not hasattr(ns, '__getitem__'):
+        ns = [ns]
+
+    if not colnames and ns:
+        return df.copy()
+
+    dfc = df.copy()
+    for colname in colnames:
+        for n in ns:
+            new_col_name = str(n) + '_day_prior_'+ colname
+
+            beaches = list(pd.Series(df[beach_col_name].unique()))
+            days = pd.date_range(df[timestamp_col_name].min(), df[timestamp_col_name].max() , freq='d')
+            df2 = dfc.set_index([beach_col_name,timestamp_col_name] )
+            idx = pd.MultiIndex.from_product([beaches,days], names=[beach_col_name,timestamp_col_name])
+            full = df2.reindex(idx) # This ensures indexing only within beach
+            previous = full.groupby(level=0)[colname].shift(n)
+            previous.name = new_col_name
+            final = pd.concat([full,previous], axis=1)
+
+            dfn = final.reset_index()
+            df = dfn
+            dfc = df.copy()
+
+    return dfn.copy()
+
+
+def process_hourly_data(df, hours_offset=0,
+                        beach_col_name='Client.ID',
+                        timestamp_col_name='Full_date'):
+    '''
+    Pivot hourly data into daily data, optionally shifting the hours that
+    get mapped to a given date.
+
+    For example, you can choose to have a "day" be defined as 5am to 5am, so
+    that, e.g., all hours from 6/1/2015 05:00 through 6/2/2015 05:00 inclusive
+    are pivoted onto the day 6/1/2015.
+
+    Parameters
+    ----------
+    df                 : Dataframe to pivot. Should have hourly data.
+    hours_offset       : The hour offset. All hours ranging from
+                         ((midnight on day D) + hours_offset) through
+                         ((midnight on day (D + 1)) + hours_offset) will
+                         be pivoted onto day D.
+    beach_col_name     : Name of the column containing the beach names.
+    timestamp_col_name : Name of the column containing the timestamps.
+                         Note that this column is expected to be
+                         pandas.tslib.Timestamp.
+
+    Returns
+    -------
+    df : Pivoted dataframe.
+
+    Example
+    --------
+    >>> import read_data as rd
+    >>> df = rd.read_forecast_data('../data/ExternalData/forecastio_hourly_weather.csv')
+    >>> df2 = rd.process_hourly_data(df)
+    >>> df3 = rd.process_hourly_data(df, 5)
+    >>> df4 = rd.process_hourly_data(df, -5)
+    '''
+    df = df.copy()
+    df[timestamp_col_name] = df[timestamp_col_name].map(
+        lambda x: x - dt.timedelta(hours=hours_offset)
+    )
+    df['hour_of_day'] = df[timestamp_col_name].map(
+        lambda x: x.hour + hours_offset
+    )
+    df[timestamp_col_name] = pd.to_datetime(df[timestamp_col_name].map(
+        lambda x: x.date().isoformat()
+    ))
+
+    df = df.pivot_table(index=[beach_col_name, timestamp_col_name],
+                        columns='hour_of_day')
+    df.columns = [x[0] + '_hour_' + str(x[1]) for x in df.columns]
+    df = df.reset_index()
     return df
-    
-    
-    
-    
 
-    
 
 def split_sheets(file_name, year, verbose=False):
     '''
@@ -220,24 +392,22 @@ def split_sheets(file_name, year, verbose=False):
     return df
 
 
-def read_holiday_data(file_name, verbose=False):
+def read_holiday_data(file_name):
     '''
     Reads in holiday CSV file.
     '''
-    # TODO: verbose ?
     df = pd.read_csv(file_name)
     df['Date'] = pd.to_datetime(df['Date'])
     df.columns = ['Full_date', 'Holiday']
     return df
 
 
-def days_since_holiday(df, verbose=False):
+def days_since_holiday(df):
     '''
     Creates a column that describes the number of days since last
     summer holiday, which could have happened last year resulting
     in numbers 300 and above.
     '''
-    # TODO: verbose ?
     df['Holiday.Flag'] = ~df['Holiday'].isnull()
 
     holiday_dates = df.ix[df['Holiday.Flag'], 'Full_date'].unique()
@@ -256,11 +426,10 @@ def days_since_holiday(df, verbose=False):
     return df
 
 
-def read_forecast_data(filename, verbose=False):
+def read_forecast_data(filename):
     '''
     Read in forecast.io historical weather data.
     '''
-    # TODO: verbose ?
 
     df = pd.read_csv(filename)
     df = df.drop_duplicates()
@@ -272,7 +441,23 @@ def read_forecast_data(filename, verbose=False):
 
     return df
 
-
+def convert_UNIX_times(df, column_list = ['sunriseTime','sunsetTime','temperatureMinTime','temperatureMaxTime','apparentTemperatureMinTime','apparentTemperatureMaxTime']):
+	'''
+	Turns UNIX times (seconds elapsed since Jan 1, 1970)  into a 
+	four-digit float best interpreted as 'hours since prior midnight.'
+	This is done by taking the UNIX time in seconds, subtracting
+	away the seconds equivalent of Full_date, and then subtracting
+	5 hours to account for a conversion between GMT and Central Time
+	
+	The list of columns provided as a default to the column_list
+	argument should be the only ones that need conversion
+	'''
+	for col in column_list:
+		df[col] = [round(float(val.components[1] + val.components[2] * 1.0/60 + val.components[3]*1.0/3600),4) for val in\
+					 pd.to_datetime(df[col], unit = 's') - pd.Timedelta(hours = 5) - pd.to_datetime(df.Full_date)]
+	
+	return df
+	
 def read_water_sensor_data(verbose=False):
     '''
     Downloads and reads water sensor data from the Chicago data
@@ -291,8 +476,6 @@ def read_water_sensor_data(verbose=False):
 
     df.drop(['Sensor Type', 'Location'], 1, inplace=True)
 
-    # TODO: map sensor to beach ???
-
     df['Beach Name'] = df['Beach Name'].apply(lambda x: x[0:-6])
 
     df['Measurement Timestamp'] = pd.to_datetime(df['Measurement Timestamp'])
@@ -307,7 +490,7 @@ def read_water_sensor_data(verbose=False):
     cols = df_mins.columns.tolist()
 
     def rename_columns(cols, aggregation_type):
-        cols = map(lambda x: x.replace(' ', '.'), cols)
+        cols = [x.replace(' ', '.') for x in cols]
         for i in range(2,7):
             cols[i] = cols[i] + '.' + aggregation_type
         return cols
@@ -324,8 +507,7 @@ def read_water_sensor_data(verbose=False):
     df = df.pivot(index='Date', columns='Beach.Name')
     df.columns = ['.'.join(col[::-1]).strip() for col in df.columns.values]
     df.reset_index(inplace=True)
-    df.columns = ['Full_date'] + map(lambda x: x.replace(' ', '.'),
-                                     df.columns.tolist()[1:])
+    df.columns = ['Full_date'] + [x.replace(' ', '.') for x in df.columns.tolist()[1:]]
 
     return df
 
@@ -364,7 +546,7 @@ def read_weather_station_data(verbose=False):
     cols = df_mins.columns.tolist()
 
     def rename_columns(cols, aggregation_type):
-        cols = map(lambda x: x.replace(' ', '.'), cols)
+        cols = [x.replace(' ', '.') for x in cols]
         for i in range(2,15):
             cols[i] = cols[i] + '.' + aggregation_type
         return cols
@@ -381,8 +563,7 @@ def read_weather_station_data(verbose=False):
     df = df.pivot(index='Date', columns='Station.Name')
     df.columns = ['.'.join(col[::-1]).strip() for col in df.columns.values]
     df.reset_index(inplace=True)
-    df.columns = ['Full_date'] + map(lambda x: x.replace(' ', '.'),
-                                     df.columns.tolist()[1:])
+    df.columns = ['Full_date'] + [x.replace(' ', '.') for x in df.columns.tolist()[1:]]
 
     return df
 
@@ -412,7 +593,7 @@ def date_lookup(s, verbose=False):
     http://stackoverflow.com/questions/29882573
     '''
     dates = {date:pd.to_datetime(date, errors='ignore') for date in s.unique()}
-    for date, parsed in dates.iteritems():
+    for date, parsed in dates.items():
         if type(parsed) is not pd.tslib.Timestamp:
             logging.debug('Non-regular date format "{0}"'.format(date))
             fmt = '%B %d (%p) %Y'
@@ -420,7 +601,9 @@ def date_lookup(s, verbose=False):
     return s.apply(lambda v: dates[v])
 
 
-def read_data(verbose=False):
+def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_station=True,
+              read_water_sensor=True, read_daily_forecast=True, read_hourly_forecast=True,
+        group_beaches=True):
     '''
     Read in the excel files for years 2006-2015 found in
     'data/ChicagoParkDistrict/raw/Standard 18 hr Testing'
@@ -431,7 +614,6 @@ def read_data(verbose=False):
     '''
 
     cpd_data_path = '../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
-    cpd_data_path = os.path.join(os.path.dirname(__file__), cpd_data_path)
 
     dfs = []
 
@@ -449,7 +631,7 @@ def read_data(verbose=False):
     # Also convert string to float, if possible
     for col in ['Reading.1', 'Reading.2', 'Escherichia.coli']:
         for i, val in enumerate(df[col].tolist()):
-            if isinstance(val, basestring):
+            if isinstance(val, six.string_types):
                 val = val.replace('<', '').replace('>', '')
                 try:
                     df.ix[i, col] = float(val)
@@ -478,32 +660,33 @@ def read_data(verbose=False):
     df = df[df['Laboratory.ID'] != u'Laboratory ID']
     # Normalize the beach names
     df['Client.ID'] = df['Client.ID'].map(lambda x: x.strip())
-    cleanbeachnames = pd.read_csv(cpd_data_path + 'cleanbeachnames.csv')
-    cleanbeachnames = dict(zip(cleanbeachnames['Old'], cleanbeachnames['New']))
+    cleanbeachnamesdf = pd.read_csv(cpd_data_path + 'cleanbeachnames.csv')
+    cleanbeachnames = dict(zip(cleanbeachnamesdf['Old'], cleanbeachnamesdf['Short_Names']))
     # There is one observation that does not have a beach name in the
     # Client.ID column, remove it.
     df = df[df['Client.ID'].map(lambda x: x in cleanbeachnames)]
     df['Client.ID'] = df['Client.ID'].map(lambda x: cleanbeachnames[x])
 
-    # Read in drek beach data
-    drek_data_path = '../data/DrekBeach/'
-    drek_data_path = os.path.join(os.path.dirname(__file__), drek_data_path)
-    drekdata = pd.read_csv(drek_data_path + 'daily_summaries_drekb.csv')
-    drekdata.columns = ['Beach', 'Date', 'Drek_Reading',
-                        'Drek_Prediction', 'Drek_Worst_Swim_Status']
-    drekdata['Date'] = date_lookup(drekdata['Date'])
-    drekdata['Beach'] = drekdata['Beach'].map(lambda x: x.strip())
-    drekdata['Beach'] = drekdata['Beach'].map(lambda x: cleanbeachnames[x])
-    # Merge the data
-    df = pd.merge(df, drekdata, how='outer',
-                  left_on=['Client.ID', 'Full_date'],
-                  right_on=['Beach', 'Date'])
-    # Both dataframes had a Date column, they got replaced
-    # by Date_x and Date_y, drop the drek date and re-name Date_x.
-    df.drop('Date_y', 1, inplace=True)
-    c = df.columns.tolist()
-    c[c.index('Date_x')] = 'Date'
-    df.columns = c
+    if read_drek:
+        # Read in drek beach data
+        drek_data_path = '../data/DrekBeach/'
+        drekdata = pd.read_csv(drek_data_path + 'daily_summaries_drekb.csv')
+        drekdata.columns = ['Beach', 'Date', 'Drek_Reading',
+                            'Drek_Prediction', 'Drek_Worst_Swim_Status']
+        drekdata['Date'] = date_lookup(drekdata['Date'])
+        drekdata['Beach'] = drekdata['Beach'].map(lambda x: x.strip())
+        drekdata['Beach'] = drekdata['Beach'].map(lambda x: cleanbeachnames[x])
+        # Merge the data
+        df = pd.merge(df, drekdata, how='outer',
+                      left_on=['Client.ID', 'Full_date'],
+                      right_on=['Beach', 'Date'])
+        # Both dataframes had a Date column, they got replaced
+        # by Date_x and Date_y, drop the drek date and re-name Date_x.
+        df.drop('Date_y', 1, inplace=True)
+        c = df.columns.tolist()
+        c[c.index('Date_x')] = 'Date'
+        df.columns = c
+
     # There was an anamolous reading, the max possible value from the test
     # is around 2420, but one reading was 6488.
     # We need to do the ~(reading 1 > 2500 | reading 2 > 2500) instead of
@@ -515,29 +698,50 @@ def read_data(verbose=False):
     # import the column correctly (it truncated the value). Pandas did
     # import correctly, so no need to create that.
 
-    df = df.sort(['Full_date', 'Client.ID'])
+    df = df.sort_values(by=['Full_date', 'Client.ID'])
 
     external_data_path = '../data/ExternalData/'
-    external_data_path = os.path.join(os.path.dirname(__file__),
-                                      external_data_path)
 
-    holidaydata = read_holiday_data(external_data_path + 'Holidays.csv', verbose)
-    df = pd.merge(df, holidaydata, on='Full_date', how='outer')
-    df = days_since_holiday(df)
+    if read_holiday:
+        holidaydata = read_holiday_data(external_data_path + 'Holidays.csv')
+        df = pd.merge(df, holidaydata, on='Full_date', how='outer')
+        df = days_since_holiday(df)
 
-    forecast_daily = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
-    df = pd.merge(df, forecast_daily, on=['Full_date', 'Client.ID'])
+    if group_beaches:
+        df = group_beaches_geographically(df)
 
-    watersensordata = read_water_sensor_data(verbose)
-    df = pd.merge(df, watersensordata, on='Full_date', how='outer')
+    if read_daily_forecast:
+        beach_names_new_to_short = dict(zip(cleanbeachnamesdf['New'],
+                                            cleanbeachnamesdf['Short_Names']))
 
-    weatherstationdata = read_weather_station_data(verbose)
-    df = pd.merge(df, weatherstationdata, on='Full_date', how='outer')
+        forecast_daily = read_forecast_data(external_data_path + 'forecastio_daily_weather.csv')
+        forecast_daily['Client.ID'] = forecast_daily['Client.ID'].map(
+            lambda x: beach_names_new_to_short[x]
+        )
+        df = pd.merge(df, forecast_daily, on=['Full_date', 'Client.ID'])
+		df = convert_UNIX_times(df, column_list = column_list = ['sunriseTime','sunsetTime','temperatureMinTime','temperatureMaxTime','apparentTemperatureMinTime','apparentTemperatureMaxTime'])
 
-    # TODO: discuss this
-    df.set_index('Full_date', drop=True, inplace=True)
+    if read_hourly_forecast:
+        beach_names_new_to_short = dict(zip(cleanbeachnamesdf['New'],
+                                            cleanbeachnamesdf['Short_Names']))
+        forecast_hourly = read_forecast_data(external_data_path + 'forecastio_hourly_weather.csv')
+        forecast_hourly['Client.ID'] = forecast_hourly['Client.ID'].map(
+            lambda x: beach_names_new_to_short[x]
+        )
+        forecast_hourly = process_hourly_data(forecast_hourly, hours_offset=-19)
+        df = pd.merge(df, forecast_hourly, on=['Full_date', 'Client.ID'])
 
+    if read_water_sensor:
+        watersensordata = read_water_sensor_data()
+        df = pd.merge(df, watersensordata, on='Full_date', how='outer')
+
+    if read_weather_station:
+        weatherstationdata = read_weather_station_data()
+        df = pd.merge(df, weatherstationdata, on='Full_date', how='outer')
+
+    # Final cleaning, drop rows with no beach name, remove duplicate beach-days
     df = df.dropna(subset=['Client.ID'])
+    df.drop_duplicates(subset=['Client.ID', 'Full_date'], keep='first', inplace=True)
 
     return df
 
@@ -545,7 +749,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process beach data.')
     parser.add_argument('-o', '--outfile', nargs=1, type=str,
                         metavar='outfile', help='output CSV filename')
-    parser.add_argument('-v', '--verbose', action='count')
+    parser.add_argument('-v', '--verbose', action='count', default=0)
+    parser.add_argument('-t', '--test', action='count', help='run tests', default=0)
 
     args = parser.parse_args()
 
@@ -556,7 +761,52 @@ if __name__ == '__main__':
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    df = read_data(args.verbose)
-
     if args.outfile is not None:
+        df = read_data(args.verbose)
         df.to_csv(args.outfile[0], index=False)
+
+
+    if args.test:
+        df = read_data(args.verbose)
+        print('read_data() returns dataframe with size {0} x {1}'.format(
+            df.shape[0], df.shape[1]
+        ))
+        df2 = add_column_prior_data(df, 'Escherichia.coli', 1,
+                                    beach_col_name='Client.ID',
+                                    timestamp_col_name='Full_date')
+        print('Adding a single prior column results in a dataframe with size {0} x {1}'.format(
+            df2.shape[0], df2.shape[1]
+        ))
+        df2 = add_column_prior_data(df, 'Escherichia.coli', range(4),
+                                    beach_col_name='Client.ID',
+                                    timestamp_col_name='Full_date')
+        print('Adding a four prior days results in a dataframe with size {0} x {1}'.format(
+            df2.shape[0], df2.shape[1]
+        ))
+        df2 = add_column_prior_data(df, ['Escherichia.coli', 'icon'], range(4),
+                                    beach_col_name='Client.ID',
+                                    timestamp_col_name='Full_date')
+        print('Adding a four prior days of two columns results in a dataframe with size {0} x {1}'.format(
+            df2.shape[0], df2.shape[1]
+        ))
+
+        df = read_data_simplified()
+        print('read_data_simplified() returns dataframe with size {0} x {1}'.format(
+            df.shape[0], df.shape[1]
+        ))
+        df = clean_up_beaches(df)
+        print('After cleaning with clean_up_beaches, we have a dataframe with size {0} x {1}'.format(
+            df.shape[0], df.shape[1]
+        ))
+        df2 = add_column_prior_data(df, 'Ecoli_geomean', 1)
+        print('Adding a single prior column results in a dataframe with size {0} x {1}'.format(
+            df2.shape[0], df2.shape[1]
+        ))
+        df2 = add_column_prior_data(df, 'Ecoli_geomean', range(4))
+        print('Adding a four prior days results in a dataframe with size {0} x {1}'.format(
+            df2.shape[0], df2.shape[1]
+        ))
+        df2 = add_column_prior_data(df, ['Ecoli_geomean', 'lowReading'], range(4))
+        print('Adding a four prior days of two columns results in a dataframe with size {0} x {1}'.format(
+            df2.shape[0], df2.shape[1]
+        ))
