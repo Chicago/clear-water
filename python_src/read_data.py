@@ -121,7 +121,7 @@ def group_beaches_geographically(data, beach_names_column='Client.ID', verbose=F
         df[var_name] = df[beach_names_column].map(lambda x: beach_grouping(x,all_groups[ind]))
 
     df['flag_geographically_a_north_beach'] = df[beach_names_column].map(lambda x: beach_grouping(x,north_group))
-    
+
     # also want to add single columns, but that is harder.
     df['categorical_beach_grouping'] = df[beach_names_column].map(lambda x: single_grouping(x,all_groups))
 
@@ -149,7 +149,7 @@ def beach_grouping(beach_name, grouping):
     -----
     beach_name: string
     grouping: list of strings
-    
+
     '''
 
     if beach_name in grouping:
@@ -443,21 +443,21 @@ def read_forecast_data(filename):
 
 def convert_UNIX_times(df, column_list = ['sunriseTime','sunsetTime','temperatureMinTime','temperatureMaxTime','apparentTemperatureMinTime','apparentTemperatureMaxTime']):
 	'''
-	Turns UNIX times (seconds elapsed since Jan 1, 1970)  into a 
+	Turns UNIX times (seconds elapsed since Jan 1, 1970)  into a
 	four-digit float best interpreted as 'hours since prior midnight.'
 	This is done by taking the UNIX time in seconds, subtracting
 	away the seconds equivalent of Full_date, and then subtracting
 	5 hours to account for a conversion between GMT and Central Time
-	
+
 	The list of columns provided as a default to the column_list
 	argument should be the only ones that need conversion
 	'''
 	for col in column_list:
 		df[col] = [round(float(val.components[1] + val.components[2] * 1.0/60 + val.components[3]*1.0/3600),4) for val in\
 					 pd.to_datetime(df[col], unit = 's') - pd.Timedelta(hours = 5) - pd.to_datetime(df.Full_date)]
-	
+
 	return df
-	
+
 def read_water_sensor_data(verbose=False):
     '''
     Downloads and reads water sensor data from the Chicago data
@@ -719,7 +719,7 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
             lambda x: beach_names_new_to_short[x]
         )
         df = pd.merge(df, forecast_daily, on=['Full_date', 'Client.ID'])
-		df = convert_UNIX_times(df, column_list = column_list = ['sunriseTime','sunsetTime','temperatureMinTime','temperatureMaxTime','apparentTemperatureMinTime','apparentTemperatureMaxTime'])
+        df = convert_UNIX_times(df, column_list = ['sunriseTime','sunsetTime','temperatureMinTime','temperatureMaxTime','apparentTemperatureMinTime','apparentTemperatureMaxTime'])
 
     if read_hourly_forecast:
         beach_names_new_to_short = dict(zip(cleanbeachnamesdf['New'],
