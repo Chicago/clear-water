@@ -1,5 +1,6 @@
 from __future__ import print_function
 import pandas as pd
+import numpy as np
 import logging
 import argparse
 import six
@@ -771,6 +772,7 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
         holidaydata = read_holiday_data(external_data_path + 'Holidays.csv')
         df = pd.merge(df, holidaydata, on='Full_date', how='outer')
         df = days_since_holiday(df)
+        df['Holiday_Recently'] = (df['Days.Since.Last.Holiday']<3)
 
     if group_beaches:
         df = group_beaches_geographically(df)
@@ -785,6 +787,9 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
         )
         df = pd.merge(df, forecast_daily, on=['Full_date', 'Client.ID'])
         df = convert_UNIX_times(df, column_list = ['sunriseTime','sunsetTime','temperatureMinTime','temperatureMaxTime','apparentTemperatureMinTime','apparentTemperatureMaxTime'])
+        # create useful interaction variables combining wind speed and direction
+        df['windVectorX'] = np.cos(np.pi*2*df['windBearing']/360)*df['windSpeed']
+        df['windVectorY'] = np.sin(np.pi*2*df['windBearing']/360)*df['windSpeed'] 
 
     if read_hourly_forecast:
         beach_names_new_to_short = dict(zip(cleanbeachnamesdf['New'],
@@ -795,16 +800,13 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
         )
         forecast_hourly = process_hourly_data(forecast_hourly, hours_offset=-19)
         df = pd.merge(df, forecast_hourly, on=['Full_date', 'Client.ID'])
+        # create useful interaction variables combining wind speed and direction
+        for hr in range(-19,5):
+            bearing_col = 'windBearing_hour_' + str(hr)
+            speed_col = 'windSpeed_hour_' +str(hr)
+            vectorX_col = 'windVectorX_hour_'+str(hr)
+            df[vectorX_col] = np.cos(np.pi*2*df[bearing_col]/360)*df[speed_col]
 
-    # create useful interaction variables combining wind speed and direction
-    df['windVectorX'] = np.cos(np.pi*2*df['windBearing']/360)*df['windSpeed']
-    df['windVectorY'] = np.sin(np.pi*2*df['windBearing']/360)*df['windSpeed']    
-
-    for hr in range(-19,5):
-        bearing_col = 'windBearing_hour_' + str(hr)
-        speed_col = 'windSpeed_hour_' +str(hr)
-        vectorX_col = 'windVectorX_hour_'+str(hr)
-        df[vectorX_col] = np.cos(np.pi*2*df[bearing_col]/360)*df[speed_col]
 
     if read_water_sensor:
         watersensordata = read_water_sensor_data()
