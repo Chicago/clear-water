@@ -501,15 +501,15 @@ if __name__ == '__main__':
     print('Combo ensemble model variant 1: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100)))        
 
     # Try out some variants of putting models together 
-    results['predict_RF'] = results['max_RF']>summaryFrame.RF_thresh.mean()
+    results['predict_RF'] = results['max_RF']> summaryFrame.RF_thresh.mean()
     results['predict_GBM'] = results['max_GBM']> np.exp(summaryFrame.GBM_thresh.mean())
     results['predict_Combo'] = (((results['predict_RF'])&(results['predict_GBM']))|(results['predictedEPA']) )
     prec, rec = display_predictions_by_beach(results, 'predict_Combo')
     print('Combo ensemble model variant 2: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100)))   
     
     # Try out some variants of putting models together 
-    results['predict_RF'] = results['min_RF']>summaryFrame.RF_thresh.mean()
-    results['predict_GBM'] = results['min_GBM']> np.exp(summaryFrame.GBM_thresh.mean())
-    results['predict_Combo'] = (((results['predict_RF'])&(results['predict_GBM']))|(results['predictedEPA']) )
+    results['predict_RF'] = results['max_RF']> summaryFrame.RF_thresh.mean()
+    results['predict_GBM'] = results['max_GBM']> np.exp(summaryFrame.GBM_thresh.mean())
+    results['predict_Combo'] = (((results['predict_RF'])|(results['predict_GBM']))|(results['predictedEPA']) )
     prec, rec = display_predictions_by_beach(results, 'predict_Combo')
     print('Combo ensemble model variant 3: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100)))
