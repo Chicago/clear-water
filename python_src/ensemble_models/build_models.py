@@ -277,6 +277,9 @@ if __name__ == '__main__':
     parser.add_argument('-ip', '--input_processed', type=str,
                         metavar='processed', 
                         help='input processed modeling data CSV filename')
+    parser.add_argument('-ip2', '--input_meta', type=str,
+                        metavar='processed_meta', 
+                        help='input processed modeling metadata CSV filename')
     parser.add_argument('-s', '--suffix', type=str,
                         metavar='model_suffix', 
                         help='suffix to identify this model build results')                        
@@ -309,9 +312,9 @@ if __name__ == '__main__':
     ###   Prepare Predictors  
     ###############################
     if args.input_processed:
-        print('Using Preprocessed data from {0} and {1}'.format(args.input_processed,'meta_' + args.input_processed ))
+        print('Using Preprocessed data from {0} and {1}'.format(args.input_processed, args.input_meta ))
         datafilename = args.input_processed
-        metadatafilename = 'meta_' + args.input_processed
+        metadatafilename = args.input_meta
         data_processed = pd.read_csv(datafilename)
         meta_info = pd.read_csv(metadatafilename, parse_dates='Full_date')      
         meta_info['Full_date'] =  rd.date_lookup(meta_info['Full_date'])
@@ -403,7 +406,7 @@ if __name__ == '__main__':
         ### REPORT Results
         print('  RF ensemble {0} model: recall= {1}, precision  = {2}, thresh = {3}'.format(yr,np.int(RF_rec*100+.4),np.int(RF_prec*100+.4), RFthresh ))  
         if args.verbose>=3: 
-            print('\t runtime of building and testing RF model was {0} minutes'.format(np.round((time.time() - startTime)/60)))        
+            print('\t runtime of building and testing RF model was {0} minutes'.format(np.round((time.time() - startTime)/60) ))        
     
         ### TRAIN Gradient Boosting Regression model and save as pickle file
         startTime = time.time()
@@ -495,5 +498,18 @@ if __name__ == '__main__':
     results.to_csv(directory+'/results_RF_GBM.csv', index=False)       
         
     prec, rec = display_predictions_by_beach(results, 'predict_Combo')
-    print('Combo ensemble model: recall= {0}, precision  = {1}'.format(np.int(rec*100),np.int(prec*100)))        
-        
+    print('Combo ensemble model variant 1: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100)))        
+
+    # Try out some variants of putting models together 
+    results['predict_RF'] = results['max_RF']>summaryFrame.RF_thresh.mean()
+    results['predict_GBM'] = results['max_GBM']> np.exp(summaryFrame.GBM_thresh.mean())
+    results['predict_Combo'] = (((results['predict_RF'])&(results['predict_GBM']))|(results['predictedEPA']) )
+    prec, rec = display_predictions_by_beach(results, 'predict_Combo')
+    print('Combo ensemble model variant 2: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100)))   
+    
+    # Try out some variants of putting models together 
+    results['predict_RF'] = results['min_RF']>summaryFrame.RF_thresh.mean()
+    results['predict_GBM'] = results['min_GBM']> np.exp(summaryFrame.GBM_thresh.mean())
+    results['predict_Combo'] = (((results['predict_RF'])&(results['predict_GBM']))|(results['predictedEPA']) )
+    prec, rec = display_predictions_by_beach(results, 'predict_Combo')
+    print('Combo ensemble model variant 3: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100)))
