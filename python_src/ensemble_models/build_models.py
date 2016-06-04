@@ -344,7 +344,7 @@ if __name__ == '__main__':
     ########################################################################## 
     ###   Setup Random Forest classifier and Gradient Boosting Regressor
     ########################################################################## 
-    RF_clf = RandomForestClassifier(n_estimators=1000, 
+    RF_clf = RandomForestClassifier(n_estimators=100, 
                                     max_depth=10, 
                                     min_samples_split=10,  
                                     min_samples_leaf=4, 
@@ -355,7 +355,7 @@ if __name__ == '__main__':
     
     gbm_reg = GradientBoostingRegressor(loss='quantile', 
                                         learning_rate=0.05, 
-                                        n_estimators=500,  
+                                        n_estimators=50,  
                                         subsample=0.8, 
                                         min_samples_split=10, 
                                         min_samples_leaf=4, 
