@@ -1,5 +1,6 @@
 from __future__ import print_function
 import pandas as pd
+import numpy as np
 import logging
 import argparse
 import six
@@ -196,6 +197,71 @@ def clean_up_beaches(data, beach_names_column='Beach', verbose=False):
             df.drop(TmpIndx[1],axis=0,inplace=True)
 
     return df
+
+
+def add_columns_each_beach(df, beach_col_name='Beach', timestamp_col_name='Timestamp', ecoli_col_name='Ecoli_geomean'):
+    '''
+    Adds a column containing the previous day's Ecoli_geomean reading at each beach.
+    Also calls add_column_prior_data to add on previous 7 days' of readings.
+    Fills in missing data to 'previous_reading' using mean of previous 7 days' of readings.
+
+    Parameters
+    ==========
+    df       : Dataframe of data.
+
+    Keyword Arguments
+    =================
+    beach_col_name='Beach'
+        The name of the column containing the beach names in df.
+    timestamp_col_name='Timestamp'
+        The name of the column containing the timestamp in df.
+
+    Output
+    ======
+    dfc : Dataframe with the previous data merged onto (a copy of) the input dataframe.
+          Adds on group_prior_mean based on which of 4 categories the beach is in 
+
+    '''
+    dfc = df.copy()
+    dfc = add_column_prior_data(dfc, ecoli_col_name, [1,2,3,4,5,6,7] , beach_col_name=beach_col_name , timestamp_col_name=timestamp_col_name)
+    col_list = [ '1_day_prior_'+ecoli_col_name , '2_day_prior_'+ecoli_col_name , '3_day_prior_'+ecoli_col_name,
+                 '4_day_prior_'+ecoli_col_name , '5_day_prior_'+ecoli_col_name , '6_day_prior_'+ecoli_col_name,
+                 '7_day_prior_'+ecoli_col_name]
+    temp = dfc[col_list].copy()
+    dfc['7_day_moving_avg'] = temp.mean(axis=1)
+    dfc['previous_reading'] =  pd.Series(map((  lambda x,y: y if np.isnan(x) else x  ), dfc['1_day_prior_'+ecoli_col_name], dfc['7_day_moving_avg'])  )
+    beaches = list(pd.Series(dfc[beach_col_name].value_counts().index))
+    for j in range(len(beaches)):
+        beach2 = dfc.ix[dfc[beach_col_name]==beaches[j],[timestamp_col_name,beach_col_name,'previous_reading']].reset_index()
+        c = beach2.columns.tolist()
+        c[c.index('previous_reading')] = beaches[j] + '_previous'
+        beach2.columns = c
+        beach2.drop(['index',beach_col_name], axis=1, inplace=True)
+        dfc = pd.merge(dfc, beach2, on=timestamp_col_name, how='left')
+        medianVal = dfc.loc[dfc[beach_col_name]==beaches[j], ecoli_col_name].median()
+        dfc.loc[ np.isnan(dfc[beaches[j]+'_previous']) , [beaches[j]+'_previous']] = medianVal
+
+    near_north  = ['Montrose_previous','Foster_previous','Osterman_previous']
+    far_north   = ['Albion_previous','Jarvis_previous', 'Rogers_previous', 'Juneway_previous','Leone_previous','Howard_previous']
+    city_center = ['Ohio_previous','Oak Street_previous','12th_previous','North Avenue_previous', '31st_previous']
+    south_side  = ['South Shore_previous','63rd_previous', 'Rainbow_previous','Calumet_previous', '57th_previous','39th_previous']
+
+    dfc['near_north_prior_mean'] = dfc[near_north].mean(axis=1)
+    dfc['far_north_prior_mean'] = dfc[far_north].mean(axis=1)
+    dfc['city_center_prior_mean'] = dfc[city_center].mean(axis=1)
+    dfc['south_side_prior_mean'] = dfc[south_side].mean(axis=1)
+
+    dfc['group_prior_mean'] = dfc['near_north_prior_mean']
+    dfc.loc[dfc['categorical_beach_grouping']=='beach_in_grouping_2','group_prior_mean'] = dfc.loc[dfc['categorical_beach_grouping']=='beach_in_grouping_2','far_north_prior_mean']  
+    dfc.loc[dfc['categorical_beach_grouping']=='beach_in_grouping_3','group_prior_mean'] = dfc.loc[dfc['categorical_beach_grouping']=='beach_in_grouping_3','city_center_prior_mean']  
+    dfc.loc[dfc['categorical_beach_grouping']=='beach_in_grouping_4','group_prior_mean'] = dfc.loc[dfc['categorical_beach_grouping']=='beach_in_grouping_4','city_center_prior_mean']
+    dfc.loc[dfc['categorical_beach_grouping']=='beach_in_grouping_5','group_prior_mean'] = dfc.loc[dfc['categorical_beach_grouping']=='beach_in_grouping_5','south_side_prior_mean']  
+    dfc.loc[dfc['categorical_beach_grouping']=='beach_in_grouping_6','group_prior_mean'] = dfc.loc[dfc['categorical_beach_grouping']=='beach_in_grouping_6','south_side_prior_mean'] 
+    
+    return dfc
+
+
+
 
 
 def add_column_prior_data(df, colnames, ns, beach_col_name='Beach', timestamp_col_name='Timestamp'):
@@ -706,6 +772,7 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
         holidaydata = read_holiday_data(external_data_path + 'Holidays.csv')
         df = pd.merge(df, holidaydata, on='Full_date', how='outer')
         df = days_since_holiday(df)
+        df['Holiday_Recently'] = (df['Days.Since.Last.Holiday']<3)
 
     if group_beaches:
         df = group_beaches_geographically(df)
@@ -720,6 +787,9 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
         )
         df = pd.merge(df, forecast_daily, on=['Full_date', 'Client.ID'])
         df = convert_UNIX_times(df, column_list = ['sunriseTime','sunsetTime','temperatureMinTime','temperatureMaxTime','apparentTemperatureMinTime','apparentTemperatureMaxTime'])
+        # create useful interaction variables combining wind speed and direction
+        df['windVectorX'] = np.cos(np.pi*2*df['windBearing']/360)*df['windSpeed']
+        df['windVectorY'] = np.sin(np.pi*2*df['windBearing']/360)*df['windSpeed'] 
 
     if read_hourly_forecast:
         beach_names_new_to_short = dict(zip(cleanbeachnamesdf['New'],
@@ -730,6 +800,13 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
         )
         forecast_hourly = process_hourly_data(forecast_hourly, hours_offset=-19)
         df = pd.merge(df, forecast_hourly, on=['Full_date', 'Client.ID'])
+        # create useful interaction variables combining wind speed and direction
+        for hr in range(-19,5):
+            bearing_col = 'windBearing_hour_' + str(hr)
+            speed_col = 'windSpeed_hour_' +str(hr)
+            vectorX_col = 'windVectorX_hour_'+str(hr)
+            df[vectorX_col] = np.cos(np.pi*2*df[bearing_col]/360)*df[speed_col]
+
 
     if read_water_sensor:
         watersensordata = read_water_sensor_data()
