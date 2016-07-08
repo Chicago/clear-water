@@ -722,6 +722,17 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
     df['Weekday'] = df['Full_date'].map(lambda x: days[x.dayofweek])
     # TODO: R code creates month/day columns too, do we need that?
 
+    # Clean up collection time (note that only ~14,000 records have sample collection times; rest are missing)
+    # This gets most of the useable entries (loss of ~120 still not converted) 
+    df['SampleCollectionTime'] = df['Sample.Collection.Time'].map(lambda x: str(x).replace('H','').replace('h','')\
+                                                            .replace('R','').replace('r','').replace('s','')\
+                                                            .replace('AM','').replace(';','')\
+                                                            .replace('/00','').replace('/31',''))
+    df['Collection_Time'] =  pd.to_datetime(df['SampleCollectionTime'],  errors='coerce') 
+    df['Collection_Time'] = df['Collection_Time'].map(lambda x: x.hour*60+x.minute )
+    df.drop(['Sample.Collection.Time','SampleCollectionTime'],axis=1, inplace=True)
+    df.ix[df['Collection_Time']==0,'Collection_Time'] = np.nan # ~240 records not useable recorded time
+    
     # Some header rows were duplicated
     df = df[df['Laboratory.ID'] != u'Laboratory ID']
     # Normalize the beach names
@@ -798,12 +809,16 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
         )
         forecast_hourly = process_hourly_data(forecast_hourly, hours_offset=-19)
         df = pd.merge(df, forecast_hourly, on=['Full_date', 'Client.ID'])
+        # get the overnight pressure change
+        df['12hrPressureChange'] = df['pressure_hour_4'] - df['pressure_hour_-8']
         # create useful interaction variables combining wind speed and direction
         for hr in range(-19,5):
             bearing_col = 'windBearing_hour_' + str(hr)
             speed_col = 'windSpeed_hour_' +str(hr)
             vectorX_col = 'windVectorX_hour_'+str(hr)
+            vectorY_col = 'windVectorY_hour_'+str(hr)
             df[vectorX_col] = np.cos(np.pi*2*df[bearing_col]/360)*df[speed_col]
+            df[vectorY_col] = np.sin(np.pi*2*df[bearing_col]/360)*df[speed_col]
 
 
     if read_water_sensor:
@@ -828,14 +843,15 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
         df = df.dropna(axis=0, how='any', subset=['Full_date','Escherichia.coli'])
         rain_cols = ['1_day_prior_precipIntensityMax', '2_day_prior_precipIntensityMax',
                      '3_day_prior_precipIntensityMax', '4_day_prior_precipIntensityMax']
-        df['accum_rain'] = df[rain_cols].sum(1)  
+        df['accum_rain'] = df[rain_cols].sum(1)
+
 
     if add_each_beach_data:
         df = add_columns_each_beach(df, beach_col_name='Client.ID', timestamp_col_name='Full_date', ecoli_col_name='Escherichia.coli')
     
 
     # Order beaches north to south
-    beach_dict = {'Rogers':0, 'Howard':1, 'Juneway':2, 'Jarvis':3,'Leone':4, 'Albion':5,
+    beach_dict = {'Juneway':0, 'Rogers':1, 'Howard':2, 'Jarvis':3,'Leone':4, 'Albion':5,
               'Osterman':6, 'Foster':7, 'Montrose':8, 'North Avenue':9, 'Oak Street':10,
               'Ohio':11, '12th':12, '31st':13, '39th':14, '57th':15, '63rd':16, 'South Shore':17, 
               'Rainbow':18, 'Calumet':19 }

@@ -7,7 +7,8 @@ import time
 import sklearn
 from sklearn.externals import joblib
 from sklearn.metrics import precision_recall_curve
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+
 
 
 
@@ -40,6 +41,8 @@ def prepare_data(df=None):
         'group_prior_mean',
         'previous_reading',
         'accum_rain', #added to try to capture storm events
+        'Collection_Time', # mostly missing values but may still be of some use
+        '12hrPressureChange', # overnight pressure change
 
         #'precipIntensity',
         #'precipIntensityMax',
@@ -49,7 +52,7 @@ def prepare_data(df=None):
         #'windSpeed',
         #'cloudCover',
 
-        'flag_geographically_a_north_beach',
+        #'flag_geographically_a_north_beach',
         'categorical_beach_grouping'
         #'12th_previous',
         #'Montrose_previous',
@@ -68,6 +71,7 @@ def prepare_data(df=None):
     deterministic_hourly_columns = {
         'temperature':np.linspace(-19,4,num=6,dtype=np.int64),#range(-19,5),
         'windVectorX':np.linspace(-19,4,num=6,dtype=np.int64),#range(-19,5),#[-4,-2,0,2,4],
+        'windVectorY':np.linspace(-19,4,num=6,dtype=np.int64),
         #'windSpeed':[-2,0,2,4],
         #'windBearing':[-2,0,2,4],
         'pressure':[0],
@@ -95,8 +99,8 @@ def prepare_data(df=None):
          'pressure': range(1,3),
          'dewPoint': range(1,3),
          #'cloudCover': range(1,3),
-         'windVectorX': range(2,4),
-         'windVectorY': range(1,3),
+         'windVectorX': range(2,3),
+         'windVectorY': range(2,3),
          'Escherichia.coli': range(2,8)
     }
     historical_columns_list = list(historical_columns.keys())
@@ -243,6 +247,28 @@ def display_predictions_by_beach(results, predict_col = 'predictedEPA'):
     precision = TP/(TP+FP)
     recall = TP/(TP+FN)
     return precision, recall
+    
+    
+def calibrateThreshold(target, predictions, FNR):
+    '''
+    Helper function to calibrate the decision threshold such that 
+    False Negative Rate (FNR) should be values between 1.0 and 10
+    '''
+    countOfAllNeg = len(target[target<236])
+    cut = max(np.exp(predictions))
+    for firstcut in np.linspace(cut,50,10):
+        countOfCorrectNeg = len(target[(target<236)&(np.exp(predictions)<firstcut)])
+        specif = countOfCorrectNeg/countOfAllNeg
+        if specif < (1.0-FNR/100): 
+            cut = firstcut + (max(np.exp(predictions0))-50)/9 #go back up one cut to begin next search
+            break
+    for secondcut in np.linspace(cut, cut/2,100):
+        countOfCorrectNeg = len(target[(target<236)&(np.exp(predictions)<secondcut)])
+        specif = countOfCorrectNeg/countOfAllNeg
+        if specif <= (1.0-FNR/100): 
+            cut = secondcut 
+            break
+    return cut
 
 
 
@@ -344,23 +370,24 @@ if __name__ == '__main__':
     ########################################################################## 
     ###   Setup Random Forest classifier and Gradient Boosting Regressor
     ########################################################################## 
-    RF_clf = RandomForestClassifier(n_estimators=100, 
+
+    RF_reg = RandomForestRegressor(n_estimators=500, 
                                     max_depth=10, 
+                                    max_features=0.8,
                                     min_samples_split=10,  
                                     min_samples_leaf=4, 
-                                    criterion='entropy',
                                     oob_score=True, 
-                                    n_jobs=-1, 
-                                    class_weight={0: 1.0, 1: 1/.15})
+                                    n_jobs=-1)
+
     
     gbm_reg = GradientBoostingRegressor(loss='quantile', 
-                                        learning_rate=0.05, 
-                                        n_estimators=50,  
+                                        learning_rate=0.025, 
+                                        n_estimators=1500, # train longer, no concern of overfitting
                                         subsample=0.8, 
                                         min_samples_split=10, 
                                         min_samples_leaf=4, 
                                         max_depth=10, 
-                                        alpha=0.90)                                  
+                                        alpha=0.85)                                  
                                           
     ########################################################################## 
     ###   Train models by holding one year out
@@ -381,105 +408,116 @@ if __name__ == '__main__':
         # Leave weekends in held out validation data
         test_data    = train_processed.ix[~train_ind]
         test_target  = train_meta_info.ix[~train_ind,'Escherichia.coli']                                    
-        
-        ### TRAIN Random Forest Classifier model and save as pickle file
+
+        ### TRAIN Random Forest Regressor model and save as pickle file
         startTime = time.time() ## This is only to keep track of training time
-        RF_clf.fit(train_data, train_target>=235 )
-        filename = directory+'/RFclassif' + '_' +str(yr) +'.pkl'
-        joblib.dump(RF_clf, filename, compress=9)
-        ### VALIDATE MODEL on held out year to tune cutoff threshold
-        # Note threshold is chosen so that precision as high as possible, then maximize recall  
-        predictions = getattr(RF_clf, 'predict_proba')(test_data)[:,1]  
-        precisionV, recallV, thresh = precision_recall_curve(test_target>=235, predictions)
-        cut = 0.50 # this is set based on Drek_prediction precision for 2015
-        RF_rec = recallV[precisionV>cut].max()    
-        if RF_rec < 0.06: # based on Drek_prediction recall for 2015
-            if args.verbose>=2:            
-                print('   Warning: RF {0} performance might not be better than EPA model!! '.format(yr))
-        while RF_rec < 0.06:
-            cut = cut - 0.01
-            if args.verbose>=3:             
-                print('\t Dropping precision requirement to {0}% '.format(np.int(cut*100)))
-            RF_rec = recallV[precisionV>cut].max()            
-        RF_prec = precisionV[recallV==RF_rec].max()
-        RFthresh = thresh[precisionV[:-1]==RF_prec].min()  # note [:-1] needed b/c thresh length one less than precisionV array 
-        ### REPORT Results
-        print('  RF ensemble {0} model: recall= {1}, precision  = {2}, thresh = {3}'.format(yr,np.int(RF_rec*100+.4),np.int(RF_prec*100+.4), RFthresh ))  
+        RF_reg.fit(train_data, np.log(train_target+1) )
+        filename = directory+'/RF_regress' + '_' +str(yr) +'.pkl'
+        joblib.dump(RF_reg, filename, compress=9)
+        ### VALIDATE MODEL on held out year to calibarate cutoff threshold based on False Negative Rate
+        predictions0 = getattr(RF_reg, 'predict')(test_data) 
+        # rescales to between 0 and 1 in order to use in precision_recall_curve()
+        predictionsX0= predictions0-predictions0.min() 
+        predictionsX0= predictionsX0/(predictions0.max()-predictions0.min()) 
+        precisionV, recallV, threshV = precision_recall_curve(test_target>=236, predictionsX0)
+        threshV = np.exp(threshV*(predictions0.max()-predictions0.min())+predictions0.min()) # map back from [0,1] to origial scaling
+        RFthresh = calibrateThreshold(test_target, predictions0, 2.0)  # FNR of 2%
+        threshIdx = (np.abs(threshV-RFthresh)).argmin() 
+        RF_rec = recallV[threshIdx]
+        RF_prec = precisionV[threshIdx]
+        RFthreshAlt = calibrateThreshold(test_target, predictions0, 5.0)  # FNR of 5%
+        threshIdx = (np.abs(threshV-RFthreshAlt)).argmin() 
+        RF_recAlt = recallV[threshIdx]
+        RF_precAlt = precisionV[threshIdx]    
+        # REPORT Results    
+        print('  RF ensemble {0} model: thresh for 2% FNR = {1}, recall= {2}, precision  = {3}'\
+              .format(yr,np.int(RFthresh),np.int(RF_rec*100+.4),np.int(RF_prec*100+.4) ))
+        print('  RF ensemble {0} model: thresh for 5% FNR = {1}, recall= {2}, precision  = {3}'\
+              .format(yr,np.int(RFthreshAlt),np.int(RF_recAlt*100+.4),np.int(RF_precAlt*100+.4) ))    
         if args.verbose>=3: 
-            print('\t runtime of building and testing RF model was {0} minutes'.format(np.round((time.time() - startTime)/60) ))        
-    
+            print('\t runtime of building and testing RF model was {0} minutes'.format(np.round((time.time() - startTime)/60) )) 
+
         ### TRAIN Gradient Boosting Regression model and save as pickle file
         startTime = time.time()
         gbm_reg.fit(train_data, np.log(train_target+1))
         filename = directory+'/GBM_regress' + '_'  + str(yr) +'.pkl'
-        joblib.dump(gbm_reg, filename, compress=9)  
-        ### VALIDATE MODEL on held out year to tune cutoff threshold
-        predictions = getattr(gbm_reg, 'predict')(test_data)
+        joblib.dump(gbm_reg, filename, compress=9)
+        ### VALIDATE MODEL on held out year to calibarate cutoff threshold based on False Negative Rate
+        predictions0 = getattr(gbm_reg, 'predict')(test_data) 
         # rescales to between 0 and 1 in order to use in precision_recall_curve()
-        predictionsX= predictions-predictions.min() 
-        predictionsX= predictionsX/(predictions.max()-predictions.min()) 
-        precisionV, recallV, thresh = precision_recall_curve(test_target>=236, predictionsX)
-        cut = 0.50  
-        GBM_rec = recallV[precisionV>cut].max()
-        if GBM_rec < 0.06:
-            if args.verbose>=2:            
-                print('   Warning: GBM {0} performance might not be better than EPA model!! '.format(yr))
-        while GBM_rec < 0.06:
-            cut = cut - 0.01
-            if args.verbose>=3:             
-                print('\t Dropping precision requirement to {0}% '.format(np.int(cut*100)))
-            GBM_rec = recallV[precisionV>cut].max()     
-        GBM_prec = precisionV[recallV==GBM_rec].max()
-        GBMthresh = thresh[precisionV[:-1]==GBM_prec].min()  ## note [:-1] needed b/c thresh length one less than precisionV array 
-        GBMthresh = GBMthresh*(predictions.max()-predictions.min())+predictions.min()  
+        predictionsX0= predictions0-predictions0.min() 
+        predictionsX0= predictionsX0/(predictions0.max()-predictions0.min()) 
+        precisionV, recallV, threshV = precision_recall_curve(test_target>=236, predictionsX0)
+        threshV = np.exp(threshV*(predictions0.max()-predictions0.min())+predictions0.min()) # map back from [0,1] to origial scaling
+        GBMthresh = calibrateThreshold(test_target, predictions0, 2.0) # FNR of 2%
+        threshIdx = (np.abs(threshV-GBMthresh)).argmin() 
+        GBM_rec = recallV[threshIdx]
+        GBM_prec = precisionV[threshIdx]
+        GBMthreshAlt = calibrateThreshold(test_target, predictions0, 5.0)  # FNR of 5%
+        threshIdx = (np.abs(threshV-GBMthreshAlt)).argmin() 
+        GBM_recAlt = recallV[threshIdx]
+        GBM_precAlt = precisionV[threshIdx]
         # REPORT Results    
-        print('  GBM ensemble {0} model: recall= {1}, precision  = {2}, thresh = {3}'.format(yr,np.int(GBM_rec*100+.4),np.int(GBM_prec*100+.4),np.exp(GBMthresh) ))
+        print('  GBM ensemble {0} model: thresh for 2% FNR = {1}, recall= {2}, precision  = {3}'\
+              .format(yr,np.int(GBMthresh),np.int(GBM_rec*100+.4),np.int(GBM_prec*100+.4) ))
+        print('  GBM ensemble {0} model: thresh for 5% FNR = {1}, recall= {2}, precision  = {3}'\
+              .format(yr,np.int(GBMthreshAlt),np.int(GBM_recAlt*100+.4),np.int(GBM_precAlt*100+.4) ))
         if args.verbose>=3: 
-            print('\t runtime of building and testing GBM model was {0} minutes'.format(np.round((time.time() - startTime)/60)))      
-
+            print('\t runtime of building and testing GBM model was {0} minutes'.format(np.round((time.time() - startTime)/60)))                
+              
         # SAVE the precision, recall, and tuned thresholds
-        d = { 'RF_precision':RF_prec, 'RF_recall':RF_rec, 'RF_thresh': RFthresh,
-              'GBM_precision':GBM_prec, 'GBM_recall':GBM_rec, 'GBM_thresh': np.exp(GBMthresh),
+        d = { 'RF_precision2p':RF_prec, 'RF_recall2p':RF_rec, 'RF_thresh2p': RFthresh,
+              'RF_precision5p':RF_precAlt, 'RF_recall5p':RF_recAlt, 'RF_thresh5p': RFthreshAlt,
+              'GBM_precision2p':GBM_prec, 'GBM_recall2p':GBM_rec, 'GBM_thresh2p': GBMthresh,
+              'GBM_precision5p':GBM_precAlt, 'GBM_recall5p':GBM_recAlt, 'GBM_thresh5p': GBMthreshAlt
               }              
-        d = pd.Series(d, index = [ 'RF_precision', 'RF_recall', 'RF_thresh',
-                                  'GBM_precision', 'GBM_recall', 'GBM_thresh' ])
+        d = pd.Series(d, index = [ 'RF_precision2p', 'RF_recall2p', 'RF_thresh2p',
+                                   'RF_precision5p', 'RF_recall5p', 'RF_thresh5p',
+                                  'GBM_precision2p', 'GBM_recall2p', 'GBM_thresh2p',
+                                  'GBM_precision5p', 'GBM_recall5p', 'GBM_thresh5p'])
         dataSeries = dataSeries + [ d ]
         colIndexes = colIndexes + [yr]
-    
+
     summaryFrame = pd.DataFrame( dataSeries , index = colIndexes)
-    summaryFileName = directory+'/ValidationReport.csv'
-    summaryFrame.to_csv(summaryFileName)    
+    summaryFileName = directory+'/ValidationReport2.csv'
+    summaryFrame.to_csv(summaryFileName)      
 
 
     ########################################################################## 
     ###   Test models on 2015 data                                    
     ##########################################################################     
-    print('\nTesting ensemble of models on 2015 data\n')    
+    print('\nTesting ensemble of models on 2015 data\n')       
     results = test_meta_info.copy()
     results['expected'] = results['Escherichia.coli']>=235
     results['predictedEPA'] = results['Drek_Prediction']>=235 
     
     RF_cols = []
     GBM_cols = []
-    RF_bool_cols = []
-    GBM_bool_cols = []                
+    RF_bool_cols2p = []
+    RF_bool_cols5p = []
+    GBM_bool_cols2p = [] 
+    GBM_bool_cols5p = []  
     for yr in range(2006, 2015):
         filename = directory+'/GBM_regress' + '_'  + str(yr) +'.pkl'
         gbmmodel = joblib.load(filename)
         pred_col_name = 'GBM_' +str(yr)+ '_pred'
-        results[pred_col_name] = np.exp(getattr(gbmmodel, 'predict')(test_processed))
-        results[pred_col_name+'_bool'] = results[pred_col_name] > summaryFrame.ix[yr,'GBM_thresh']
         GBM_cols = GBM_cols + [pred_col_name]
-        GBM_bool_cols = GBM_bool_cols + [pred_col_name+'_bool']    
+        results[pred_col_name] = np.exp(getattr(gbmmodel, 'predict')(test_processed))
+        results[pred_col_name+'_bool_2p'] = results[pred_col_name] > summaryFrame.ix[yr,'GBM_thresh2p']
+        results[pred_col_name+'_bool_5p'] = results[pred_col_name] > summaryFrame.ix[yr,'GBM_thresh5p']
+        GBM_bool_cols2p = GBM_bool_cols2p + [pred_col_name+'_bool_2p'] 
+        GBM_bool_cols5p = GBM_bool_cols5p + [pred_col_name+'_bool_5p']
     for yr in range(2006, 2015):    
-        filename = directory+'/RFclassif' + '_' +str(yr) +'.pkl'
+        filename = directory+'/RF_regress' + '_' +str(yr) +'.pkl'
         RFmodel = joblib.load(filename)
         pred_col_name = 'RF_' +str(yr)+ '_pred'
-        results[pred_col_name] = getattr(RFmodel, 'predict_proba')(test_processed)[:,1]
+        results[pred_col_name] = np.exp(getattr(RFmodel, 'predict')(test_processed))  
         RF_cols = RF_cols + [pred_col_name]
-        results[pred_col_name+'_bool'] = results[pred_col_name] > summaryFrame.ix[yr,'RF_thresh']
+        results[pred_col_name+'_bool_2p'] = results[pred_col_name] > summaryFrame.ix[yr,'RF_thresh2p']
+        results[pred_col_name+'_bool_5p'] = results[pred_col_name] > summaryFrame.ix[yr,'RF_thresh5p']
         RF_cols = RF_cols + [pred_col_name]
-        RF_bool_cols = RF_bool_cols + [pred_col_name+'_bool']                                  
+        RF_bool_cols2p = RF_bool_cols2p + [pred_col_name+'_bool_2p']    
+        RF_bool_cols5p = RF_bool_cols5p + [pred_col_name+'_bool_5p']
     results['mean_GBM'] = results[GBM_cols].mean(1)
     results['max_GBM'] = results[GBM_cols].max(1)
     results['min_GBM'] = results[GBM_cols].min(1)
@@ -488,28 +526,47 @@ if __name__ == '__main__':
     results['min_RF'] = results[RF_cols].min(1) 
     # The above results could be interesting to drill down into to see how the 
     # different models are biased, and how much variance in the predictions.
-
+    
     # For now, the method of final prediction is to predict Ecoli_High == True 
     # IF ((any GBM predicts true) AND (any RF predicts true)) OR (EPA predicts true) 
-    results['predict_RF'] = results[RF_bool_cols].sum(1) > 1
-    results['predict_GBM'] = results[GBM_bool_cols].sum(1) > 1
-    results['predict_Combo'] = (((results['predict_RF'])&(results['predict_GBM']))|(results['predictedEPA']) )
+    results['predict_RF2p'] = results[RF_bool_cols2p].sum(1) > 1
+    results['predict_GBM2p'] = results[GBM_bool_cols2p].sum(1) > 1
+    results['predict_Combo2p'] = (((results['predict_RF2p'])&(results['predict_GBM2p']))|(results['predictedEPA']) )
+    results['predict_RF5p'] = results[RF_bool_cols5p].sum(1) > 1
+    results['predict_GBM5p'] = results[GBM_bool_cols5p].sum(1) > 1
+    results['predict_Combo5p'] = (((results['predict_RF5p'])&(results['predict_GBM5p']))|(results['predictedEPA']) )
     
-    results.to_csv(directory+'/results_RF_GBM.csv', index=False)       
+    results.to_csv(directory+'/results_RF_GBM.csv', index=False)      
+    
+    # Look at performance of GMB ensemble at 5% FNR alone 
+    prec, rec = display_predictions_by_beach(results, 'predict_GBM5p')
+    print('GBM ensemble model at 5% FNR: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100))) 
+
+    # Look at performance of RF ensemble at 5% FNR alone  
+    prec, rec = display_predictions_by_beach(results, 'predict_RF5p')
+    print('RF ensemble model at 5% FNR: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100))) 
         
-    prec, rec = display_predictions_by_beach(results, 'predict_Combo')
-    print('Combo ensemble model variant 1: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100)))        
+    prec, rec = display_predictions_by_beach(results, 'predict_Combo5p')
+    print('Combo ensemble model variant at 5% FNR with AND: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100)))        
 
     # Try out some variants of putting models together 
-    results['predict_RF'] = results['max_RF']> summaryFrame.RF_thresh.mean()
-    results['predict_GBM'] = results['max_GBM']> np.exp(summaryFrame.GBM_thresh.mean())
+    results['predict_Combo5p'] = (((results['predict_RF5p'])|(results['predict_GBM5p']))|(results['predictedEPA']) )
+    prec, rec = display_predictions_by_beach(results, 'predict_Combo5p')
+    print('Combo ensemble model variant at 5% FNR with OR: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100))) 
+
+    prec, rec = display_predictions_by_beach(results, 'predict_Combo2p')
+    print('Combo ensemble model variant at 2% FNR with AND: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100)))        
+
+    # Try out some variants of putting models together 
+    results['predict_Combo2p'] = (((results['predict_RF2p'])|(results['predict_GBM2p']))|(results['predictedEPA']) )
+    prec, rec = display_predictions_by_beach(results, 'predict_Combo2p')
+    print('Combo ensemble model variant at 2% FNR with OR: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100)))
+
+    # Try out some variants of putting models together 
+    results['predict_RF'] = results['mean_RF']> np.exp(summaryFrame.RF_thresh5p.min()) 
+    results['predict_GBM'] = results['mean_GBM']> np.exp(summaryFrame.GBM_thresh5p.min())
     results['predict_Combo'] = (((results['predict_RF'])&(results['predict_GBM']))|(results['predictedEPA']) )
     prec, rec = display_predictions_by_beach(results, 'predict_Combo')
-    print('Combo ensemble model variant 2: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100)))   
+    print('Combo ensemble model variant with one threshold: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100)))   
+
     
-    # Try out some variants of putting models together 
-    results['predict_RF'] = results['max_RF']> summaryFrame.RF_thresh.mean()
-    results['predict_GBM'] = results['max_GBM']> np.exp(summaryFrame.GBM_thresh.mean())
-    results['predict_Combo'] = (((results['predict_RF'])|(results['predict_GBM']))|(results['predictedEPA']) )
-    prec, rec = display_predictions_by_beach(results, 'predict_Combo')
-    print('Combo ensemble model variant 3: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100)))
