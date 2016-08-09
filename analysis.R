@@ -321,7 +321,7 @@ beach_readings_pca <- beach_readings_pca[,!names(beach_readings_pca) %in% cols_t
 beach_readings_pca_shifted <- shift_previous_data(1,beach_readings_pca)
 new_shifted_col_names <- setdiff(colnames(beach_readings_pca_shifted),colnames(beach_readings_pca))
 beach_readings_pca_shifted_new_only <- beach_readings_pca_shifted[,new_shifted_col_names]
-cols_to_remove <- c("1.daysPrior.Reading.1", "1.daysPrior.Reading.2", "1.daysPrior.Escherichia.coli", "1.daysPrior.Drek_Reading", "1.daysPrior.Drek_Prediction", "1.daysPrior.e_coli_geomean_actual_calculated", "1.daysPrior.elevated_levels_actual_calculated", "1.daysPrior.Drek_elevated_levels_predicted_calculated")
+cols_to_remove <- c("1.daysPrior.Year", "1.daysPrior.Reading.1", "1.daysPrior.Reading.2", "1.daysPrior.Escherichia.coli", "1.daysPrior.Drek_Reading", "1.daysPrior.Drek_Prediction", "1.daysPrior.e_coli_geomean_actual_calculated", "1.daysPrior.elevated_levels_actual_calculated", "1.daysPrior.Drek_elevated_levels_predicted_calculated")
 beach_readings_pca_shifted_new_only <- beach_readings_pca_shifted_new_only[,!names(beach_readings_pca_shifted_new_only) %in% cols_to_remove]
 beach_readings_pca <- cbind(beach_readings_pca_shifted$Reading.1, beach_readings_pca_shifted$Reading.2, beach_readings_pca_shifted$e_coli_geomean_actual_calculated, beach_readings_pca_shifted_new_only)
 names(beach_readings_pca)[1:3] <- c("Reading.1", "Reading.2", "e_coli_geomean_actual_calculated")
@@ -332,3 +332,174 @@ pca <- prcomp(beach_readings_pca)
 plot(pca, type = "l")
 aload <- abs(pca$rotation[,1:2])
 relative_contribution_to_PC <- sweep(aload, 2, colSums(aload), "/")
+
+##  START MODELING AND VISUALIZATIONS
+
+library(randomForest)
+library(reshape)
+library(ggplot2)
+library(lda)
+library(MASS)
+
+x <- beach_readings
+x <- shift_previous_data(1, x)
+x <- shift_previous_data(2, x)
+
+## Begin LDA
+## LDA: http://www.r-bloggers.com/computing-and-visualizing-lda-in-r/
+
+## Build out the year-by-year graph
+## Each year seems to be different
+## Run LDA for each year, get a model for each year
+## See how predictors change
+## Take out the days that the locks were open. 
+## how to deal with binary data?
+
+x_LDA <- x[,c(1:4,11:13,15,18,19,101:268)]  #choose predictors
+x_LDA <- (x_LDA[,sapply(x_LDA, is.numeric)])# remove non-numerics
+na_count <- sapply(x_LDA, function(y) sum(is.na(y))) #analyze NAs
+x_LDA <- x_LDA[,na_count < 10000] #enforce NA maximum
+x_LDA_complete <- x_LDA[complete.cases(x_LDA),] #remove NAs
+x_LDA_complete_scaled <- data.frame(scale(x_LDA_complete)) #scale
+x_LDA_complete_scaled$elevated_levels_actual_calculated <- factor(x_LDA_complete$elevated_levels_actual_calculated) #replace scaled with binary
+#x_LDA_complete_scaled$elevated_levels_actual_calculated <- factor(x_LDA_complete$'1.daysPrior.CRCW.Lock.Open') #replace scaled with binary
+#x_LDA_complete_scaled$elevated_levels_actual_calculated <- factor(x_LDA_complete$'1.daysPrior.Wilmette.Lock.Open') #replace scaled with binary
+#x_LDA_complete_scaled$elevated_levels_actual_calculated <- factor(x_LDA_complete$'2.daysPrior.Wilmette.Lock.Open') #replace scaled with binary
+LDA_results <- lda(elevated_levels_actual_calculated ~ ., x_LDA_complete)
+LDA_coefficients <- LDA_results$scaling[order(LDA_results$scaling),]
+
+## End LDA
+
+## MODEL 1
+## Try more moving averages to get better weather trends
+
+x_model <- data.frame(x$e_coli_geomean_actual_calculated,
+                      x$'1.daysPrior.Holiday.Flag',
+                      x$'2.daysPrior.precipIntensity',
+                      x$'1.daysPrior.CRCW.Lock.Open',
+                      x$'1.daysPrior.humidity',
+                      x$'2.daysPrior.Day_of_year',
+                      x$'1.daysPrior.precipIntensity',
+                      x$'1.daysPrior.Wilmette.Lock.Open',
+                      x$'1.daysPrior.Day_of_year',
+                      x$'2.daysPrior.Wilmette.Lock.Open',
+                      x$'2.daysPrior.humidity',
+                      x$'1.daysPrior.cloudCover',
+                      x$'1.daysPrior.precipIntensityMax',
+                      x$`2.daysPrior.cloudCover`,
+                      x$`2.daysPrior.Holiday.Flag`,
+                      x$`2.daysPrior.moonPhase`,
+                      x$`1.daysPrior.temperatureMin`,
+                      x$`1.daysPrior.moonPhase`,
+                      x$`2.daysPrior.elevated_levels_actual_calculated`,
+                      x$`2.daysPrior.precipProbability`,
+                      x$`1.daysPrior.elevated_levels_actual_calculated`,
+                      x$Year)
+x_model_complete <- x_model[complete.cases(x_LDA),] #remove NAs
+
+
+#Loop through years
+
+roc_curve <- data.frame()
+for (year in unique(x_model_complete$x.Year)) {        
+
+  set.seed(111)
+  #  ind <- sample(2, nrow(x_model_complete_2015), replace = TRUE, prob=c(0.7, 0.3))
+  #  x_train <- x_model_complete_2015[ind == 1,]
+  #  x_test <- x_model_complete_2015[ind == 2,]
+  #  x_test_epa <- x_small_complete[ind == 2, c(1,3,4,5,7,8)]
+  
+  x_train <- x_model_complete[x_model_complete$x.Year %in% setdiff(unique(x_model_complete$x.Year),year),]
+  x_test <- x_model_complete[x_model_complete$x.Year == year,]
+  #  x_test_epa <- x_model_by_year_complete[x_model_by_year_complete$x.Year == 2010,]
+  
+  
+  model <- randomForest(x.e_coli_geomean_actual_calculated ~ ., data=x_train[1:20])
+  x_test$prediction <- predict(model, x_test[1:20])
+  x_test$ecoli_binary <- ifelse(x_test$x.e_coli_geomean_actual_calculated >= 235, 1, 0)
+  
+  true_positive_rates = c()
+  false_positive_rates = c()
+  for (threshold in seq(0, 750, 1)) {
+    x_test$prediction_binary <- ifelse(x_test$prediction >= threshold, 1, 0)
+    x_test$true_positive <- ifelse((x_test$ecoli_binary == 1 & x_test$prediction_binary  == 1), 1, 0)
+    x_test$true_negative <- ifelse((x_test$ecoli_binary == 0 & x_test$prediction_binary  == 0), 1, 0)
+    x_test$false_negative <- ifelse((x_test$ecoli_binary == 1 & x_test$prediction_binary  == 0), 1, 0)
+    x_test$false_positive <- ifelse((x_test$ecoli_binary == 0 & x_test$prediction_binary  == 1), 1, 0)
+    true_positive_rates = c(true_positive_rates, (sum(x_test$true_positive) / (sum(x_test$true_positive) + sum(x_test$false_negative))))
+    false_positive_rates = c(false_positive_rates, (sum(x_test$false_positive) / (sum(x_test$false_positive) + sum(x_test$true_negative))))
+  }
+  
+  
+  roc_curve_by_year <- data.frame(year, true_positive_rates, false_positive_rates)
+  roc_curve <- rbind(roc_curve, roc_curve_by_year)
+  
+  
+  print(year)
+}
+roc_curve$year <- as.factor(roc_curve$year)
+ggplot(data=roc_curve, aes(x=false_positive_rates, y=true_positive_rates, color=year)) + geom_path()
+# p <- ggplot()
+# p + geom_path(aes(x = false_positive_rates, y = true_positive_rates, color = "My Model")) + geom_vline(xintercept = .05, color = "black") + ylim(0,1) + xlim(0,1)
+
+##  MODEL 2: ROC FOR EPA booster model
+
+
+x_small <- data.frame(x$e_coli_geomean_actual_calculated, x$Year, x$`1.daysPrior.Turbidity.Min`, 
+                      x$`1.daysPrior.precipIntensityMax`, x$`2.daysPrior.precipIntensityMax`, x$`1.daysPrior.Wilmette.Lock.Open`, x$`1.daysPrior.Day_of_year`, x$Drek_Prediction)
+x_model_complete_2 <- x_small[complete.cases(x_small),]
+
+set.seed(12345)
+ind <- sample(2, nrow(x_model_complete_2), replace = TRUE, prob=c(0.8, 0.2))
+x_train <- x_model_complete_2[ind == 1,]
+x_test <- x_model_complete_2[ind == 2,]
+x_test_epa <- x_model_complete_2[ind == 2, c(1,3,4,5,6,7,8)]
+
+model <- randomForest(x.e_coli_geomean_actual_calculated ~ ., data=x_train)
+x_test$prediction <- predict(model, x_test)
+x_test$ecoli_binary <- ifelse(x_test$x.e_coli_geomean_actual_calculated >= 235, 1, 0)
+
+true_positive_rates = c()
+false_positive_rates = c()
+for (threshold in seq(0, 750, 1)) {
+  x_test$prediction_binary <- ifelse(x_test$prediction >= threshold, 1, 0)
+  x_test$true_positive <- ifelse((x_test$ecoli_binary == 1 & x_test$prediction_binary  == 1), 1, 0)
+  x_test$true_negative <- ifelse((x_test$ecoli_binary == 0 & x_test$prediction_binary  == 0), 1, 0)
+  x_test$false_negative <- ifelse((x_test$ecoli_binary == 1 & x_test$prediction_binary  == 0), 1, 0)
+  x_test$false_positive <- ifelse((x_test$ecoli_binary == 0 & x_test$prediction_binary  == 1), 1, 0)
+  true_positive_rates = c(true_positive_rates, (sum(x_test$true_positive) / (sum(x_test$true_positive) + sum(x_test$false_negative))))
+  false_positive_rates = c(false_positive_rates, (sum(x_test$false_positive) / (sum(x_test$false_positive) + sum(x_test$true_negative))))
+
+}
+x_test_epa$ecoli_binary <- ifelse(x_test_epa$x.e_coli_geomean_actual_calculated >= 235, 1, 0)
+epa_true_positive_rates = c()
+epa_false_positive_rates = c()
+for (threshold in seq(0, 750, 1)) {
+  x_test_epa$Drek_elevated_levels_predicted_calculated <- ifelse(x_test_epa$x.Drek_Prediction >= threshold, 1, 0)
+  x_test_epa$true_positive <- ifelse((x_test_epa$ecoli_binary == 1 & x_test_epa$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
+  x_test_epa$true_negative <- ifelse((x_test_epa$ecoli_binary == 0 & x_test_epa$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
+  x_test_epa$false_negative <- ifelse((x_test_epa$ecoli_binary == 1 & x_test_epa$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
+  x_test_epa$false_positive <- ifelse((x_test_epa$ecoli_binary == 0 & x_test_epa$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
+  epa_true_positive_rates <- c(epa_true_positive_rates, (sum(x_test_epa$true_positive) / (sum(x_test_epa$true_positive) + sum(x_test_epa$false_negative))))
+  epa_false_positive_rates <- c(epa_false_positive_rates, (sum(x_test_epa$false_positive) / (sum(x_test_epa$false_positive) + sum(x_test_epa$true_negative))))
+}
+p <- ggplot() 
+p + geom_path(aes(x = false_positive_rates, y = true_positive_rates), color = "blue") + geom_path(aes(x = epa_false_positive_rates, y = epa_true_positive_rates), color = "red") + geom_vline(xintercept = .05, color = "black") + ylim(0,1) + xlim(0,1) + ggtitle("ROC: EPA Booster Model")
+
+##  PRECISION / RECALL  ##
+
+#precision = c()
+#recall = c()
+#for (threshold in seq(0, 750, 1)) {
+#  x_test$prediction_binary <- ifelse(x_test$prediction >= threshold, 1, 0)
+#  x_test$true_positive <- ifelse((x_test$ecoli_binary == 1 & x_test$prediction_binary  == 1), 1, 0)
+#  x_test$true_negative <- ifelse((x_test$ecoli_binary == 0 & x_test$prediction_binary  == 0), 1, 0)
+#  x_test$false_negative <- ifelse((x_test$ecoli_binary == 1 & x_test$prediction_binary  == 0), 1, 0)
+#  x_test$false_positive <- ifelse((x_test$ecoli_binary == 0 & x_test$prediction_binary  == 1), 1, 0)
+#  precision = c(precision, (sum(x_test$true_positive) / (sum(x_test$true_positive) + sum(x_test$false_positive))))
+#  recall = c(recall, (sum(x_test$true_positive) / (sum(x_test$true_positive) + sum(x_test$false_negative))))
+#}
+
+#ggplot() + geom_path(aes(x = recall, y = precision), color = "blue") + ylim(0,1) + xlim(0,1)
+#ggsave(file="PR-Curve.png")
+
