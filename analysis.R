@@ -372,6 +372,7 @@ LDA_coefficients <- LDA_results$scaling[order(LDA_results$scaling),]
 
 ## MODEL 1
 ## Try more moving averages to get better weather trends
+## https://www.researchgate.net/publication/23955184_Summer_E-coli_Patterns_and_Responses_along_23_Chicago_Beaches
 
 x_model <- data.frame(x$e_coli_geomean_actual_calculated,
                       x$'1.daysPrior.Holiday.Flag',
