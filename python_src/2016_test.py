@@ -1,10 +1,11 @@
 # This program is to determine how well the models would do on a long term basis, not just a day to day basis. Basically it is an extension of daily.py without having to use DarkSky.io and pay for it. This is very similar to daily.py Differences between daily.py and this program are:
 # An individual beach's weather is not loaded for each day. Instead we use but a centralized location's weather for all the analyses.
 
+import os
 import pandas as pd
 import json
 import requests
-import datetime
+import datetime 
 import re
 import numpy as np
 from datetime import date, timedelta as td
@@ -39,30 +40,31 @@ import math
 #### Read in a csv that has the weather from forecast.io
 #### The CSV can be created from datelist.py
 ##############################################################
+cwd = os.getcwd() #open the Current Working Directory
 weather = pd.DataFrame()
-weather = pd.read_csv("2016_weather.csv",encoding='latin1')
+weather = pd.read_csv(cwd+"\\2016_weather.csv",encoding='latin1')
 first_day = weather.loc[0,'Date'] #Day that we are going to start on.
 last_day = weather.loc[len(weather)-1,'Date'] #Final date in that is going to be analyzed.
 
 ######################################################
 #### Read in data from the city website
 ######################################################
-resp = requests.get('https://data.cityofchicago.org/api/views/2ivx-z93u/rows.json?accessType=DOWNLOAD')
-theJSON = json.loads(resp.text)
+resp = requests.get('https://data.cityofchicago.org/api/views/2ivx-z93u/rows.json?accessType=DOWNLOAD') #Open City of Chicago connection
+theJSON = json.loads(resp.text) #Put the Data from Chicago into a theJSON variable
 data = []
 for item in theJSON["data"]:
 	data.append(item[9:14]) #Grab (Timestamp, Beach, Sample 1&2, and Mean columns from city website.)
 
 #The table df will be the main data frame to store all the variables for before doing the final models.
-df=pd.DataFrame(data)
+df=pd.DataFrame(data) #Save the data we just got from City of Chicago to the df data frame
 
 #Split apart the timestamp column
 for d in range(len(df)):
 	ts=datetime.datetime.strptime(df.iloc[d,0],'%Y-%m-%dT%H:%M:%S')
-	df.loc[d,'Collection_Time'] = int(ts.strftime('%H'))*60+int(ts.strftime('%M')) #The 'Collection time' in final models are in minutes after midnight.
+	df.loc[d,'Collection_Time'] = int(ts.strftime('%H'))*60+int(ts.strftime('%M')) #The 'Collection time' in all the  models are in minutes after midnight.
 
 ######################################################
-####Populating the main DataFrame
+####Populating the main DataFrame, df
 ######################################################	
 	
 df[0]=df[0].str.extract('(....-..-..)',expand=False) #Create 'Full_date' in first column 
@@ -77,7 +79,8 @@ df = df[(df.Full_date >= first_day)&(df.Full_date <= last_day)] #Trim df down to
 
 df = df.reset_index(drop=True) #The index is of the rows where the days we are analyzing were pulled from, before we trimmed df down. So we reset the whole index to just give us the rows that we are using.
 
-latlong = pd.read_csv('Beaches_LatLong.csv',dtype={'Client.ID':object,'Latitude':str,'Longitude':str,'Group':str,'North':str}) #Using the Beaches_LatLong.csv we read in all that data, for the 'Group' and 'North' variables.
+latlong = pd.read_csv(cwd+'\\Beaches_LatLong.csv',dtype={'Client.ID':object,'Latitude':str,'Longitude':str,'Group':str,'North':str}) #Using the Beaches_LatLong.csv we read in all that data, for the 'Group' and 'North' variables.
+
 #Add latlong to df
 for i in range(len(df['Beach'])) :
 	for j in range(len(latlong['Online'])) :
@@ -88,11 +91,6 @@ for i in range(len(df['Beach'])) :
 			df.loc[i,'North'] = latlong.loc[j,'North']
 
 weather = weather.set_index('Date') #Set the index of the weather data frame by the date to make it easier to search for rows.
-
-# df_beach= df.loc[:,['Full_date','Beach','Mean']]
-# df_beach = df_beach.set_index(['Full_date','Beach'])
-# df_beach.sortlevel(inplace=True)
-
 
 newcols_today = ('humidity_hour_4','pressure_hour_0','temperature_hour_0','temperature_hour_4','windVectorX_hour_0','windVectorX_hour_4','windVectorY_hour_0','windVectorY_hour_4','pressure_hour_4','temperature_hour_1','temperature_hour_2','temperature_hour_3','windSpeed_hour_4','precipIntensity_hour_0','windBearing_hour_4') #These are going to be the columns of weather for the specific day that we are predicting in the models.
 
@@ -303,6 +301,10 @@ df['trailing_average_hourly_windVectorY'] = df[['windVectorY_hour_4','windVector
 
 df['trailing_average_hourly_temperature'] = df[['temperature_hour_4', 'temperature_hour_0', 'temperature_hour_-5','temperature_hour_-9', 'temperature_hour_-14', 'temperature_hour_-19']].mean(axis=1)#Creates the 'trailing_average_hourly_temperature' variable from averaging the temperature from the day before the prediction date.
 
+######################################################
+####Creating the Data Frame to make predictions on
+######################################################	
+
 model_cols = ('Client.ID','windVectorX_hour_-5','windVectorY_hour_-9','group_prior_mean','windVectorY_hour_0','temperature_hour_4','temperature_hour_-5','temperature_hour_0', 'windVectorY_hour_4', 'accum_rain', 'categorical_beach_grouping', '12hrPressureChange', 'windVectorX_hour_0', 'temperature_hour_-19', 'windVectorX_hour_4', 'temperature_hour_-14','windVectorX_hour_-14', 'previous_reading','cloudCover_hour_-15', 'humidity_hour_4', 'windVectorX_hour_-9','windVectorY_hour_-19','windVectorY_hour_-5', 'Collection_Time', 'windVectorX_hour_-19', 'pressure_hour_0', 'temperature_hour_-9', 'windVectorY_hour_-14','2_day_prior_Escherichia.coli', '3_day_prior_Escherichia.coli', '4_day_prior_Escherichia.coli', '5_day_prior_Escherichia.coli', '6_day_prior_Escherichia.coli', '7_day_prior_Escherichia.coli', '2_day_prior_temperatureMax', '3_day_prior_temperatureMax', '4_day_prior_temperatureMax','2_day_prior_windVectorX', '2_day_prior_windVectorY','1_day_prior_pressure', '2_day_prior_pressure', '1_day_prior_dewPoint', '2_day_prior_dewPoint','trailing_average_daily_Escherichia.coli','trailing_average_daily_temperatureMax','trailing_average_daily_pressure', 'trailing_average_daily_dewPoint', 'trailing_average_hourly_temperature','trailing_average_hourly_windVectorX','trailing_average_hourly_windVectorY') #Gets the exact columns in the order that you need to run the RF and the GBM models. 
 
 svc_cols = ('Client.ID', 'windVectorX_hour_-9', 'accum_rain', 'temperature_hour_0', 'windVectorY_hour_-9', 'categorical_beach_grouping', '12hrPressureChange', 'group_prior_mean', 'windVectorY_hour_4', 'temperature_hour_-5', 'temperature_hour_4', 'windVectorX_hour_4', 'windVectorY_hour_-5', 'previous_reading', 'windVectorY_hour_0', 'temperature_hour_-14', 'windVectorY_hour_-19', 'windVectorX_hour_-5', 'cloudCover_hour_-15', 'pressure_hour_0', 'humidity_hour_4', 'windVectorX_hour_-14', 'temperature_hour_-9', 'windVectorX_hour_0', 'Collection_Time', 'windVectorY_hour_-14', 'windVectorX_hour_-19', 'temperature_hour_-19', '1_day_prior_pressure', '2_day_prior_pressure', '2_day_prior_windVectorX', '2_day_prior_windVectorY', '2_day_prior_temperatureMax', '3_day_prior_temperatureMax', '4_day_prior_temperatureMax', '1_day_prior_dewPoint', '2_day_prior_dewPoint', '2_day_prior_Escherichia.coli', '3_day_prior_Escherichia.coli', '4_day_prior_Escherichia.coli', '5_day_prior_Escherichia.coli', '6_day_prior_Escherichia.coli', '7_day_prior_Escherichia.coli', 'trailing_average_daily_pressure', 'trailing_average_daily_temperatureMax', 'trailing_average_daily_dewPoint', 'trailing_average_daily_Escherichia.coli', 'trailing_average_hourly_windVectorX', 'trailing_average_hourly_windVectorY', 'trailing_average_hourly_temperature')  #Gets the exact columns in the order that you need to run the SVC models. 
@@ -311,32 +313,35 @@ df=df.rename(columns={'Group':'categorical_beach_grouping','Mean':'previous_read
 
 model_df = pd.DataFrame() #Create model_df dataframe
 for cols in model_cols :
-	model_df[cols] = df[cols]
+	model_df[cols] = df[cols] #Add all the columns to the model data frame
 
 svc_df = pd.DataFrame() #Create svc_df dataframe
 for cols in model_cols :
 	svc_df[cols] = df[cols]
+	
+model_df['cloudCover_hour_-15'].fillna(value=0, inplace=True) #Fill in 0 if null. Without this the cloudCover_hour_-15 coming in from DarkSky.net doesn't always fill in with an actual number.
 
 model_df = model_df.dropna() #Drop all the rows with 'NAN's in them. Can not run models with na in any columns. 
-svc_df = svc_df.dropna() 
+svc_df = svc_df.dropna()
+
 
 rf_preds = pd.DataFrame() #Create rf_preds dataframe 
 gbm_preds = pd.DataFrame() #Create gbm_preds dataframe
 SVC_preds = pd.DataFrame()#Create svc_preds dataframe
 
 for yr in range (2006,2015) :
-	filename = ('C:/Users/Callin/Documents/GitHub/Chicago/e-coli-beach-predictions/python_src/ensemble_models/models/RF_regress_'+str(yr)+'.pkl') # Open the RF model files
+	filename = (cwd+'\\ensemble_models\\models\\RF_regress_'+str(yr)+'.pkl') # Open the RF model files
 
 	rfmodel = joblib.load(filename) #Load the RF models
 
-	rf_preds['rf_'+str(yr)]=getattr(rfmodel, 'predict')(model_df) #Run the RF models
+	rf_preds['rf_'+str(yr)]=np.exp(getattr(rfmodel, 'predict')(model_df)) #Run the RF models
 	
-	filename = ('C:/Users/Callin/Documents/GitHub/Chicago/e-coli-beach-predictions/python_src/ensemble_models/models/gbm_regress_'+str(yr)+'.pkl') #Open the GBM model files
+	filename = (cwd+'\\ensemble_models\\models\\GBM_regress_'+str(yr)+'.pkl') #Open the GBM model files
 
 	gbmmodel = joblib.load(filename) #Load the GBM models
 
-	gbm_preds['gbm_'+str(yr)]=getattr(gbmmodel, 'predict')(model_df) #Run the GBM models
-filename = ('C:/Users/Callin/Documents/GitHub/Chicago/e-coli-beach-predictions/python_src/ensemble_models/models/svc_clf.pkl') #Open the SVC model file
+	gbm_preds['gbm_'+str(yr)]=np.exp(getattr(gbmmodel, 'predict')(model_df)) #Run the GBM models
+filename = (cwd+'\\ensemble_models\\models\\svc_clf.pkl') #Open the SVC model file
 
 svcmodel = joblib.load(filename) #Load the SVC models
 svc_df=preprocessing.scale(svc_df) #Process the data so that the variation isn't as big.
@@ -349,7 +354,7 @@ model_df['previous_reading'] =model_df['previous_reading'].shift(1) #Shift the '
 
 
 
-report = pd.read_csv('C:/Users/Callin/Documents/GitHub/Chicago/e-coli-beach-predictions/python_src/ensemble_models/models/ValidationReport2.csv',dtype={'RF_thresh2p':np.float64,'RF_thresh5p':np.float64,'GBM_thresh2p':np.float64,'GBM_thresh5p':np.float64}) #Read in the ValidationReport2.csv and name the columns and type from that file.
+report = pd.read_csv(cwd+'\\ensemble_models\\models\\ValidationReport2.csv',dtype={'RF_thresh2p':np.float64,'RF_thresh5p':np.float64,'GBM_thresh2p':np.float64,'GBM_thresh5p':np.float64}) #Read in the ValidationReport2.csv and name the columns and type from that file.
 
 #Find the mean of thresholds from the past RF and GBM models of having 2 or 5 percent false positives.
 RF_thresh2p = report.RF_thresh2p.mean(axis=0)
@@ -358,7 +363,7 @@ GBM_thresh2p = report.GBM_thresh2p.mean(axis=0)
 GBM_thresh5p = report.GBM_thresh5p.mean(axis=0)
 
 #Create the test data frame with previous readings, RF predictions, GBM predictions, and SVC predictions
-test = pd.concat([SVC_preds,model_df['previous_reading'].reset_index(),rf_preds.mean(axis=1), gbm_preds.mean(axis=1)],axis=1)
+test = pd.concat([SVC_preds,model_df['previous_reading'].reset_index(),rf_preds.median(axis=1), gbm_preds.median(axis=1)],axis=1)
 
 #Rename columns that are 0 and 1 to 'RF_Predictions' and 'GBM_Predictions' respectively
 test = test.rename(columns={0:'RF_Predictions',1:'GBM_Predictions'})
@@ -388,8 +393,8 @@ plt.title('GBM Model')
 plt.show()
 
 SVC_threshold = 1.0
-RF_threshold = 4.8
-GBM_threshold = 7.01
+RF_threshold = 111
+GBM_threshold = 1072
 
 #Non-weighted Confusion Matrix Prep
 for i in range(len(test)) :
@@ -420,16 +425,19 @@ for i in range(len(test)) :
 		test.loc[i,'E.coli'] = True
 	if test.loc[i,'SVC_prediction']== 1.0 :
 		total +=.05
-	if test.loc[i,'RF_Predictions']> 4.8:
+	if test.loc[i,'RF_Predictions']>100:
 		total +=.15
-	if test.loc[i,'GBM_Predictions']> 7.01:
+	if test.loc[i,'GBM_Predictions']> 1000:
 		total +=.8
-	if total >= .81 :
+	if total >= .95 :
 		test.loc[i,'Predict']=True
 	else:
 		test.loc[i,'Predict'] = False
 
+pd.crosstab(test['E.coli'],test['Predict']) #Create the confusion matrix
 
 
-pd.crosstab(test['E.coli'],test['Predict'])
+
+
+
 

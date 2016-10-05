@@ -9,54 +9,104 @@ import daily_weather as dw
 import datetime
 from sklearn.externals import joblib
 
+######################################################
+####DataFrames used in this program
+######################################################
 
-resp = requests.get('https://data.cityofchicago.org/api/views/2ivx-z93u/rows.json?accessType=DOWNLOAD')
-theJSON = json.loads(resp.text)
+#df - The main Data frame to which all necessary variables will be stored
+
+#temp - A data frame to store the most recent E.coli readings to transfer to df.
+
+#group_means - A data set that is a collection of the means for E.coli of the 7 groups of beaches
+
+#model_df - The data frame we run the RF and GBM models from.
+
+#rf_preds - Data Frame to hold the RF Predictions. This will have the predictions for each RF model from build_models.py
+
+#gbm_preds - Data Frame to hold the GBM Predictions. This will have the predictions for each GBM model from build_models.py 
+
+#predict - The data frame with all the final predictions for the next day.
+
+######################################################
+#### Get a DarkSky.net API that works
+######################################################
+status = False
+while status == False:
+	apikey= str(input('Enter your Dark Sky APIkey:'))
+	url = 'https://api.forecast.io/forecast/'+apikey+'/41.878311,-87.616342,'+datetime.date.today().isoformat()+'T00:00:00'
+	r = requests.get(url)
+	status = r.status_code == requests.codes.ok
+	
+	
+######################################################
+#### Read in data from the city website
+######################################################
+resp = requests.get('https://data.cityofchicago.org/api/views/2ivx-z93u/rows.json?accessType=DOWNLOAD') #Open City of Chicago connection
+theJSON = json.loads(resp.text) #Put the Data from Chicago into a theJSON variable
 data = []
 for item in theJSON["data"]:
-	data.append(item[9:14])
+	data.append(item[9:14]) #Grab (Timestamp, Beach, Sample 1&2, and Mean columns from city website.)
 
-df=pd.DataFrame(data)
+#The table df will be the main data frame to store all the variables for before doing the final models.
+df=pd.DataFrame(data) #Save the data we just got from City of Chicago to the df data frame
 
-
+#Split apart the timestamp column
 for d in range(len(df)):
 	ts=datetime.datetime.strptime(df.iloc[d,0],'%Y-%m-%dT%H:%M:%S')
-	df.loc[d,'Collection_Time'] = int(ts.strftime('%H'))*60+int(ts.strftime('%M'))
+	df.loc[d,'Collection_Time'] = int(ts.strftime('%H'))*60+int(ts.strftime('%M'))#The 'Collection time' in all the models are in minutes after midnight.
 
 	
-	
-df[0]=df[0].str.extract('(....-..-..)',expand=False)
-df.columns=['Full_date','Beach','Reading1','Reading2','Mean','Collection_Time']
-df= df.sort_values(by=['Beach','Full_date'],ascending=[True,False])
-df= df.loc[(df.Beach != "Columbia")&(df.Beach!="Lane")&(df.Beach!="Loyola")&(df.Beach!="Marion Mahoney Griffin")&(df.Beach!="North Shore")&(df.Beach!="NA")]
-temp = df
-df=df.groupby('Beach').first()
+######################################################
+####Populating the main DataFrame, df
+######################################################		
+df[0]=df[0].str.extract('(....-..-..)',expand=False) #Create 'Full_date' in first column 
 
-df.reset_index(level=0,inplace=True)
+df.columns=['Full_date','Beach','Reading1','Reading2','Mean','Collection_Time'] #Rename first 6 columns in df
 
-days_prior_ecoli = 8
-temp = temp.groupby('Beach').head(days_prior_ecoli).reset_index(drop=True)
+df= df.sort_values(by=['Beach','Full_date'],ascending=[True,False]) #Sort by 'Beach' and 'Full_date' to organize data better.
+
+df= df.loc[(df.Beach != "Columbia")&(df.Beach!="Lane")&(df.Beach!="Loyola")&(df.Beach!="Marion Mahoney Griffin")&(df.Beach!="North Shore")&(df.Beach!="NA")] #Get rid of all the data from beaches that we do not analyze. 
+
+######################################################
+####Put the most recent E.coli levels into df
+######################################################	
+temp = df #Create a temporary data frame to grab the most recent E.coli readings.
+
+df=df.groupby('Beach').first() #Group by all the beaches, and keep only the latest reading from each beach
+
+df.reset_index(level=0,inplace=True) #Not going to need the rest of the list of readings, the index is reset.
+
+days_prior_ecoli = 8 #How many days prior we want the readings for
+
+temp = temp.groupby('Beach').head(days_prior_ecoli).reset_index(drop=True) #For each beach grab how many days prior reading, and save if to the temp data frame
+
 for number in range(days_prior_ecoli):
-	df['%d_day_prior_Escherichia.coli'%(number)]=np.nan
+	df['%d_day_prior_Escherichia.coli'%(number)]=np.nan #Create a column for E. Coli readings for each one of the previous days
 
-i=0
+i=0 #This will keep track of the row we are working on in the temp data frame
 
 for beaches in range(math.ceil(len(temp)/days_prior_ecoli)) :
 	for days in range(days_prior_ecoli):
-		df.loc[beaches,'%d_day_prior_Escherichia.coli'%(days)]=float(temp.loc[i,'Mean'])
-		i+=1
-df =df.drop('0_day_prior_Escherichia.coli',axis=1)
+		df.loc[beaches,'%d_day_prior_Escherichia.coli'%(days)]=float(temp.loc[i,'Mean']) #Transfer the info in the temp data frame to the df data frame
+		i+=1 #go to the next row in the temp data frame
+df =df.drop('0_day_prior_Escherichia.coli',axis=1) # this is the same as the 'previous_reading' variable in df so take it out
 
+######################################################
+####Add the weather to df
+######################################################	
 
-df['Client.ID']=np.nan
+#LatLong is a csv with the basic information for each beach
+df['Client.ID']=np.nan 
 df['lat']=np.nan
 df['long']=np.nan
 df['Group']=np.nan
 df['North']=np.nan
-latlong = pd.read_csv('Beaches_LatLong.csv',dtype={'Client.ID':object,'Latitude':str,'Longitude':str,'Group':str,'North':str})
+latlong = pd.read_csv('Beaches_LatLong.csv',dtype={'Client.ID':object,'Latitude':str,'Longitude':str,'Group':str,'North':str}) #What type of information will be stored in each column
+
+#Take all the info in the LatLong.csv and put it to the df data frame.
 for i in range(len(df['Beach'])) :
 	for j in range(len(latlong['Online'])) :
-		if df.loc[i,'Beach'] == latlong.loc[j,'Online'] :
+		if df.loc[i,'Beach'] == latlong.loc[j,'Online'] : #Find the specific beach for each row to add the information.
 			df.loc[i,'Beach']= latlong.loc[j,'Beach']
 			df.loc[i,'lat'] = latlong.loc[j,'Latitude']
 			df.loc[i,'long'] = latlong.loc[j,'Longitude']
@@ -64,19 +114,18 @@ for i in range(len(df['Beach'])) :
 			df.loc[i,'Group'] = latlong.loc[j,'Group']
 			df.loc[i,'North'] = latlong.loc[j,'North']
 			
-apikey= 'abc7928ccbb6a65eeba40bc7c10e1529'
 
-newcols_today = ('humidity_hour_4','pressure_hour_0','temperature_hour_0','temperature_hour_4','windVectorX_hour_0','windVectorX_hour_4','windVectorY_hour_0','windVectorY_hour_4','pressure_hour_4','temperature_hour_1','temperature_hour_2','temperature_hour_3','windSpeed_hour_4','precipIntensity_hour_0','windBearing_hour_4')
+newcols_today = ('humidity_hour_4','pressure_hour_0','temperature_hour_0','temperature_hour_4','windVectorX_hour_0','windVectorX_hour_4','windVectorY_hour_0','windVectorY_hour_4','pressure_hour_4','temperature_hour_1','temperature_hour_2','temperature_hour_3','windSpeed_hour_4','precipIntensity_hour_0','windBearing_hour_4') #These are going to be the columns of weather for the specific day that we are predicting in the models.
 
 for var in newcols_today :
 	df[var]=np.nan
 	
-newcols_yest = ('1_day_prior_dewPoint','1_day_prior_pressure','cloudCover_hour_-15','temperature_hour_-19','temperature_hour_-19','temperature_hour_-18','temperature_hour_-17','temperature_hour_-16','temperature_hour_-15','temperature_hour_-14','temperature_hour_-13','temperature_hour_-12','temperature_hour_-11','temperature_hour_-10','temperature_hour_-9','temperature_hour_-8','temperature_hour_-7','temperature_hour_-6','temperature_hour_-5','temperature_hour_-4','temperature_hour_-3','temperature_hour_-2','temperature_hour_-1','windVectorX_hour_-19','windVectorX_hour_-14','windVectorX_hour_-9', 'windVectorX_hour_-5', 'windVectorY_hour_-19','windVectorY_hour_-14','windVectorY_hour_-9', 'windVectorY_hour_-5','pressure_hour_-8','Max_precipIntensity-1','1_day_prior_temperatureMax','windSpeed','humidity','1_day_prior_temperatureMin', 'cloudCover')
+newcols_yest = ('1_day_prior_dewPoint','1_day_prior_pressure','cloudCover_hour_-15','temperature_hour_-19','temperature_hour_-19','temperature_hour_-18','temperature_hour_-17','temperature_hour_-16','temperature_hour_-15','temperature_hour_-14','temperature_hour_-13','temperature_hour_-12','temperature_hour_-11','temperature_hour_-10','temperature_hour_-9','temperature_hour_-8','temperature_hour_-7','temperature_hour_-6','temperature_hour_-5','temperature_hour_-4','temperature_hour_-3','temperature_hour_-2','temperature_hour_-1','windVectorX_hour_-19','windVectorX_hour_-14','windVectorX_hour_-9', 'windVectorX_hour_-5', 'windVectorY_hour_-19','windVectorY_hour_-14','windVectorY_hour_-9', 'windVectorY_hour_-5','pressure_hour_-8','Max_precipIntensity-1','1_day_prior_temperatureMax','windSpeed','humidity','1_day_prior_temperatureMin', 'cloudCover') #These are going to be the columns of weather for the day before that we are predicting in the models.
 
 for var in newcols_yest :
 	df[var]=np.nan
 
-newcols_twodays = ('2_day_prior_dewPoint', '2_day_prior_pressure', '2_day_prior_temperatureMax','2_day_prior_windVectorX','2_day_prior_windVectorY','Max_precipIntensity-2','2_day_prior_temperatureMin')
+newcols_twodays = ('2_day_prior_dewPoint', '2_day_prior_pressure', '2_day_prior_temperatureMax','2_day_prior_windVectorX','2_day_prior_windVectorY','Max_precipIntensity-2','2_day_prior_temperatureMin') #These are going to be the columns of weather for the two days before that we are predicting in the models.
 
 for var in newcols_twodays :
 	df[var]=np.nan
@@ -84,15 +133,18 @@ for var in newcols_twodays :
 df['3_day_prior_temperatureMax']= np.nan
 df['4_day_prior_temperatureMax']= np.nan
 
-	
-for i in range(len(df)) :
-	lattitude = str(df.loc[i,'lat'])
-	longitude = str(df.loc[i,'long'])
-	for day in range(5) :
-		d = pd.to_datetime(df.loc[i,'Full_date'],format = '%Y-%m-%d')-datetime.timedelta(days=day)
-		d = datetime.datetime.strptime(str(d),'%Y-%m-%d %H:%M:%S')
-		weather = dw.daily_weather(lat= lattitude, long=longitude,date=d.strftime("%Y-%m-%dT%H:%M:%S"),apikey=apikey)
-		if day == 0 :
+#Go through each row of df and add in the information for all the columns we created above
+for i in range(len(df)) : #for each row/beach we are predicting for
+	lattitude = str(df.loc[i,'lat']) #Grab the Latitude of the beach we are going to be pulling all the weather for
+	longitude = str(df.loc[i,'long']) #Grab the Latitude of the beach we are going to be pulling all the weather for
+	for day in range(5) :#for each of the past 5 days at the beach/row.
+		if day == 0:
+			d = pd.to_datetime(df.loc[i,'Full_date'],format = '%Y-%m-%d')+datetime.timedelta(days=day+1) #Find the day we are grabbing the weather for
+		else :
+			d = pd.to_datetime(df.loc[i,'Full_date'],format = '%Y-%m-%d')-datetime.timedelta(days=day-1) #Find the day we are grabbing the weather for
+		d = datetime.datetime.strptime(str(d),'%Y-%m-%d %H:%M:%S') #Strip the date and time we found for d
+		weather = dw.daily_weather(lat= lattitude, long=longitude,date=d.strftime("%Y-%m-%dT%H:%M:%S"),apikey=apikey) #grab the weather for the 
+		if day == 0 : #Fill in the weather variables needed for the day that you are predicting
 			for item in newcols_today :
 				if item =='humidity_hour_4' :
 					df.loc[i,item]= weather.loc[0,'4.humidity.hourly']
@@ -130,7 +182,7 @@ for i in range(len(df)) :
 					df.loc[i,item] = weather.loc[0,'3.windSpeed.hourly']
 				elif item == 'windBearing_hour_4' :
 					df.loc[i,item] = weather.loc[0,'4.windBearing.hourly']
-		elif day == 1 :
+		elif day == 1 :#Fill in the weather variables needed for the day before that you are predicting
 			for item in newcols_yest :
 				if item == '1_day_prior_dewPoint':
 					df.loc[i,item] = weather.loc[0,'dewPoint']
@@ -208,7 +260,7 @@ for i in range(len(df)) :
 					df.loc[i,item] = weather.loc[0,'temperatureMin']
 				elif item == 'cloudCover' :
 					df.loc[i,item] = weather.loc[0,'cloudCover']
-		elif day == 2:
+		elif day == 2:#Fill in the weather variables needed for 2 days before that you are predicting
 			for item in newcols_twodays :
 				if item == '2_day_prior_dewPoint':
 					df.loc[i,item] = weather.loc[0,'dewPoint']
@@ -224,82 +276,97 @@ for i in range(len(df)) :
 					df.loc[i,item] = weather.loc[0,'precipIntensityMax']
 				elif item == '2_day_prior_temperatureMin':
 					df.loc[i,item] = weather.loc[0,'temperatureMin']
-		elif day == 3 :
+		elif day == 3 : #Fill in the weather variables needed for 3 days before that you are predicting
 			df.loc[i,'3_day_prior_temperatureMax'] = weather.loc[0,'temperatureMax']
 			df.loc[i,'Max_precipIntensity-3'] = weather.loc[0,'precipIntensityMax']
 			df.loc[i,'3_day_prior_temperatureMin'] = weather.loc[0,'temperatureMin']
-		elif day == 4 :
+		elif day == 4 :#Fill in the weather variables needed for 4 days before that you are predicting
 			df.loc[i,'4_day_prior_temperatureMax'] = weather.loc[0,'temperatureMax'] 
 			df.loc[i,'Max_precipIntensity-4'] = weather.loc[0,'precipIntensityMax']
 			df.loc[i,'4_day_prior_temperatureMin'] = weather.loc[0,'temperatureMin'] 
 
-df['12hrPressureChange'] = df['pressure_hour_4']-df['pressure_hour_-8']			
+df['12hrPressureChange'] = df['pressure_hour_4']-df['pressure_hour_-8']	#The change in pressure from 4pm the day before to 4am the day of prediction.		
 
-group_means = pd.DataFrame()
-group_means['Group']=range(1,7)
+group_means = pd.DataFrame() #Create the group means Data Frame
+group_means['Group']=range(1,7) #Create a variable that has 1-6 to save the means to that row.
+
+df['Mean'] = pd.to_numeric(df['Mean']) #Change the 'Mean' variable to a float numeric type
 
 for i in range(int(df['Group'].min())-1,int(df['Group'].max())) :
-	group_means.loc[i,'group_prior_mean']=df.groupby('Group')['1_day_prior_Escherichia.coli'].mean()[i]
+	group_means.loc[i,'group_prior_mean']=df.groupby('Group')['Mean'].mean()[i] #Find the Mean of each group at the prior reading
 	
 for row in range(len(df['Group'])) :
-	df.loc[row,'group_prior_mean'] = group_means.loc[int(df.loc[row,'Group'])-1,'group_prior_mean'] 
+	df.loc[row,'group_prior_mean'] = group_means.loc[int(df.loc[row,'Group'])-1,'group_prior_mean'] #Add the group mean for each beach to each row in df
 
-df['accum_rain'] = df[['Max_precipIntensity-1','Max_precipIntensity-2','Max_precipIntensity-3','Max_precipIntensity-4']].sum(axis=1)
+df['accum_rain'] = df[['Max_precipIntensity-1','Max_precipIntensity-2','Max_precipIntensity-3','Max_precipIntensity-4']].sum(axis=1) #For each row in DF get add all of the 'Max_precip' for the past few days.
 
-df['trailing_average_daily_temperatureMax'] = df[['1_day_prior_temperatureMax','2_day_prior_temperatureMax','3_day_prior_temperatureMax','4_day_prior_temperatureMax']].mean(axis=1)
+df['trailing_average_daily_temperatureMax'] = df[['1_day_prior_temperatureMax','2_day_prior_temperatureMax','3_day_prior_temperatureMax','4_day_prior_temperatureMax']].mean(axis=1) #Average the high temperatures from the past 4 days
 
-df['trailing_average_daily_temperatureMin'] = df[['1_day_prior_temperatureMin','2_day_prior_temperatureMin','3_day_prior_temperatureMin','4_day_prior_temperatureMin']].mean(axis=1)
+df['trailing_average_daily_temperatureMin'] = df[['1_day_prior_temperatureMin','2_day_prior_temperatureMin','3_day_prior_temperatureMin','4_day_prior_temperatureMin']].mean(axis=1) #Average the low temperatures from the past 4 days
 
 df['trailing_average_daily_Escherichia.coli']= df[['1_day_prior_Escherichia.coli','2_day_prior_Escherichia.coli',
 '3_day_prior_Escherichia.coli',
 '4_day_prior_Escherichia.coli',
 '5_day_prior_Escherichia.coli',
 '6_day_prior_Escherichia.coli',
-'7_day_prior_Escherichia.coli']].mean(axis=1)
+'7_day_prior_Escherichia.coli']].mean(axis=1) #Creates the 'trailing_average_daily_Escherichia.coli' variable from averaging the past 7 ecoli readings at a specific location
 
-df['trailing_average_daily_pressure']= df[['1_day_prior_pressure','2_day_prior_pressure']].mean(axis=1)
-
-df['trailing_average_daily_dewPoint']= df[['1_day_prior_dewPoint','2_day_prior_dewPoint']].mean(axis=1)
-
-df['trailing_average_hourly_windVectorX'] = df[['windVectorX_hour_4','windVectorX_hour_0','windVectorX_hour_-5','windVectorX_hour_-9','windVectorX_hour_-14','windVectorX_hour_-19']].mean(axis=1)
-
-df['trailing_average_hourly_windVectorY'] = df[['windVectorY_hour_4','windVectorY_hour_0','windVectorY_hour_-5','windVectorY_hour_-9','windVectorY_hour_-14','windVectorY_hour_-19']].mean(axis=1)
-
-df['trailing_average_hourly_temperature'] = df[['temperature_hour_4', 'temperature_hour_0', 'temperature_hour_-5','temperature_hour_-9', 'temperature_hour_-14', 'temperature_hour_-19']].mean(axis=1)
-
-model_cols = ('Client.ID','windVectorX_hour_-5','windVectorY_hour_-9','group_prior_mean','windVectorY_hour_0','temperature_hour_4','temperature_hour_-5','temperature_hour_0', 'windVectorY_hour_4', 'accum_rain', 'categorical_beach_grouping', '12hrPressureChange', 'windVectorX_hour_0', 'temperature_hour_-19', 'windVectorX_hour_4', 'temperature_hour_-14','windVectorX_hour_-14', 'previous_reading','cloudCover_hour_-15', 'humidity_hour_4', 'windVectorX_hour_-9','windVectorY_hour_-19','windVectorY_hour_-5', 'Collection_Time', 'windVectorX_hour_-19', 'pressure_hour_0', 'temperature_hour_-9', 'windVectorY_hour_-14','2_day_prior_Escherichia.coli', '3_day_prior_Escherichia.coli', '4_day_prior_Escherichia.coli', '5_day_prior_Escherichia.coli', '6_day_prior_Escherichia.coli', '7_day_prior_Escherichia.coli', '2_day_prior_temperatureMax', '3_day_prior_temperatureMax', '4_day_prior_temperatureMax','2_day_prior_windVectorX', '2_day_prior_windVectorY','1_day_prior_pressure', '2_day_prior_pressure', '1_day_prior_dewPoint', '2_day_prior_dewPoint','trailing_average_daily_Escherichia.coli','trailing_average_daily_temperatureMax','trailing_average_daily_pressure', 'trailing_average_daily_dewPoint', 'trailing_average_hourly_temperature','trailing_average_hourly_windVectorX','trailing_average_hourly_windVectorY')
-
-# model_cols2 = ('temperature_hour_-3','precipIntensity','windSpeed','humidity_hour_4','temperature_hour_-10','temperature_hour_2','windSpeed_hour','temperature_hour_0','temperature_hour_-15','temperature_hour_-14','cloudCover_hour_4','temperatureMax','temperature_hour_-11','temperature_hour_-8','temperature_hour_-13','temperature_hour_-7','humidity','categorical_beach_grouping','temperature_hour_-12','temperature_hour_-4','temperature_hour_-19','windSpeed_hour_1','temperature_hour_-17','temperature_hour_3','temperatureMin','temperature_hour_-9','temperature_hour_-5','temperature_hour_-1','precipIntensity_hour_0', 'cloudCover','pressure_hour_0', 'windSpeed_hour_2','precipIntensity_hour_4','windSpeed_hour_3','flag_geographically_a_north_beach','temperature_hour_-2','temperature_hour_-16','temperature_hour_-6','precipIntensityMax','DayOfYear','temperature_hour_4','windBearing_hour_4','temperature_hour_1','temperature_hour_-18','1_day_prior_temperatureMax','2_day_prior_temperatureMax','3_day_prior_temperatureMax','1_day_prior_temperatureMin','2_day_prior_temperatureMin','1_day_prior_Escherichia.coli','2_day_prior_Escherichia.coli','3_day_prior_Escherichia.coli', '4_day_prior_Escherichia.coli','5_day_prior_Escherichia.coli','6_day_prior_Escherichia.coli','7_day_prior_Escherichia.coli', 'trailing_average_daily_temperatureMax','trailing_average_daily_temperatureMin', 'trailing_average_daily_Escherichia.coli','trailing_average_hourly_windSpeed','trailing_average_hourly_precipIntensity', 'trailing_average_hourly_temperature', '1_day_prior_Escherichia.coli_beach_in_grouping_1', '1_day_prior_Escherichia.coli_beach_in_grouping_2', '1_day_prior_Escherichia.coli_beach_in_grouping_3', '1_day_prior_Escherichia.coli_beach_in_grouping_4', '1_day_prior_Escherichia.coli_beach_in_grouping_5', '1_day_prior_Escherichia.coli_beach_in_grouping_6')
-
-df=df.rename(columns={'Group':'categorical_beach_grouping','1_day_prior_Escherichia.coli':'previous_reading'})
+df['trailing_average_daily_pressure']= df[['1_day_prior_pressure','2_day_prior_pressure']].mean(axis=1) #Creates the 'trailing_average_daily_pressure' variable from averaging the pressures from the past 2 days
 
 
-model_df = pd.DataFrame()
+df['trailing_average_daily_dewPoint']= df[['1_day_prior_dewPoint','2_day_prior_dewPoint']].mean(axis=1) #Creates the 'trailing_average_daily_dewPoint' variable from averaging the dew points from the past 2 days
+
+df['trailing_average_hourly_windVectorX'] = df[['windVectorX_hour_4','windVectorX_hour_0','windVectorX_hour_-5','windVectorX_hour_-9','windVectorX_hour_-14','windVectorX_hour_-19']].mean(axis=1) #Creates the 'trailing_average_hourly_windVectorX' variable from averaging the wind vectors in the X direction from the day before the prediction date.
+
+df['trailing_average_hourly_windVectorY'] = df[['windVectorY_hour_4','windVectorY_hour_0','windVectorY_hour_-5','windVectorY_hour_-9','windVectorY_hour_-14','windVectorY_hour_-19']].mean(axis=1)#Creates the 'trailing_average_hourly_windVectorY' variable from averaging the wind vectors in the Y direction from the day before the prediction date.
+
+df['trailing_average_hourly_temperature'] = df[['temperature_hour_4', 'temperature_hour_0', 'temperature_hour_-5','temperature_hour_-9', 'temperature_hour_-14', 'temperature_hour_-19']].mean(axis=1) #Creates the 'trailing_average_hourly_temperature' variable from averaging the temperature from the day before the prediction date.
+
+######################################################
+####Creating the Data Frame to make predictions on
+######################################################	
+
+model_cols = ('Client.ID','windVectorX_hour_-5','windVectorY_hour_-9','group_prior_mean','windVectorY_hour_0','temperature_hour_4','temperature_hour_-5','temperature_hour_0', 'windVectorY_hour_4', 'accum_rain', 'categorical_beach_grouping', '12hrPressureChange', 'windVectorX_hour_0', 'temperature_hour_-19', 'windVectorX_hour_4', 'temperature_hour_-14','windVectorX_hour_-14', 'previous_reading','cloudCover_hour_-15', 'humidity_hour_4', 'windVectorX_hour_-9','windVectorY_hour_-19','windVectorY_hour_-5', 'Collection_Time', 'windVectorX_hour_-19', 'pressure_hour_0', 'temperature_hour_-9', 'windVectorY_hour_-14','2_day_prior_Escherichia.coli', '3_day_prior_Escherichia.coli', '4_day_prior_Escherichia.coli', '5_day_prior_Escherichia.coli', '6_day_prior_Escherichia.coli', '7_day_prior_Escherichia.coli', '2_day_prior_temperatureMax', '3_day_prior_temperatureMax', '4_day_prior_temperatureMax','2_day_prior_windVectorX', '2_day_prior_windVectorY','1_day_prior_pressure', '2_day_prior_pressure', '1_day_prior_dewPoint', '2_day_prior_dewPoint','trailing_average_daily_Escherichia.coli','trailing_average_daily_temperatureMax','trailing_average_daily_pressure', 'trailing_average_daily_dewPoint', 'trailing_average_hourly_temperature','trailing_average_hourly_windVectorX','trailing_average_hourly_windVectorY')#Gets the exact columns in the order that you need to run the RF and the GBM models.
+
+svc_cols = ('Client.ID', 'windVectorX_hour_-9', 'accum_rain', 'temperature_hour_0', 'windVectorY_hour_-9', 'categorical_beach_grouping', '12hrPressureChange', 'group_prior_mean', 'windVectorY_hour_4', 'temperature_hour_-5', 'temperature_hour_4', 'windVectorX_hour_4', 'windVectorY_hour_-5', 'previous_reading', 'windVectorY_hour_0', 'temperature_hour_-14', 'windVectorY_hour_-19', 'windVectorX_hour_-5', 'cloudCover_hour_-15', 'pressure_hour_0', 'humidity_hour_4', 'windVectorX_hour_-14', 'temperature_hour_-9', 'windVectorX_hour_0', 'Collection_Time', 'windVectorY_hour_-14', 'windVectorX_hour_-19', 'temperature_hour_-19', '1_day_prior_pressure', '2_day_prior_pressure', '2_day_prior_windVectorX', '2_day_prior_windVectorY', '2_day_prior_temperatureMax', '3_day_prior_temperatureMax', '4_day_prior_temperatureMax', '1_day_prior_dewPoint', '2_day_prior_dewPoint', '2_day_prior_Escherichia.coli', '3_day_prior_Escherichia.coli', '4_day_prior_Escherichia.coli', '5_day_prior_Escherichia.coli', '6_day_prior_Escherichia.coli', '7_day_prior_Escherichia.coli', 'trailing_average_daily_pressure', 'trailing_average_daily_temperatureMax', 'trailing_average_daily_dewPoint', 'trailing_average_daily_Escherichia.coli', 'trailing_average_hourly_windVectorX', 'trailing_average_hourly_windVectorY', 'trailing_average_hourly_temperature')  #Gets the exact columns in the order that you need to run the SVC models. 
+
+
+df=df.rename(columns={'Group':'categorical_beach_grouping','1_day_prior_Escherichia.coli':'previous_reading'}) #Rename columns to match model wording
+
+
+model_df = pd.DataFrame() #Create model_df dataframe
 for cols in model_cols :
-	model_df[cols] = df[cols]
+	model_df[cols] = df[cols]#Add all the columns to the model data frame
 
-model_df = model_df[pd.notnull(model_df['Client.ID'])]
+model_df = model_df[pd.notnull(model_df['Client.ID'])] #Take the beaches we don't care about out of the model
 
-rf_preds = pd.DataFrame()
-rf_preds['Beach'] = df.Beach[pd.notnull(df['Client.ID'])]
+rf_preds = pd.DataFrame() #Build rf_data frame for the holding of the RF predictions
+rf_preds['Beach'] = df.Beach[pd.notnull(df['Client.ID'])] #Add in the beach names to the 'rf_preds'
 
-gbm_preds = pd.DataFrame()
-gbm_preds['Beach'] = df.Beach[pd.notnull(df['Client.ID'])]
+gbm_preds = pd.DataFrame() #Build gbm_data frame for the holding of the GBM predictions
+gbm_preds['Beach'] = df.Beach[pd.notnull(df['Client.ID'])] #Add in the beach names to the 'gbm_preds'
+cwd = os.getcwd() #open the Current Working Directory
+
+######################################################
+############## Models
+######################################################	
+
 for yr in range (2006,2015) :
-	filename = ('C:/Users/Callin/Documents/GitHub/Chicago/e-coli-beach-predictions/python_src/ensemble_models/model_26_08_2016/RF_regress_'+str(yr)+'.pkl')
+	filename = (cwd+'\\ensemble_models\\model_26_08_2016\\RF_regress_'+str(yr)+'.pkl') #Open the RF .pkl files
 
-	rfmodel = joblib.load(filename)
+	rfmodel = joblib.load(filename) #Load the RF models
 
-	rf_preds['rf_'+str(yr)]=np.exp(getattr(rfmodel, 'predict')(model_df))
+	rf_preds['rf_'+str(yr)]=np.exp(getattr(rfmodel, 'predict')(model_df)) #RF prediction model
 	
-	filename = ('C:/Users/Callin/Documents/GitHub/Chicago/e-coli-beach-predictions/python_src/ensemble_models/model_26_08_2016/gbm_regress_'+str(yr)+'.pkl')
+	filename = (cwd+'\\ensemble_models\\model_26_08_2016\\gbm_regress_'+str(yr)+'.pkl') #Open the GBM .pkl files
 
-	gbmmodel = joblib.load(filename)
+	gbmmodel = joblib.load(filename) #Load the GBM models
 
-	gbm_preds['gbm_'+str(yr)]=np.exp(getattr(gbmmodel, 'predict')(model_df))
+	gbm_preds['gbm_'+str(yr)]=np.exp(getattr(gbmmodel, 'predict')(model_df)) #GBM prediction model
 
-report = pd.read_csv('C:/Users/Callin/Documents/GitHub/Chicago/e-coli-beach-predictions/python_src/ensemble_models/model_26_08_2016/ValidationReport2.csv',dtype={'RF_thresh2p':np.float64,'RF_thresh5p':np.float64,'GBM_thresh2p':np.float64,'GBM_thresh5p':np.float64})
-predict = pd.DataFrame()
+report = pd.read_csv('C:/Users/Callin/Documents/GitHub/Chicago/e-coli-beach-predictions/python_src/ensemble_models/model_26_08_2016/ValidationReport2.csv',dtype={'RF_thresh2p':np.float64,'RF_thresh5p':np.float64,'GBM_thresh2p':np.float64,'GBM_thresh5p':np.float64}) #Read in the ValidationReport2.csv and name the columns and type from that file.
+
+predict = pd.DataFrame() #Create predict Data Frame
 predict['Beach']=df.Beach[pd.notnull(df['Client.ID'])]
 predict['RF_Predictions']=rf_preds.mean(axis=1)
 predict['RF_thresh2p']=report.RF_thresh2p.mean(axis=0)

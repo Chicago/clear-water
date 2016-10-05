@@ -16,11 +16,9 @@ def prepare_data(df=None):
     '''
     Preps the data to be used in the model. Right now, the code itself must
     be modified to tweak which columns are included in what way.
-
     Parameters
     ----------
     df : Dataframe to use. If not specified, the dataframe is loaded automatically.
-
     Returns
     -------
     predictors : NxM DataFrame of the predictors for the classification problem.
@@ -224,18 +222,15 @@ def display_predictions_by_beach(results, predict_col = 'predictedEPA'):
     '''
     Helper function to test ensemble of models on 2015 data.
     Displays the prediction results by beach, sorted from north to south.
-
     Parameters
     ----------
     results : dataframe with all predictions 
-
     Returns
     -------
     precision : percent of reported warnings that are actually correct
     recall    : percent of all actual ecoli outbreaks that are warned about
     
     Also prints table of results to console
-
     '''
     results['correct_warning'] = (results['expected'])&(results[predict_col])
     results['incorrect_warning'] = (results['expected']==False)&(results[predict_col])
@@ -567,6 +562,4 @@ if __name__ == '__main__':
     results['predict_GBM'] = results['mean_GBM']> np.exp(summaryFrame.GBM_thresh5p.min())
     results['predict_Combo'] = (((results['predict_RF'])&(results['predict_GBM']))|(results['predictedEPA']) )
     prec, rec = display_predictions_by_beach(results, 'predict_Combo')
-    print('Combo ensemble model variant with one threshold: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100)))   
-
-    
+    print('Combo ensemble model variant with one threshold: recall= {0}, precision  = {1}\n'.format(np.int(rec*100),np.int(prec*100))) 

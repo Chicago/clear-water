@@ -18,7 +18,6 @@ the R dataframe code exactly.
 def read_data_simplified():
     '''
     Simple function to read in the data from the excel files.
-
     Returns a dataframe that has only been minimally cleaned.
     '''
     cpd_data_path = '../../data/ChicagoParkDistrict/raw/Standard 18 hr Testing/'
@@ -89,7 +88,6 @@ def read_data_simplified():
 def group_beaches_geographically(data, beach_names_column='Client.ID', verbose=False):
     '''
     Creates geographical categorizations for the beaches.
-
     The indicators are any of six groups and a north indicator (1 if North of the pier, 0 if South).
     '''
     df = data.copy()
@@ -130,7 +128,6 @@ def group_beaches_geographically(data, beach_names_column='Client.ID', verbose=F
 
 def single_grouping(beach_name, groups):
     '''Takes list of lists of strings, and sees if thed given beach_name matches any of those.  It then reports which of the initial lists it was in.  If none are found, it returns an N+1th category.
-
     Inputs
     ------
     beach_name: string
@@ -145,12 +142,10 @@ def single_grouping(beach_name, groups):
 
 def beach_grouping(beach_name, grouping):
     '''Simple function that returns 1 if the beach name is in the applied list.
-
     Input
     -----
     beach_name: string
     grouping: list of strings
-
     '''
 
     if beach_name in grouping:
@@ -161,13 +156,11 @@ def beach_grouping(beach_name, grouping):
 def clean_up_beaches(data, beach_names_column='Beach', verbose=False):
     '''
     Merge beach names to prevent duplicate readings.
-
     Parameters
     ==========
     data               : A dataframe containing a column of beach names
     beach_names_column : The name of the column containing the beach names
     verbose            : Print information if True
-
     Output
     ======
     df : Dataframe with cleaned beach names.
@@ -204,23 +197,19 @@ def add_columns_each_beach(df, beach_col_name='Beach', timestamp_col_name='Times
     Adds a column containing the previous day's Ecoli_geomean reading at each beach.
     Also calls add_column_prior_data to add on previous 7 days' of readings.
     Fills in missing data to 'previous_reading' using mean of previous 7 days' of readings.
-
     Parameters
     ==========
     df       : Dataframe of data.
-
     Keyword Arguments
     =================
     beach_col_name='Beach'
         The name of the column containing the beach names in df.
     timestamp_col_name='Timestamp'
         The name of the column containing the timestamp in df.
-
     Output
     ======
     dfc : Dataframe with the previous data merged onto (a copy of) the input dataframe.
           Adds on group_prior_mean based on which of 4 categories the beach is in 
-
     '''
     dfc = df.copy()
     dfc = add_column_prior_data(dfc, ecoli_col_name, [1,2,3,4,5,6,7] , beach_col_name=beach_col_name , timestamp_col_name=timestamp_col_name)
@@ -267,7 +256,6 @@ def add_columns_each_beach(df, beach_col_name='Beach', timestamp_col_name='Times
 def add_column_prior_data(df, colnames, ns, beach_col_name='Beach', timestamp_col_name='Timestamp'):
     '''
     Adds data from previous days to the dataframe.
-
     Parameters
     ==========
     df       : Dataframe of data.
@@ -280,18 +268,15 @@ def add_column_prior_data(df, colnames, ns, beach_col_name='Beach', timestamp_co
                previous day is unavailable, then a nan is inserted).
                If a list-like type is specified, then for each n in ns,
                the data from n days back is added.
-
     Keyword Arguments
     =================
     beach_col_name='Beach'
         The name of the column containing the beach names in df.
     timestamp_col_name='Timestamp'
         The name of the column containing the timestamp in df.
-
     Output
     ======
     df : Dataframe with the previous data merged onto (a copy of) the input dataframe.
-
     Example
     =======
     >>> import read_data as rd
@@ -338,11 +323,9 @@ def process_hourly_data(df, hours_offset=0,
     '''
     Pivot hourly data into daily data, optionally shifting the hours that
     get mapped to a given date.
-
     For example, you can choose to have a "day" be defined as 5am to 5am, so
     that, e.g., all hours from 6/1/2015 05:00 through 6/2/2015 05:00 inclusive
     are pivoted onto the day 6/1/2015.
-
     Parameters
     ----------
     df                 : Dataframe to pivot. Should have hourly data.
@@ -354,11 +337,9 @@ def process_hourly_data(df, hours_offset=0,
     timestamp_col_name : Name of the column containing the timestamps.
                          Note that this column is expected to be
                          pandas.tslib.Timestamp.
-
     Returns
     -------
     df : Pivoted dataframe.
-
     Example
     --------
     >>> import read_data as rd
@@ -389,7 +370,6 @@ def split_sheets(file_name, year, verbose=False):
     '''
     Reads in all sheets of an excel workbook, concatenating
     all of the information into a single dataframe.
-
     The excel files were unfortunately structured such that
     each day had its own sheet.
     '''
@@ -514,7 +494,6 @@ def convert_UNIX_times(df, column_list = ['sunriseTime','sunsetTime','temperatur
 	This is done by taking the UNIX time in seconds, subtracting
 	away the seconds equivalent of Full_date, and then subtracting
 	5 hours to account for a conversion between GMT and Central Time
-
 	The list of columns provided as a default to the column_list
 	argument should be the only ones that need conversion
 	'''
@@ -654,7 +633,6 @@ def date_lookup(s, verbose=False):
     For large data, the same dates are often repeated. Rather than
     re-parse these, we store all unique dates, parse them, and
     use a lookup to convert all dates.
-
     Thanks to fixxxer, found at
     http://stackoverflow.com/questions/29882573
     '''
@@ -674,7 +652,6 @@ def read_data(verbose=False, read_drek=True, read_holiday=True, read_weather_sta
     Read in the excel files for years 2006-2015 found in
     'data/ChicagoParkDistrict/raw/Standard 18 hr Testing'
     along with drekbeach data.
-
     Also reformats columns in accordance with the transformations
     found in analysis.R
     '''
