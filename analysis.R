@@ -326,11 +326,14 @@ beach_readings_pca_shifted_new_only <- beach_readings_pca_shifted_new_only[,!nam
 beach_readings_pca <- cbind(beach_readings_pca_shifted$Reading.1, beach_readings_pca_shifted$Reading.2, beach_readings_pca_shifted$e_coli_geomean_actual_calculated, beach_readings_pca_shifted_new_only)
 names(beach_readings_pca)[1:3] <- c("Reading.1", "Reading.2", "e_coli_geomean_actual_calculated")
 beach_readings_pca <-  beach_readings_pca[,sapply(beach_readings_pca, is.numeric)]
+na_count <- sapply(beach_readings_pca, function(y) sum(is.na(y))) #analyze NAs
+beach_readings_pca <- beach_readings_pca[,na_count < 10000] #enforce NA maximum
+beach_readings_pca <- beach_readings_pca[complete.cases(beach_readings_pca),] #remove NAs
 beach_readings_pca <- beach_readings_pca[complete.cases(beach_readings_pca),]
 beach_readings_pca <- scale(beach_readings_pca)
 pca <- prcomp(beach_readings_pca)
 plot(pca, type = "l")
-aload <- abs(pca$rotation[,1:2])
+aload <- abs(pca$rotation[,1:5])
 relative_contribution_to_PC <- sweep(aload, 2, colSums(aload), "/")
 
 ##  START MODELING AND VISUALIZATIONS
@@ -396,7 +399,7 @@ x_model <- data.frame(x$e_coli_geomean_actual_calculated,
                       x$`2.daysPrior.precipProbability`,
                       x$`1.daysPrior.elevated_levels_actual_calculated`,
                       x$Year)
-x_model_complete <- x_model[complete.cases(x_LDA),] #remove NAs
+x_model_complete <- x_model[complete.cases(x_model),] #remove NAs
 
 
 #Loop through years
