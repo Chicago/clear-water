@@ -5,6 +5,7 @@ def daily_weather(lat,long,date,apikey) :
 	import json
 	import pandas as pd
 	import numpy as np
+	import os
 	url = ('https://api.forecast.io/forecast/'+apikey+'/'+lat + ','+long +','+date) #create a string to create a url to access DarkSky.net
 	resp = requests.get(url) #Get the data off of the URL
 	theJSON = json.loads(resp.text) #The data comes in a json, This loads the json data into the program 

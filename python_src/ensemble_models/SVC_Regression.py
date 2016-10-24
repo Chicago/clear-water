@@ -24,7 +24,7 @@ for i in range(len(meta_info['Escherichia.coli'])) :
 E_coli = meta_info['E_coli'].values.tolist() #E.coli is just a 1 or 0 to signify high or low to train the SVC.
 test_size = 1000 #How many rows to predict on.
 X=preprocessing.scale(data_processed) #Trim the variation down
-svc= svm.SVC(kernel='poly', degree=3, C=100.0, gamma=0.07)#Create the SVC model
+svc= svm.SVC(kernel='poly', degree=3, C=20, gamma=0.07)#Create the SVC model
 svc.fit(X[:-test_size],E_coli[:-test_size]) #Train the SVC model
 
 

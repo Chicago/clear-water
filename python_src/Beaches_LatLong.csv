@@ -1,26 +1,26 @@
-Online,Beach,Client.ID,Latitude,Longitude,Group,North
-12th Street,12th,12,41.8638,-87.6082,4,0
-Margaret T Burroughs,31st,13,41.8393,-87.6072,4,0
-Oakwood,39th,14,41.8211,-87.5976,5,0
-57th Street,57th,15,41.7911,-87.5797,5,0
-63rd Street,63rd,16,41.7827,-87.5748,5,0
-63rdStreet,63rd,16,41.7827,-87.5748,5,0
-Calumet,Calumet ,19,41.7142,-87.5299,6,0
-Fargo,Jarvis,3,42.0161,-87.6647,2,1
-Foster,Foster,7,41.9785,-87.6515,1,1
-Hartigan,Albion,5,42.0027,-87.6564,2,1
-Howard,Howard,2,42.0188,-87.6663,2,1
-Juneway,Juneway,0,42.0224,-87.6674,2,1
-Leone,Leone,4,42.0131,-87.6635,1,1
-Montrose,Montrose,8,41.9655,-87.6385,1,1
-North Avenue,North Avenue,9,41.9148,-87.6273,3,1
-Oak Street,Oak Street,10,41.9032,-87.6235,3,1
-OakStreet,Oak Street,10,41.9032,-87.6235,3,1
-Ohio Street,Ohio,11,41.8935,-87.6152,3,1
-Ohio ,Ohio,11,41.8935,-87.6152,3,1
-Osterman,Osterman,6,41.9877,-87.6545,1,1
-Rainbow,Rainbow,18,41.758,-87.551,5,0
-Rogers,Rogers,1,42.0213,-87.6666,2,1
-South Shore,South Shore,17,41.7689,-87.5636,5,0
-Montrose Dog,Montrose Dog,,41.9685,-87.7069,1,1
-Humboldt,Humboldt,,41.9048,-87.7069,5,0
+Online,Beach,Client.ID,Latitude,Longitude,Group,North,USGS
+12th Street,12th,12,41.8638,-87.6082,4,0,7
+Margaret T Burroughs,31st,13,41.8393,-87.6072,4,0,1
+Oakwood,39th,14,41.8211,-87.5976,5,0,1
+57th Street,57th,15,41.7911,-87.5797,5,0,1
+63rd Street,63rd,16,41.7827,-87.5748,5,0,1
+63rdStreet,63rd,16,41.7827,-87.5748,5,0,1
+Calumet,Calumet ,19,41.7142,-87.5299,6,0,2
+Fargo,Jarvis,3,42.0161,-87.6647,2,1,4
+Foster,Foster,7,41.9785,-87.6515,1,1,3
+Hartigan,Albion,5,42.0027,-87.6564,2,1,4
+Howard,Howard,2,42.0188,-87.6663,2,1,4
+Juneway,Juneway,0,42.0224,-87.6674,2,1,4
+Leone,Leone,4,42.0131,-87.6635,1,1,4
+Montrose,Montrose,8,41.9655,-87.6385,1,1,5
+North Avenue,North Avenue,9,41.9148,-87.6273,3,1,4
+Oak Street,Oak Street,10,41.9032,-87.6235,3,1,6
+OakStreet,Oak Street,10,41.9032,-87.6235,3,1,6
+Ohio Street,Ohio,11,41.8935,-87.6152,3,1,7
+Ohio ,Ohio,11,41.8935,-87.6152,3,1,7
+Osterman,Osterman,6,41.9877,-87.6545,1,1,8
+Rainbow,Rainbow,18,41.758,-87.551,5,0,9
+Rogers,Rogers,1,42.0213,-87.6666,2,1,4
+South Shore,South Shore,17,41.7689,-87.5636,5,0,1
+Montrose Dog,Montrose Dog,,41.9685,-87.7069,1,1,
+Humboldt,Humboldt,,41.9048,-87.7069,5,0,
