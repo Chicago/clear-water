@@ -1,3 +1,6 @@
-source("C:/Users/Callin/Documents/GitHub/Chicago/e-coli-beach-predictions/Clean Up/Functions/usePackage.R")
+#This is to grab all of the sources and packages needed to run all these scripts.
+cwd<-getwd()
+file<-paste(cwd,"/Functions/usePackage.R",sep="")
+source(file)
 usePackage("lubridate")
 usePackage("RSocrata")
