@@ -21,3 +21,26 @@ BeachNames<- function(data){
   data <- changenames[data]
   return(data)
 }
+
+Lat<- function(data){
+  cleanbeachnames <- read.csv("cleanbeachnames.csv", stringsAsFactors = FALSE)
+  
+  Lat <- setNames(cleanbeachnames$Latitude, cleanbeachnames$Short_Names )
+  
+  #delete leading and trailing spaces
+  data <- sapply(data, function (x) gsub("^\\s+|\\s+$", "", x))
+  
+  data<- Lat[data]
+  return(data)
+}
+Long<- function(data){
+  cleanbeachnames <- read.csv("cleanbeachnames.csv", stringsAsFactors = FALSE)
+  
+  Long <- setNames(cleanbeachnames$Longitude, cleanbeachnames$Short_Names )
+  
+  #delete leading and trailing spaces
+  data <- sapply(data, function (x) gsub("^\\s+|\\s+$", "", x))
+  
+  data<- Long[data]
+  return(data)
+}
