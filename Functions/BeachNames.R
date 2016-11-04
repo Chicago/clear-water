@@ -13,17 +13,19 @@
 
 BeachNames<- function(data){
   
-  cleanbeachnames <- read.csv("cleanbeachnames.csv", stringsAsFactors = FALSE)
+  cleanbeachnames <- read.csv("CSVs/cleanbeachnames.csv", stringsAsFactors = FALSE)
   
-  changenames <- setNames(cleanbeachnames$Short_Names, cleanbeachnames$Old) 
-  data <- sapply(data, function (x) gsub("^\\s+|\\s+$", "", x)) #delete leading and trailing spaces
+  changenames <- setNames(cleanbeachnames$Short_Names, cleanbeachnames$Old)
+  
+  #delete leading and trailing spaces
+  data <- sapply(data, function (x) gsub("^\\s+|\\s+$", "", x))
   
   data <- changenames[data]
   return(data)
 }
-
+#This function takes in the beachnames and returns a Latitude
 Lat<- function(data){
-  cleanbeachnames <- read.csv("cleanbeachnames.csv", stringsAsFactors = FALSE)
+  cleanbeachnames <- read.csv("CSVs/cleanbeachnames.csv", stringsAsFactors = FALSE)
   
   Lat <- setNames(cleanbeachnames$Latitude, cleanbeachnames$Short_Names )
   
@@ -33,10 +35,25 @@ Lat<- function(data){
   data<- Lat[data]
   return(data)
 }
+
+#This function takes in the beachnames and returns a Longitude
 Long<- function(data){
-  cleanbeachnames <- read.csv("cleanbeachnames.csv", stringsAsFactors = FALSE)
+  cleanbeachnames <- read.csv("CSVs/cleanbeachnames.csv", stringsAsFactors = FALSE)
   
   Long <- setNames(cleanbeachnames$Longitude, cleanbeachnames$Short_Names )
+  
+  #delete leading and trailing spaces
+  data <- sapply(data, function (x) gsub("^\\s+|\\s+$", "", x))
+  
+  data<- Long[data]
+  return(data)
+}
+
+#This function takes in the beachnames and returns a USGSid
+USGSid<- function(data){
+  cleanbeachnames <- read.csv("CSVs/cleanbeachnames.csv", stringsAsFactors = FALSE)
+  
+  Long <- setNames(cleanbeachnames$USGS, cleanbeachnames$Short_Names )
   
   #delete leading and trailing spaces
   data <- sapply(data, function (x) gsub("^\\s+|\\s+$", "", x))
