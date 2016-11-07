@@ -6,5 +6,6 @@ source("11_USGSpredictions.R")
 df<-results_df
 df$Latitude<-Lat(df$Client.ID)
 df$Longitude<-Long(df$Client.ID)
-df<-merge(df,USGS_predictions_df,by.x=c("Client.ID","Year","Month","Day"),by.y=c("Beach.Name","Year","Month","Day"),all.x=TRUE)
+df$USGS<-USGSid(df$Client.ID)
+df<-merge(df,USGS_predictions_df,by.x=c("USGS","Year","Month","Day"),by.y=c("USGS","Year","Month","Day"),all.x=TRUE)
 
