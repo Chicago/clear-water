@@ -14,6 +14,19 @@ lock_data$Wilmette.Lock.Open <- ifelse(lock_data$Wilmette>0,1,0)
 lock_data$CRCW.Lock.Volume <- lock_data$CRCW / lock_data$days_lock_open
 lock_data$Wilmette.Lock.Volume <- lock_data$Wilmette / lock_data$days_lock_open
 
+dummy<-as.data.frame(NULL)
+test<-as.data.frame(NULL)
+
+row<-1
+
+for(j in 1:length(lock_data$days_lock_open))
+{
+   for(i in 1:lock_data$days_lock_open[j])
+   {
+      dummy<-cbind(lock_data$begin_date[j]-i+2,data.frame(lock_data[j,c("O.Brien","CRCW","Wilmette","total_volume","Obrien.Lock.Open","CRCW.Lock.Open","Wilmette.Lock.Open","Obrien.Lock.Volume","CRCW.Lock.Volume","Wilmette.Lock.Volume")]))
+      test<-rbind(test, dummy)
+   }
+}
 # create lock indicators for each of the 3 regions which have locks based on matching dates
 library(sqldf)
 beach_readings <- sqldf("SELECT a.*, b.'CRCW.Lock.Open', b.'Wilmette.Lock.Open', b.'CRCW.Lock.Volume', b.'Wilmette.Lock.Volume'
