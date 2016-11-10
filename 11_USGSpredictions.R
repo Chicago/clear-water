@@ -21,7 +21,7 @@ PredictorBeaches<-unique(USGS_predictions_df$Beach.Name)
 ################################################################################
 
 #Read in 2015 from a CSV
-drek <- read.csv("~/GitHub/Chicago/e-coli-beach-predictions/CSVs/daily_summaries_drekb.csv")
+drek <- read.csv("CSVs/daily_summaries_drekb.csv")
 #Clean the Beach Names in `drek`
 drek$Beach<-BeachNames(drek$Beach)
 #Rename the 'Beach'column in `drek`
