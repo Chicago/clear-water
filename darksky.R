@@ -3,6 +3,7 @@
 ####--------------------------------------------------------------------------------------------------
 
 library(jsonlite)
+library(plyr)
 
 #-----------------------------------------------------------------------------------------------------
 # Build the basics of the URL for the Dark Sky API
@@ -32,7 +33,7 @@ beaches <- beaches[!duplicated(beaches),]
 weather_data <- data.frame()
 
 date <- as.Date("2016/05/01")
-end_date <- as.Date("2016/05/31")
+end_date <- as.Date("2016/05/10")
 
 ## no need to change the next three (fields required by API)
 hour <- "12"  # we are downloading by day, so this does not matter
@@ -42,7 +43,7 @@ second <- "00" # we are downloading by day, so this does not matter
 while (date <= end_date) {
   year <- format(date, "%Y")
   month <- format(date, "%m")
-  day <- format(date, "%m")
+  day <- format(date, "%d")
   
   for (beach in beaches$Short_Names) {
     
@@ -72,7 +73,7 @@ while (date <= end_date) {
       temp_df <- cbind(temp_df, dat)
     }
     
-    weather_data <- rbind(weather_data,temp_df)
+    weather_data <- rbind.fill(weather_data,temp_df)
     
     ## doublecheck lats/longs before downloading
     ## test data integrity before using this data
@@ -86,4 +87,4 @@ while (date <= end_date) {
 #-----------------------------------------------------------------------------------------------------
 
 weather_data$date <- as.POSIXct(weather_data$time, origin="1970-01-01")
-write.table(weather_data,"weather_data.csv")
+write.table(weather_data,"weather_data.csv",sep=",")
