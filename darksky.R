@@ -31,8 +31,8 @@ beaches <- beaches[!duplicated(beaches),]
 
 weather_data <- data.frame()
 
-date <- as.Date("2016/01/01")
-end_date <- as.Date("2016/01/02")
+date <- as.Date("2016/05/01")
+end_date <- as.Date("2016/05/31")
 
 ## no need to change the next three (fields required by API)
 hour <- "12"  # we are downloading by day, so this does not matter
@@ -85,5 +85,5 @@ while (date <= end_date) {
 # Export to CSV
 #-----------------------------------------------------------------------------------------------------
 
-#unix conversion example
-#as.POSIXct(a_test$hourly$data$time,origin="1970-01-01")
+weather_data$date <- as.POSIXct(weather_data$time, origin="1970-01-01")
+write.table(weather_data,"weather_data.csv")
