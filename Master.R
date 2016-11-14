@@ -11,7 +11,7 @@ df$Latitude<-Lat(df$Client.ID)
 df$Longitude<-Long(df$Client.ID)
 
 #The parks department predicts the levels of E.coli at 9 beaches and then
-#extends thos predictions out to the beaches around those 9 beaches.
+#extends those predictions out to the beaches around those 9 beaches.
 #The USGSid is what beaches are getting which predictions. The predictions can
 #be found on the City of Chicago's website.
 df$USGS<-USGSid(df$Client.ID)
