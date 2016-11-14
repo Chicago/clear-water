@@ -33,14 +33,17 @@ beaches <- beaches[!duplicated(beaches),]
 weather_data <- data.frame()
 
 date <- as.Date("2016/05/01")
-end_date <- as.Date("2016/05/10")
+end_date <- as.Date("2016/09/30")
+
+## Maximum 1000 free API requests allowed per day
+counter <- 1
 
 ## no need to change the next three (fields required by API)
 hour <- "12"  # we are downloading by day, so this does not matter
 minute <- "00" # we are downloading by day, so this does not matter
 second <- "00" # we are downloading by day, so this does not matter
 
-while (date <= end_date) {
+while (date <= end_date & counter <= 1000) {
   year <- format(date, "%Y")
   month <- format(date, "%m")
   day <- format(date, "%d")
@@ -62,7 +65,8 @@ while (date <= end_date) {
                           second, "?",
                           rhs)
 
-    darksky_response <- fromJSON(darksky_url)  
+    darksky_response <- fromJSON(darksky_url)
+    counter <- counter + 1
     temp_df <- cbind(beach, darksky_response$daily$data)
     
     hourly_weather <- darksky_response$hourly$data
