@@ -12,4 +12,5 @@ sourceDir <- function(path, trace = TRUE, ...) {
 sourceDir(paste(getwd(),"/Functions",sep=""))
 usePackage("lubridate")
 usePackage("RSocrata")
+usePackage("tidyr")
 
