@@ -32,27 +32,26 @@ beaches <- beaches[!duplicated(beaches),]
 
 weather_data <- data.frame()
 
+# Enter date range (date = beginning date)
 date <- as.Date("2016/05/01")
 end_date <- as.Date("2016/09/30")
 
-## Maximum 1000 free API requests allowed per day
-counter <- 1
+## Maximum 1000 free API requests allowed per day, use counter to enforce 1000 max (here and for loop)
+#counter <- 1
 
 ## no need to change the next three (fields required by API)
 hour <- "12"  # we are downloading by day, so this does not matter
 minute <- "00" # we are downloading by day, so this does not matter
 second <- "00" # we are downloading by day, so this does not matter
 
-while (date <= end_date & counter <= 1000) {
+#while (date <= end_date & counter <= 1000) {
+while (date <= end_date) { 
   year <- format(date, "%Y")
   month <- format(date, "%m")
   day <- format(date, "%d")
-  
   for (beach in beaches$Short_Names) {
-    
     lat <- beaches$Latitude[beaches$Short_Names == beach]
     long <- beaches$Longitude[beaches$Short_Names == beach]
-    
     darksky_url <- paste0(lhs,
                           key, "/",
                           lat, ",",
@@ -64,24 +63,16 @@ while (date <= end_date & counter <= 1000) {
                           minute, ":",
                           second, "?",
                           rhs)
-
     darksky_response <- fromJSON(darksky_url)
-    counter <- counter + 1
+    #counter <- counter + 1
     temp_df <- cbind(beach, darksky_response$daily$data)
-    
     hourly_weather <- darksky_response$hourly$data
-    
     for (row in c(1:nrow(hourly_weather))) {
       dat <- hourly_weather[row,]
       names(dat) <- paste(names(dat),"hourly",row,sep="_")
       temp_df <- cbind(temp_df, dat)
     }
-    
     weather_data <- rbind.fill(weather_data,temp_df)
-    
-    ## doublecheck lats/longs before downloading
-    ## test data integrity before using this data
-    
   }
   date <- date + 1
 }
