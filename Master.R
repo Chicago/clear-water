@@ -2,6 +2,7 @@ source("00_startup.R")
 source("10_results.R")
 source("11_USGSpredictions.R")
 source("12_LockOpenings.R")
+source("14_Beach_Water_Levels.R")
 
 #Create the main Data Frame as `DF`
 df<-results_df
@@ -22,5 +23,9 @@ df<-merge(df,USGS_predictions_df,by.x=c("USGS","Year","Month","Day"),
 
 #Merge in the Lock data from 12_LockOpening.R
 df<-merge(df,lock_data,by.x=c("Year","Month","Day"),
+          by.y=c("Year","Month","Day"),all.x=TRUE)
+
+#Merge in the Lock data from 14_Beach_Water_Levels.R
+df<-merge(df,Beach_Water_Levels,by.x=c("Year","Month","Day"),
           by.y=c("Year","Month","Day"),all.x=TRUE)
 
