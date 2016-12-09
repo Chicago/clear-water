@@ -21,7 +21,16 @@ PredictorBeaches<-unique(USGS_predictions_df$Beach.Name)
 ################################################################################
 
 #Read in 2015 from a CSV
-drek <- read.csv("CSVs/daily_summaries_drekb.csv")
+drek <- read.csv("CSVs/daily_summaries_drekb.csv",stringsAsFactors=FALSE)
+
+#Delete the beaches that have no meaning/ carry the same information from the
+#CSV that was read in
+drop_list<-c("Lane-Beach","Loyola-Beach","Marion-Mahoney-Griffin-Beach",
+             "Columbia-Beach","Hartigan-Beach","Tobey-Prinz-Beach")
+
+drek<-drek[!(drek$Beach %in% drop_list),]
+
+
 #Clean the Beach Names in `drek`
 drek$Beach<-BeachNames(drek$Beach)
 #Rename the 'Beach'column in `drek`

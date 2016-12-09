@@ -13,4 +13,6 @@ sourceDir(paste(getwd(),"/Functions",sep=""))
 usePackage("lubridate")
 usePackage("RSocrata")
 usePackage("tidyr")
+usePackage("stats")
+usePackage("randomForest")
 
