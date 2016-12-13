@@ -29,19 +29,15 @@ df<-merge(df,USGS_predictions_df,by.x=c("USGS","Year","Month","Day"),
 df<-merge(df,lock_data,by.x=c("Year","Month","Day"),
           by.y=c("Year","Month","Day"),all.x=TRUE)
 
-#Merge in the Lock data from 12_LockOpening.R
-df<-merge(df,lock_data,by.x=c("Year","Month","Day"),
-          by.y=c("Year","Month","Day"),all.x=TRUE)
-
-#Merge in the Lock data from 13_Weather.R
+#Merge in the Weather data from 13_Weather.R
 df<-merge(df,weather_data,by.x=c("Year","Month","Day","Client.ID"),
           by.y=c("Year","Month","Day","beach"),all.x=TRUE)
 
-#Merge in the Lock data from 14_Beach_Water_Levels.R
+#Merge in the Water Level data from 14_Beach_Water_Levels.R
 df<-merge(df,Beach_Water_Levels,by.x=c("Year","Month","Day"),
           by.y=c("Year","Month","Day"),all.x=TRUE)
 
-#Merge in the Lock data from 15_WaterQuality.R
+#Merge in the Water Quality data from 15_WaterQuality.R
 df<-merge(df,water_quality_df,by.x=c("Year","Month","Day","Client.ID"),
           by.y=c("Year","Month","Day","Client.ID"),all.x=TRUE)
 
@@ -70,7 +66,7 @@ for(i in 1:length(beach_dup$Year)){
     }
     else{
       #Produce a geomean of all the duplicated beaches and assign it to the first
-      #beach in a dataframe
+      #beach in a datafr),]
       df[row.names(check)[1],]$Escherichia.coli <-prod(as.numeric(check$Escherichia.coli,na.rm=TRUE))^(1/length(check$Escherichia.coli))
     }
   }
@@ -81,3 +77,6 @@ rm(beach_dup,daily_beach_obs,mult_obs_beach,check,drop_list,i,j)
 
 #Get rid of the duplicated rows
 df<-df[!duplicated(df[,1:4]),]
+
+
+
