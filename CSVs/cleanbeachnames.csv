@@ -1,0 +1,110 @@
+Old,New,Observations Lost,Short_Names,Client.ID,Latitude,Longitude,Group,North,USGS
+12th ,12th Street,NA,12th,12,41.8638,-87.6082,4,0,7
+"12th St 1, 2",12th Street,NA,12th,12,41.8638,-87.6082,4,0,7
+12th Street,12th Street,NA,12th,12,41.8638,-87.6082,4,0,7
+12th-Street-Beach,12th Street,NA,12th,12,41.8638,-87.6082,4,0,7
+31st,Margaret T Burroughs,NA,31st,13,41.8393,-87.6072,4,0,1
+31st(Burroughs),Margaret T Burroughs,NA,31st,13,41.8393,-87.6072,4,0,1
+31st-Street-Beach,Margaret T Burroughs,NA,31st,13,41.8393,-87.6072,4,0,1
+39th,Oakwood,NA,39th,14,41.8211,-87.5976,5,0,1
+39th north,NA,2,NA,NA,NA,NA,NA,NA,NA
+39th south,NA,2,NA,NA,NA,NA,NA,NA,NA
+49th,NA,31,NA,NA,NA,NA,NA,NA,NA
+57th,57th Street,NA,57th,15,41.7911,-87.5797,5,0,1
+57th ,57th Street,NA,57th,15,41.7911,-87.5797,5,0,1
+57th Street,57th Street,NA,57th,15,41.7911,-87.5797,5,0,1
+57th-Street-Beach,57th Street,NA,57th,15,41.7911,-87.5797,5,0,1
+63rdStreet,63rd Street,NA,63rd,16,41.7827,-87.5748,5,0,1
+63rd Street,63rd Street,NA,63rd,16,41.7827,-87.5748,5,0,1
+63rd-Street-Beach,63rd Street,NA,63rd,16,41.7827,-87.5748,5,0,1
+63rd Street Beach,63rd Street,NA,63rd,16,41.7827,-87.5748,5,0,1
+Albion,Hartigan,NA,Albion,5,42.0027,-87.6564,2,1,4
+Calumet,Calumet,NA,Calumet,19,41.7142,-87.5299,6,0,2
+Calumet ,Calumet,NA,Calumet,19,41.7142,-87.5299,6,0,2
+Calumet inside barrier,NA,1,NA,NA,NA,NA,NA,NA,NA
+Calumet Inside barrier,NA,29,NA,NA,NA,NA,NA,NA,NA
+Calumet-Beach,Calumet,NA,Calumet,19,41.7142,-87.5299,6,0,2
+Calumet Beach,Calumet,NA,Calumet,19,41.7142,-87.5299,6,0,2
+Clark,NA,12,NA,NA,NA,NA,NA,NA,NA
+Clark Park,NA,9,NA,NA,NA,NA,NA,NA,NA
+Columbia-Beach,Columbia,NA,Albion,5,42.0027,-87.6564,2,1,4
+Columbia,Columbia,NA,Albion,5,42.0027,-87.6564,2,1,4
+Fargo,Fargo,NA,Jarvis,3,42.0161,-87.6647,2,1,4
+Fargo-Beach,Fargo,NA,Jarvis,3,42.0161,-87.6647,2,1,4
+Foster,Foster,NA,Foster,7,41.9785,-87.6515,1,1,3
+Foster-Beach,Foster,NA,Foster,7,41.9785,-87.6515,1,1,3
+Front 1 & 2*,NA,1,NA,NA,NA,NA,NA,NA,NA
+Hartigan,Hartigan,NA,Albion,5,42.0027,-87.6564,2,1,4
+Hartigan-Beach,Hartigan,NA,Albion,5,42.0027,-87.6564,2,1,4
+Hollywood,Osterman,NA,Osterman,6,41.9877,-87.6545,1,1,8
+Hollywood/Osterman,Osterman,NA,Osterman,6,41.9877,-87.6545,1,1,8
+Hollywood/Ostermann,Osterman,NA,Osterman,6,41.9877,-87.6545,1,1,8
+Hollywood/Thorndale*,Osterman,NA,Osterman,6,41.9877,-87.6545,1,1,8
+Howard,Howard,NA,Howard,2,42.0188,-87.6663,2,1,4
+Howard-Beach,Howard,NA,Howard,2,42.0188,-87.6663,2,1,4
+Humbodt,NA,1,NA,NA,NA,NA,NA,NA,NA
+Humboldt,NA,80,NA,NA,NA,NA,NA,NA,NA
+Humbolt,NA,222,NA,NA,NA,NA,NA,NA,NA
+Humboltd,NA,2,NA,NA,NA,NA,NA,NA,NA
+Hyde Park,57th Street,NA,57th,15,41.7911,-87.5797,5,0,1
+Jackson/63rd,63rd Street,NA,63rd,16,41.7827,-87.5748,5,0,1
+Jackson/63rd (2nd),NA,1,NA,NA,NA,NA,NA,NA,NA
+Jackson/63rd/2nd,NA,1,NA,NA,NA,NA,NA,NA,NA
+Jackson/63rd/2nd ,NA,1,NA,NA,NA,NA,NA,NA,NA
+Jarvis,Marion Mahoney Griffin,NA,Jarvis,3,42.0161,-87.6647,2,1,4
+Jarvis/ Fargo,Marion Mahoney Griffin,NA,Jarvis,3,42.0161,-87.6647,2,1,4
+Jarvis/Fargo,Marion Mahoney Griffin,NA,Jarvis,3,42.0161,-87.6647,2,1,4
+Juneway,Juneway,NA,Juneway,0,42.0224,-87.6674,2,1,4
+Juneway-Beach,Juneway,NA,Juneway,0,42.0224,-87.6674,2,1,4
+Lane,Lane,NA,Osterman,6,41.9877,-87.6545,1,1,8
+Lane-Beach,Lane,NA,Osterman,6,41.9877,-87.6545,1,1,8
+Leon,Leone,NA,Leone,4,42.0131,-87.6635,1,1,4
+Leon ,Leone,NA,Leone,4,42.0131,-87.6635,1,1,4
+Leon/Loyola,Leone,NA,Leone,4,42.0131,-87.6635,1,1,4
+Leone,Leone,NA,Leone,4,42.0131,-87.6635,1,1,4
+Leone/Loyola,Leone,NA,Leone,4,42.0131,-87.6635,1,1,4
+Leone-Beach,Leone,NA,Leone,4,42.0131,-87.6635,1,1,4
+Loyola,Loyola,NA,Leone,4,42.0131,-87.6635,1,1,4
+Loyola1,NA,1,NA,NA,NA,NA,NA,NA,NA
+Loyola2,NA,1,NA,NA,NA,NA,NA,NA,NA
+Loyola-Beach,Loyola,NA,Leone,4,42.0131,-87.6635,1,1,4
+Margaret T Burroughs,Margaret T Burroughs,NA,31st,13,41.8393,-87.6072,4,0,1
+Marion Mahoney Griffin,Marion Mahoney Griffin,NA,Jarvis,3,42.0161,-87.6647,2,1,4
+Marion-Mahoney-Griffin-Beach,Marion Mahoney Griffin,NA,Jarvis,3,42.0161,-87.6647,2,1,4
+Montrose,Montrose,NA,Montrose,8,41.9655,-87.6385,1,1,5
+Montrose Dog,NA,366,NA,NA,NA,NA,NA,NA,NA
+Montrose-Beach,Montrose,NA,Montrose,8,41.9655,-87.6385,1,1,5
+Montrose Beach,Montrose,NA,Montrose,8,41.9655,-87.6385,1,1,5
+North Ave,North Avenue,NA,North Avenue,9,41.9148,-87.6273,3,1,4
+North Avenue,North Avenue,NA,North Avenue,9,41.9148,-87.6273,3,1,4
+North Shore,North Shore,NA,Albion,5,42.0027,-87.6564,2,1,4
+North-Avenue-Beach,North Avenue,NA,North Avenue,9,41.9148,-87.6273,3,1,4
+North-Shore-Beach,North Shore,NA,Albion,5,42.0027,-87.6564,2,1,4
+Oak,Oak Street,NA,Oak Street,10,41.9032,-87.6235,3,1,6
+Oak ,Oak Street,NA,Oak Street,10,41.9032,-87.6235,3,1,6
+Oak Street,Oak Street,NA,Oak Street,10,41.9032,-87.6235,3,1,6
+Oak-Street-Beach,Oak Street,NA,Oak Street,10,41.9032,-87.6235,3,1,6
+OakStreet,Oak Street,,Oak Street,10,41.9032,-87.6235,3,1,6
+Oakwood,Oakwood,NA,39th,14,41.8211,-87.5976,5,0,1
+Oakwood-Beach,Oakwood,NA,39th,14,41.8211,-87.5976,5,0,1
+Ohio,Ohio Street,NA,Ohio,11,41.8935,-87.6152,3,1,7
+OhioStreet,Ohio Street,NA,Ohio,11,41.8935,-87.6152,3,1,7
+Ohio Street,Ohio Street,NA,Ohio,11,41.8935,-87.6152,3,1,7
+Ohio-Street-Beach,Ohio Street,NA,Ohio,11,41.8935,-87.6152,3,1,7
+Ohio Street Beach,Ohio Street,NA,Ohio,11,41.8935,-87.6152,3,1,7
+Osterman,Osterman,NA,Osterman,6,41.9877,-87.6545,1,1,8
+Osterman-Beach,Osterman,NA,Osterman,6,41.9877,-87.6545,1,1,8
+Osterman Beach,Osterman,NA,Osterman,6,41.9877,-87.6545,1,1,8
+Ping Tom Pak,NA,1,NA,NA,NA,NA,NA,NA,NA
+Ping Tom Park,NA,17,NA,NA,NA,NA,NA,NA,NA
+Pratt,Tobey Prinz,NA,Albion,5,42.0027,-87.6564,2,1,4
+Rainbow,Rainbow,NA,Rainbow,18,41.758,-87.551,5,0,9
+Rainbow-Beach,Rainbow,NA,Rainbow,18,41.758,-87.551,5,0,9
+Rainbow Beach,Rainbow,NA,Rainbow,18,41.758,-87.551,5,0,9
+Rogers,Rogers,NA,Rogers,18,42.0213,-87.6666,5,0,9
+Rogers-Beach,Rogers,NA,Rogers,18,42.0213,-87.6666,5,0,9
+South Shore,South Shore,NA,South Shore,17,41.7689,-87.5636,5,0,1
+South-Shore-Beach,South Shore,NA,South Shore,17,41.7689,-87.5636,5,0,1
+Thorndale,Lane,NA,Osterman,6,41.9877,-87.6545,1,1,8
+Tobey Prinz,Tobey Prinz,NA,Albion,5,42.0027,-87.6564,2,1,4
+Tobey-Prinz-Beach,Tobey Prinz,NA,Albion,5,42.0027,-87.6564,2,1,4
