@@ -1,6 +1,6 @@
 #This will read in all the water sensor data that the city has on their website
 #And change it into a data frame that we can use to join with the main data frame.
-#To begin with the parks department had 6 Sensorsors working and in 2016 they 
+#To begin with the parks department had 6 Sensors working and in 2016 they 
 #Cut the amount of sensors down to just 3
 
 #Read in the data from Chicago City Website
