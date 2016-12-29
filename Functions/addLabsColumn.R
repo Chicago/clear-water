@@ -1,5 +1,5 @@
-#This function is used to add a beach's lab results fo the day as a column
-#For example, you could add the Montrose culture geomean as a column
+#This function is used to add a beach's lab results for the day as a column
+#For example, you could add the Montrose culture geomean (for the row's day)  as a column
 addLabsColumn <- function(df, beach, column) {
   new_col <- c()
   for (row in c(1:nrow(df))) {

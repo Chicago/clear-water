@@ -85,3 +85,9 @@ for (beach in unique(df$Client.ID)) {
 for (beach in unique(df$Client.ID)) {
   df <- addLabsColumn(df, beach, "DNA.Geo.Mean")
 }
+
+#Miscellaneous cleaning for modeling prep
+df$Client.ID <- as.factor(df$Client.ID)
+#add function to change columns that begin with a number
+#add function to fix columns that have a space (or fix earlier in import)
+
