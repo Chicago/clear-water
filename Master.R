@@ -1,30 +1,51 @@
 source("00_startup.R")
 source("01_load.R")
 
+## look into cleanup for 01_load artifacts as needed
+
+## cleanup between modelings (hide somewhere)
+rm(list=c("df_model",
+          "fpr",
+          "fprUSGS",
+          "model",
+          "model_cols",
+          "p",
+          "precision",
+          "precisionUSGS",
+          "recall",
+          "recallUSGS",
+          "test_vars",
+          "testData",
+          "threshold",
+          "tpr",
+          "tprUSGS",
+          "train_vars",
+          "trainData"
+))
+
 ##------------------------------------------------------------------------------
-## predictor settings
+## settings
 ##------------------------------------------------------------------------------
 
 df_model <- df[, c("Escherichia.coli",
                    "Client.ID",
                    "precipProbability",
-                   "Howard_Escherichia.coli",
-                   "63rd_DNA.Geo.Mean",
-                   "South Shore_DNA.Geo.Mean",
-                   "Montrose_DNA.Geo.Mean",
-                   "Calumet_DNA.Geo.Mean",
-                   "Rainbow_DNA.Geo.Mean",
-                   "Howard_DNA.Geo.Mean",
+                   # "Howard_Escherichia.coli",
+                   # "63rd_DNA.Geo.Mean",
+                   # "South Shore_DNA.Geo.Mean",
+                   # "Montrose_DNA.Geo.Mean",
+                   # "Calumet_DNA.Geo.Mean", 
+                   # "Rainbow_DNA.Geo.Mean",
+                   # "Howard_DNA.Geo.Mean",
                    "Date",
                    "Predicted.Level"
 )]
 model_cols <- (ncol(df_model))
-roc_curve <- data.frame()
-precision = c()
-recall = c()
+
+#list other settings to be used below
 
 ##------------------------------------------------------------------------------
-## train (with downsampling settings)
+## train 
 ##------------------------------------------------------------------------------
 
 trainData <- df_model[,
@@ -76,11 +97,7 @@ train_vars <- ncol(trainData)
 ## test
 ##------------------------------------------------------------------------------
 
-testData <- df_model[df_model$Full_date >= "2015-01-01",]
-#testData <- df_model[df_model$Year == year,]
-#testData <- df_model[df_model$Year == year,
-#                    c(1:model_cols-1)]
-# Reduce test set to non-predictor beaches
+testData <- df_model[df_model$Date >= "2015-01-01",]
 testData <- testData[which(!testData$Client.ID %in% c("Rainbow",
                                           "South Shore",
                                           "Montrose",
@@ -90,51 +107,61 @@ testData <- testData[which(!testData$Client.ID %in% c("Rainbow",
 testData <- testData[complete.cases(testData),] #remove NAs from test data
 test_vars <- ncol(testData)
 
+#testData <- df_model[df_model$Year == year,]
+#testData <- df_model[df_model$Year == year,
+#                    c(1:model_cols-1)]
+# Reduce test set to non-predictor beaches
+
 ##------------------------------------------------------------------------------
 ## modeling / curves / result pair (add to dataframe?)
 ##------------------------------------------------------------------------------
-  
-  model <- randomForest(e_coli_geomean_actual_calculated ~ ., data = trainData[,c(1:(train_vars-1))])
-  
-  testData$prediction <- predict(model, testData[,c(1:(test_vars-2))])
-  testData$ecoli_binary <- ifelse(testData$e_coli_geomean_actual_calculated >= 235, 1, 0)
-  tpr = c()
-  fpr = c()
-  for (threshold in seq(0, 1500, 1)) {
-    testData$prediction_binary <- ifelse(testData$prediction >= threshold, 1, 0)
-    testData$true_positive <- ifelse((testData$ecoli_binary == 1 & testData$prediction_binary  == 1), 1, 0)
-    testData$true_negative <- ifelse((testData$ecoli_binary == 0 & testData$prediction_binary  == 0), 1, 0)
-    testData$false_negative <- ifelse((testData$ecoli_binary == 1 & testData$prediction_binary  == 0), 1, 0)
-    testData$false_positive <- ifelse((testData$ecoli_binary == 0 & testData$prediction_binary  == 1), 1, 0)
-    tpr = c(tpr, (sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_negative))))
-    fpr = c(fpr, (sum(testData$false_positive) / (sum(testData$false_positive) + sum(testData$true_negative))))
-  }
-  #roc_curve_by_year <- data.frame(year, tpr, fpr)
-  #roc_curve <- rbind(roc_curve, roc_curve_by_year)
-  roc_curve_by_year <- data.frame(year, tpr, fpr)
-}
 
-#ggplot(data=roc_curve, aes(x=fpr, y=tpr, color=year)) + geom_path()
+model <- randomForest(Escherichia.coli ~ .,
+                      data = trainData[,
+                                       c(1:(train_vars - 1))])
+testData$predictionRF <- predict(model, testData[,c(1:(test_vars-2))])
 
-
-epa_tpr = c()
-epa_fpr = c()
+tpr <- c()
+fpr <- c()
+tprUSGS <- c()
+fprUSGS <- c()
+precision <- c()
+recall <- c()
+precisionUSGS <- c()
+recallUSGS <- c()
+testData$actual_binary <- ifelse(testData$Escherichia.coli >= 235, 1, 0)
 for (threshold in seq(0, 1500, 1)) {
-  testData$Drek_binary <- ifelse(testData$Drek_Prediction >= threshold, 1, 0)
-  testData$true_positive <- ifelse((testData$ecoli_binary == 1 & testData$Drek_binary  == 1), 1, 0)
-  testData$true_negative <- ifelse((testData$ecoli_binary == 0 & testData$Drek_binary  == 0), 1, 0)
-  testData$false_negative <- ifelse((testData$ecoli_binary == 1 & testData$Drek_binary  == 0), 1, 0)
-  testData$false_positive <- ifelse((testData$ecoli_binary == 0 & testData$Drek_binary  == 1), 1, 0)
-  epa_tpr <- c(epa_tpr, (sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_negative))))
-  epa_fpr <- c(epa_fpr, (sum(testData$false_positive) / (sum(testData$false_positive) + sum(testData$true_negative))))
+  testData$predictionRF_binary <- ifelse(testData$predictionRF >= threshold, 1, 0)
+  testData$USGS_binary <- ifelse(testData$Predicted.Level >= threshold, 1, 0)
+  testData$true_positive <- ifelse((testData$actual_binary == 1 & testData$predictionRF_binary  == 1), 1, 0)
+  testData$true_negative <- ifelse((testData$actual_binary == 0 & testData$predictionRF_binary  == 0), 1, 0)
+  testData$false_negative <- ifelse((testData$actual_binary == 1 & testData$predictionRF_binary  == 0), 1, 0)
+  testData$false_positive <- ifelse((testData$actual_binary == 0 & testData$predictionRF_binary  == 1), 1, 0)
+  testData$true_positiveUSGS <- ifelse((testData$actual_binary == 1 & testData$USGS_binary  == 1), 1, 0)
+  testData$true_negativeUSGS <- ifelse((testData$actual_binary == 0 & testData$USGS_binary  == 0), 1, 0)
+  testData$false_negativeUSGS <- ifelse((testData$actual_binary == 1 & testData$USGS_binary  == 0), 1, 0)
+  testData$false_positiveUSGS <- ifelse((testData$actual_binary == 0 & testData$USGS_binary  == 1), 1, 0)
+  tpr = c(tpr, (sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_negative))))
+  fpr = c(fpr, (sum(testData$false_positive) / (sum(testData$false_positive) + sum(testData$true_negative))))
+  tprUSGS <- c(tprUSGS, (sum(testData$true_positiveUSGS) / (sum(testData$true_positiveUSGS) + sum(testData$false_negativeUSGS))))
+  fprUSGS <- c(fprUSGS, (sum(testData$false_positiveUSGS) / (sum(testData$false_positiveUSGS) + sum(testData$true_negativeUSGS))))
+  precision = c(precision, (sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_positive))))
+  recall = c(recall, (sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_negative))))
+  precisionUSGS <- c(precisionUSGS, (sum(testData$true_positiveUSGS) / (sum(testData$true_positiveUSGS) + sum(testData$false_positiveUSGS))))
+  recallUSGS <- c(recallUSGS, (sum(testData$true_positiveUSGS) / (sum(testData$true_positiveUSGS) + sum(testData$false_negativeUSGS))))
 }
 
+#use following if looping over years
+#roc_curve_by_year <- data.frame(year, tpr, fpr)
+#roc_curve <- rbind(roc_curve, roc_curve_by_year)
+#roc_curve_by_year <- data.frame(year, tpr, fpr)
+#ggplot(data=roc_curve, aes(x=fpr, y=tpr, color=year)) + geom_path()
 
 p <- ggplot() 
 p + 
   geom_path(aes(x = fpr, y = tpr), 
             color = "blue") + 
-  geom_path(aes(x = epa_fpr, y = epa_tpr), 
+  geom_path(aes(x = fprUSGS, y = tprUSGS), 
             color = "red") + 
   ylim(0,1) + 
   xlim(0,1) + 
@@ -142,45 +169,22 @@ p +
 p + 
   geom_path(aes(x = fpr, y = tpr), 
             color = "blue") + 
-  geom_path(aes(x = epa_fpr, y = epa_tpr), 
+  geom_path(aes(x = fprUSGS, y = tprUSGS), 
             color = "red") + 
   ylim(0,.75) + 
   xlim(0,.1) + 
   ggtitle("2015-2016 Geomean Model ROC Curve")
-
-for (threshold in seq(0, 1500, 1)) {
-  testData$prediction_binary <- ifelse(testData$prediction >= threshold, 1, 0)
-  testData$true_positive <- ifelse((testData$ecoli_binary == 1 & testData$prediction_binary  == 1), 1, 0)
-  testData$true_negative <- ifelse((testData$ecoli_binary == 0 & testData$prediction_binary  == 0), 1, 0)
-  testData$false_negative <- ifelse((testData$ecoli_binary == 1 & testData$prediction_binary  == 0), 1, 0)
-  testData$false_positive <- ifelse((testData$ecoli_binary == 0 & testData$prediction_binary  == 1), 1, 0)
-  precision = c(precision, (sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_positive))))
-  recall = c(recall, (sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_negative))))
-}
-epa_precision = c()
-epa_recall = c()
-for (threshold in seq(0, 1500, 1)) {
-  testData$Drek_binary <- ifelse(testData$Drek_Prediction >= threshold, 1, 0)
-  testData$true_positive <- ifelse((testData$ecoli_binary == 1 & testData$Drek_binary  == 1), 1, 0)
-  testData$true_negative <- ifelse((testData$ecoli_binary == 0 & testData$Drek_binary  == 0), 1, 0)
-  testData$false_negative <- ifelse((testData$ecoli_binary == 1 & testData$Drek_binary  == 0), 1, 0)
-  testData$false_positive <- ifelse((testData$ecoli_binary == 0 & testData$Drek_binary  == 1), 1, 0)
-  epa_precision <- c(epa_precision, (sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_positive))))
-  epa_recall <- c(epa_recall, (sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_negative))))
-}
-
 p + 
   geom_path(aes(x = recall, y = precision),
             color = "blue") +
-  geom_path(aes(x = epa_recall, y = epa_precision),
+  geom_path(aes(x = recallUSGS, y = precisionUSGS),
             color = "red") +
   ylim(0,1) + 
   xlim(0,1) +
   ggtitle("2015-2016 Geomean Model PR Curve")
 
-
 #-----------------------------------------------------------------------------------------------------------------
-# Look at Genetic Tests
+# Look at Genetic Tests (need to change variable names)
 #-----------------------------------------------------------------------------------------------------------------
 
 #dna <- df[,c(1:15)] # remove culture test columns
@@ -197,33 +201,33 @@ p +
 #hist(dna$DNA.Reading.Mean)
 
 #-----------------------------------------------------------------------------------------------------------------
-# Calculate USGS Confusion Matrix
+# Calculate USGS Confusion Matrix (need to change variable names)
 #-----------------------------------------------------------------------------------------------------------------
 
-df_2015 <- beach_readings[beach_readings$Year == "2015",]
-df_2015 <- df_2015[!is.na(df_2015$Drek_elevated_levels_predicted_calculated),]
-df_2015 <- df_2015[!is.na(df_2015$elevated_levels_actual_calculated),]
-tp <- ifelse((df_2015$elevated_levels_actual_calculated == 1 & df_2015$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
-tn <- ifelse((df_2015$elevated_levels_actual_calculated == 0 & df_2015$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
-fn <- ifelse((df_2015$elevated_levels_actual_calculated == 1 & df_2015$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
-fp <- ifelse((df_2015$elevated_levels_actual_calculated == 0 & df_2015$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
-print(paste0("True Positives = ", sum(tp)))
-print(paste0("True Negatives = ", sum(tn)))
-print(paste0("False Positives = ", sum(fp)))
-print(paste0("False Negatives = ", sum(fn)))
-print(paste0("2015 True Positive Rate = ",(sum(tp)/(sum(tp)+sum(fn)))))
-print(paste0("2015 False Positive Rate = ",(sum(fp)/(sum(fp)+sum(tn)))))
-
-df_2016 <- beach_readings[beach_readings$Year == "2016",]
-df_2016 <- df_2016[!is.na(df_2016$Drek_elevated_levels_predicted_calculated),]
-df_2016 <- df_2016[!is.na(df_2016$elevated_levels_actual_calculated),]
-tp <- ifelse((df_2016$elevated_levels_actual_calculated == 1 & df_2016$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
-tn <- ifelse((df_2016$elevated_levels_actual_calculated == 0 & df_2016$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
-fn <- ifelse((df_2016$elevated_levels_actual_calculated == 1 & df_2016$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
-fp <- ifelse((df_2016$elevated_levels_actual_calculated == 0 & df_2016$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
-print(paste0("True Positives = ", sum(tp)))
-print(paste0("True Negatives = ", sum(tn)))
-print(paste0("False Positives = ", sum(fp)))
-print(paste0("False Negatives = ", sum(fn)))
-print(paste0("2016 True Positive Rate = ",(sum(tp)/(sum(tp)+sum(fn)))))
-print(paste0("2016 False Positive Rate = ",(sum(fp)/(sum(fp)+sum(tn)))))
+# df_2015 <- beach_readings[beach_readings$Year == "2015",]
+# df_2015 <- df_2015[!is.na(df_2015$Drek_elevated_levels_predicted_calculated),]
+# df_2015 <- df_2015[!is.na(df_2015$elevated_levels_actual_calculated),]
+# tp <- ifelse((df_2015$elevated_levels_actual_calculated == 1 & df_2015$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
+# tn <- ifelse((df_2015$elevated_levels_actual_calculated == 0 & df_2015$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
+# fn <- ifelse((df_2015$elevated_levels_actual_calculated == 1 & df_2015$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
+# fp <- ifelse((df_2015$elevated_levels_actual_calculated == 0 & df_2015$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
+# print(paste0("True Positives = ", sum(tp)))
+# print(paste0("True Negatives = ", sum(tn)))
+# print(paste0("False Positives = ", sum(fp)))
+# print(paste0("False Negatives = ", sum(fn)))
+# print(paste0("2015 True Positive Rate = ",(sum(tp)/(sum(tp)+sum(fn)))))
+# print(paste0("2015 False Positive Rate = ",(sum(fp)/(sum(fp)+sum(tn)))))
+# 
+# df_2016 <- beach_readings[beach_readings$Year == "2016",]
+# df_2016 <- df_2016[!is.na(df_2016$Drek_elevated_levels_predicted_calculated),]
+# df_2016 <- df_2016[!is.na(df_2016$elevated_levels_actual_calculated),]
+# tp <- ifelse((df_2016$elevated_levels_actual_calculated == 1 & df_2016$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
+# tn <- ifelse((df_2016$elevated_levels_actual_calculated == 0 & df_2016$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
+# fn <- ifelse((df_2016$elevated_levels_actual_calculated == 1 & df_2016$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
+# fp <- ifelse((df_2016$elevated_levels_actual_calculated == 0 & df_2016$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
+# print(paste0("True Positives = ", sum(tp)))
+# print(paste0("True Negatives = ", sum(tn)))
+# print(paste0("False Positives = ", sum(fp)))
+# print(paste0("False Negatives = ", sum(fn)))
+# print(paste0("2016 True Positive Rate = ",(sum(tp)/(sum(tp)+sum(fn)))))
+# print(paste0("2016 False Positive Rate = ",(sum(fp)/(sum(fp)+sum(tn)))))
