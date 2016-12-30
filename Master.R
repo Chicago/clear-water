@@ -15,10 +15,10 @@ source("20_Clean.R")
 df_model <- df[, c("Escherichia.coli",
                    "Client.ID",
                    "precipProbability",
-                   # "Water.Level",
+                   "Water.Level",
                    "Howard_Escherichia.coli",
-                   # "63rd_DNA.Geo.Mean", # will not work with number as first char
-                   # "South Shore_DNA.Geo.Mean", # will not work with space
+                   "n63rd_DNA.Geo.Mean", 
+                   "South_Shore_DNA.Geo.Mean",
                    "Montrose_DNA.Geo.Mean",
                    "Calumet_DNA.Geo.Mean",
                    "Rainbow_DNA.Geo.Mean",
@@ -31,12 +31,28 @@ trainStart <- "2006-01-01"
 trainEnd <- "2016-07-31"
 testStart <- "2016-08-01"
 testEnd <- "2016-12-31"
-excludeBeaches <- c("Rainbow",
-                    "South Shore",
-                    "Montrose",
-                    "Calumet",
+excludeBeaches <- c(
+                    # "12th",
+                    # "31st",
+                    # "39th",
+                    # "57th",
                     "63rd",
-                    "Howard")
+                    # "Albion",
+                    "Calumet",
+                    # "Foster",
+                    "Howard",
+                    # "Jarvis",
+                    # "Juneway",
+                    # "Leone",
+                    "Montrose",
+                    # "North Avenue",
+                    # "Oak Street",
+                    # "Ohio",
+                    # "Osterman",
+                    "Rainbow",
+                    # "Rogers",
+                    "South Shore"
+                    )
 threshBegin <- 0
 threshEnd <- 1500
 title1 <- "2015-2016 Geomean Model ROC Curve"

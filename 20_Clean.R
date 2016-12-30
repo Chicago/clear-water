@@ -86,6 +86,9 @@ for (beach in unique(df$Client.ID)) {
 
 #Miscellaneous cleaning for modeling prep
 df$Client.ID <- as.factor(df$Client.ID)
-#add function to change columns that begin with a number
-#add function to fix columns that have a space (or fix earlier in import)
 
+#add function to change columns that begin with a number
+names(df)[names(df) == "63rd_DNA.Geo.Mean"] <- "n63rd_DNA.Geo.Mean" 
+
+#add function to fix columns that have a space (or fix earlier in import)
+names(df)[names(df) == "South Shore_DNA.Geo.Mean"] <- "South_Shore_DNA.Geo.Mean"
