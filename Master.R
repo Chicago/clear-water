@@ -17,20 +17,33 @@ df_model <- df[, c("Escherichia.coli",
                    "precipProbability",
                    "Water.Level",
                    "Howard_Escherichia.coli",
-                   "n63rd_DNA.Geo.Mean", 
-                   "South_Shore_DNA.Geo.Mean",
-                   "Montrose_DNA.Geo.Mean",
-                   "Calumet_DNA.Geo.Mean",
-                   "Rainbow_DNA.Geo.Mean",
+                   "n63rd_Escherichia.coli", 
+                   "South_Shore_Escherichia.coli",
+                   "Montrose_Escherichia.coli",
+                   "Calumet_Escherichia.coli",
+                   "Rainbow_Escherichia.coli",
+                   # "n63rd_DNA.Geo.Mean", 
+                   # "South_Shore_DNA.Geo.Mean",
+                   # "Montrose_DNA.Geo.Mean",
+                   # "Calumet_DNA.Geo.Mean",
+                   # "Rainbow_DNA.Geo.Mean",
                    "Date",
                    "Predicted.Level"
                    )]
 model_cols <- (ncol(df_model))
-# other settings
+
+#train/test split
 trainStart <- "2006-01-01"
-trainEnd <- "2016-07-31"
-testStart <- "2016-08-01"
+trainEnd <- "2014-12-31"
+testStart <- "2015-01-01"
 testEnd <- "2016-12-31"
+
+#downsample settings (uncomment if downsampling)
+# downsample <- TRUE
+# highMin <- 200 
+# highMax <- 2500
+# lowMax <- 200
+
 excludeBeaches <- c(
                     # "12th",
                     # "31st",

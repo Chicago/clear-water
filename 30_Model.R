@@ -16,17 +16,26 @@ trainData <- trainData[trainData$Date < trainEnd
 trainData <- trainData[complete.cases(trainData),] #remove NAs from train data
 train_vars <- ncol(trainData)
 
-# trainData <- trainData[!trainData$Year == year,]
-#  train_high <- trainData[trainData$e_coli_geomean_actual_calculated >= 200 
-#                      & trainData$e_coli_geomean_actual_calculated < 2500,]
-#  train_low <- trainData[trainData$e_coli_geomean_actual_calculated < 200,]
-# only use as many low days as you have high days
-#  ind <- sample(c(1:nrow(train_low)), 
-#                nrow(train_high), 
-#                replace = TRUE)
-#  train_balanced <- rbind(train_high, train_low[ind,])
-#  trainData <- train_balanced
-
+if (downsample) {
+  train_high <- trainData[trainData$Escherichia.coli >= highMin
+                          & trainData$Escherichia.coli < highMax, ]
+  train_low <- trainData[trainData$Escherichia.coli < lowMax, ]
+  # only use as many low days as you have high days
+  ind <- sample(c(1:nrow(train_low)),
+                nrow(train_high),
+                replace = TRUE)
+  train_balanced <- rbind(train_high, train_low[ind, ])
+  trainData <- train_balanced
+  rm(
+    list = c(
+      "train_high",
+      "train_low",
+      "ind",
+      "train_balanced"
+    )
+  )
+}
+  
 ## the following will produce a random split
 ## this will replace everthing done with test/train above
 ## comment out if you want to use the above code

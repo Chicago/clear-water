@@ -89,6 +89,8 @@ df$Client.ID <- as.factor(df$Client.ID)
 
 #add function to change columns that begin with a number
 names(df)[names(df) == "63rd_DNA.Geo.Mean"] <- "n63rd_DNA.Geo.Mean" 
+names(df)[names(df) == "63rd_Escherichia.coli"] <- "n63rd_Escherichia.coli" 
 
 #add function to fix columns that have a space (or fix earlier in import)
 names(df)[names(df) == "South Shore_DNA.Geo.Mean"] <- "South_Shore_DNA.Geo.Mean"
+names(df)[names(df) == "South Shore_Escherichia.coli"] <- "South_Shore_Escherichia.coli"
