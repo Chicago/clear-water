@@ -3,16 +3,11 @@
 addLabsColumn <- function(df, beach, column) {
   new_col <- c()
   for (row in c(1:nrow(df))) {
-    this_date <- as.Date(df$Date[row])
-    new_value <- df[df$Client.ID == beach & as.Date(df$Date) == this_date,column]
+    this_doy <- df$DayOfYear[row]
+    this_year <- df$Year[row]
+    new_value <- df[df$Client.ID == beach & df$DayOfYear == this_doy & df$Year == this_year,column]
     if (length(new_value) == 0)
       new_col <- c(new_col, NA)
-    # if there are multiple readings for a beach/day combo
-    # use geomean of readings
-    else if (length(new_value) > 1) {
-      new_value <- prod(as.numeric(new_value))^(1/length(new_value))
-      new_col <- c(new_col, new_value)
-    }
     else
       new_col <- c(new_col, new_value)
   }
