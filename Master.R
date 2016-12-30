@@ -1,29 +1,35 @@
 source("00_startup.R")
-source("01_load.R")
+source("10_LabResults.R")
+source("11_USGSpredictions.R")
+source("12_LockOpenings.R")
+source("13_Beach_Water_Levels.R")
+source("14_Weather.R")
+source("15_WaterQuality.R")
+source("20_Clean.R")
 
 ##------------------------------------------------------------------------------
-## settings
+## Model settings
 ##------------------------------------------------------------------------------
 
 # predictors
 df_model <- df[, c("Escherichia.coli",
                    "Client.ID",
                    "precipProbability",
-                   # "Howard_Escherichia.coli",
-                   # "63rd_DNA.Geo.Mean",
-                   # "South Shore_DNA.Geo.Mean",
-                   # "Montrose_DNA.Geo.Mean",
-                   # "Calumet_DNA.Geo.Mean", 
-                   # "Rainbow_DNA.Geo.Mean",
-                   # "Howard_DNA.Geo.Mean",
+                   # "Water.Level",
+                   "Howard_Escherichia.coli",
+                   # "63rd_DNA.Geo.Mean", # will not work with number as first char
+                   # "South Shore_DNA.Geo.Mean", # will not work with space
+                   "Montrose_DNA.Geo.Mean",
+                   "Calumet_DNA.Geo.Mean",
+                   "Rainbow_DNA.Geo.Mean",
                    "Date",
                    "Predicted.Level"
-)]
+                   )]
 model_cols <- (ncol(df_model))
 # other settings
 trainStart <- "2006-01-01"
-trainEnd <- "2014-12-31"
-testStart <- "2015-01-01"
+trainEnd <- "2016-07-31"
+testStart <- "2016-08-01"
 testEnd <- "2016-12-31"
 excludeBeaches <- c("Rainbow",
                     "South Shore",
@@ -37,7 +43,7 @@ title1 <- "2015-2016 Geomean Model ROC Curve"
 title2 <- "2015-2016 Geomean Model ROC Curve"
 title3 <- "2015-2016 Geomean Model PR Curve"
 
-source("20_model.R", print.eval=TRUE)
+source("30_model.R", print.eval=TRUE)
 
 ## decide whether to keep the analysis below
 

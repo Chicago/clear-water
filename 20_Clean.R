@@ -1,10 +1,6 @@
-source("10_LabResults.R")
-source("11_USGSpredictions.R")
-source("12_LockOpenings.R")
-source("13_Beach_Water_Levels.R")
-source("14_Weather.R")
-source("15_WaterQuality.R")
+#This file cleans the data before modeling
 
+print("Cleaning Data")
 #Create the main Data Frame as `DF`
 df<-results_df[!is.na(results_df$Client.ID),]
 
@@ -43,6 +39,8 @@ df<-merge(df,water_quality_df,by.x=c("Year","Month","Day","Client.ID"),
 #This function finds the days that have multiple readings for a beach, and pulls
 #out the specific dates that it happened on.
 beach_dup<-unique(df[duplicated(df[,c("Year","Month","Day","Client.ID")]),c("Year","Month","Day")])
+
+print("Removing Duplicates")
 
 #The following for loop goes through the days that have duplicates in them, 
 #Finds the duplicated beaches, takes the geometric mean of all the duplicated beaches

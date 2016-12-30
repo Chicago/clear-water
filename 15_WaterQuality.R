@@ -3,6 +3,7 @@
 #To begin with the parks department had 6 Sensors working and in 2016 they 
 #Cut the amount of sensors down to just 3
 
+print("Importing Water Quality Sensor Data")
 #Read in the data from Chicago City Website
 water_quality_df <- read.socrata("https://data.cityofchicago.org/resource/qmqz-2xku.csv")
 

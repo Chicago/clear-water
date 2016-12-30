@@ -2,6 +2,7 @@
 #2016 & Future Results
 ################################################################################
 
+print("Importing USGS Prediction Data")
 USGS_predictions_df<-read.socrata("https://data.cityofchicago.org/resource/t62e-8nvc.csv")
 
 USGS_predictions_df$Beach.Name<-BeachNames(USGS_predictions_df$Beach.Name)

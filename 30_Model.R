@@ -1,6 +1,7 @@
 # takes in settings from Master.R and uses them to 1) create train/test sets
 # 2) model and 3) plot curves
 
+print("Modeling Data")
 
 ##------------------------------------------------------------------------------
 ## train 
