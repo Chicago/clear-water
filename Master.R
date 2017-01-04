@@ -38,8 +38,8 @@ trainEnd <- "2014-12-31"
 testStart <- "2015-01-01"
 testEnd <- "2016-12-31"
 
-#downsample settings (uncomment if downsampling)
-# downsample <- TRUE
+#downsample settings
+downsample <- FALSE #If FALSE comment out the next 3 lines
 # highMin <- 200 
 # highMax <- 2500
 # lowMax <- 200
