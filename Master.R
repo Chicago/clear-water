@@ -17,7 +17,7 @@ df_model <- df[, c("Escherichia.coli",
                    "precipProbability",
                    "Water.Level",
                    "Howard_Escherichia.coli",
-                   "n63rd_Escherichia.coli", 
+                   "n63rd_Escherichia.coli",
                    "South_Shore_Escherichia.coli",
                    "Montrose_Escherichia.coli",
                    "Calumet_Escherichia.coli",
@@ -27,19 +27,21 @@ df_model <- df[, c("Escherichia.coli",
                    # "Montrose_DNA.Geo.Mean",
                    # "Calumet_DNA.Geo.Mean",
                    # "Rainbow_DNA.Geo.Mean",
-                   "Date",
-                   "Predicted.Level"
+                   "DayOfYear", #Must use for splitting data
+                   "Date", #Must use for splitting data
+                   "Predicted.Level" #Must use for USGS model comparison
                    )]
 model_cols <- (ncol(df_model))
 
 #train/test split
+kFolds <- FALSE #If TRUE comment out the next 4 lines
 trainStart <- "2006-01-01"
 trainEnd <- "2014-12-31"
 testStart <- "2015-01-01"
 testEnd <- "2016-12-31"
 
-#downsample settings (uncomment if downsampling)
-# downsample <- TRUE
+#downsample settings
+downsample <- FALSE #If FALSE comment out the next 3 lines
 # highMin <- 200 
 # highMax <- 2500
 # lowMax <- 200

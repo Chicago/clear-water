@@ -3,73 +3,62 @@
 
 print("Modeling Data")
 
-##------------------------------------------------------------------------------
-## train 
-##------------------------------------------------------------------------------
-
-trainData <- df_model[,
-                      c(1:model_cols - 1)] #remove EPA prediction from training data
-# Reduce train set to non-predictor beaches
-trainData <- trainData[which(!trainData$Client.ID %in% excludeBeaches),]
-trainData <- trainData[trainData$Date < trainEnd
-                       & trainData$Date > trainStart,]
-trainData <- trainData[complete.cases(trainData),] #remove NAs from train data
-train_vars <- ncol(trainData)
-
-if (downsample) {
-  train_high <- trainData[trainData$Escherichia.coli >= highMin
-                          & trainData$Escherichia.coli < highMax, ]
-  train_low <- trainData[trainData$Escherichia.coli < lowMax, ]
-  # only use as many low days as you have high days
-  ind <- sample(c(1:nrow(train_low)),
-                nrow(train_high),
-                replace = TRUE)
-  train_balanced <- rbind(train_high, train_low[ind, ])
-  trainData <- train_balanced
-  rm(
-    list = c(
-      "train_high",
-      "train_low",
-      "ind",
-      "train_balanced"
-    )
-  )
-}
+if (kFolds) {
+  set.seed(111)
+  daysOfYear <- unique(df_model$DayOfYear)
+  testDays <- sample(daysOfYear, size = .1 * length(daysOfYear))
+  testData <- df_model[df_model$DayOfYear %in% testDays, ]
+  trainData <- df_model[!df_model$DayOfYear %in% testDays, c(1:ncol(df_model) - 1)]
+  train_vars <- ncol(trainData)
+  test_vars <- ncol(testData)
+} else {
   
-## the following will produce a random split
-## this will replace everthing done with test/train above
-## comment out if you want to use the above code
-## there may be errors as this is old pasted code
-
-#set.seed(111)
-#data_split <- df_model[complete.cases(df_model),]
-#even_days <- data_split[data_split$Day_of_year %% 2 == 0,]
-#odd_days <- data_split[data_split$Day_of_year %% 2 == 1,]
-#ind_even <- sample(2, nrow(even_days), replace = TRUE, prob=c(0.5, 0.5))
-#ind_odd <- sample(2, nrow(odd_days), replace = TRUE, prob=c(0.5, 0.5))
-#test_even <- even_days[ind_even == 2,]
-#test_odd <- odd_days[ind_odd == 2,] 
-#train_even <- even_days[ind_even == 1,c(1:model_cols-1)] #remove EPA prediction from training data
-#train_odd <- odd_days[ind_odd == 1,c(1:model_cols-1)] #remove EPA prediction from training data
-#testData <- rbind(test_even, test_odd)
-#trainData <- rbind(train_even, train_odd)
-#train_vars <- ncol(trainData)
-#test_vars <- ncol(test)
-
-##------------------------------------------------------------------------------
-## test
-##------------------------------------------------------------------------------
-
-testData <- df_model[df_model$Date < testEnd
-                     & df_model$Date > testStart, ]
-testData <- testData[which(!testData$Client.ID %in% excludeBeaches),]
-testData <- testData[complete.cases(testData),] #remove NAs from test data
-test_vars <- ncol(testData)
-
-#testData <- df_model[df_model$Year == year,]
-#testData <- df_model[df_model$Year == year,
-#                    c(1:model_cols-1)]
-# Reduce test set to non-predictor beaches
+  ##------------------------------------------------------------------------------
+  ## train 
+  ##------------------------------------------------------------------------------
+  
+  trainData <- df_model[,
+                        c(1:model_cols - 1)] #remove EPA prediction from training data
+  # Reduce train set to non-predictor beaches
+  trainData <- trainData[which(!trainData$Client.ID %in% excludeBeaches),]
+  trainData <- trainData[trainData$Date < trainEnd
+                         & trainData$Date > trainStart,]
+  trainData <- trainData[complete.cases(trainData),] #remove NAs from train data
+  train_vars <- ncol(trainData)
+  
+  if (downsample) {
+    train_high <- trainData[trainData$Escherichia.coli >= highMin
+                            & trainData$Escherichia.coli < highMax, ]
+    train_low <- trainData[trainData$Escherichia.coli < lowMax, ]
+    # only use as many low days as you have high days
+    ind <- sample(c(1:nrow(train_low)),
+                  nrow(train_high),
+                  replace = TRUE)
+    train_balanced <- rbind(train_high, train_low[ind, ])
+    trainData <- train_balanced
+    rm(list = c("train_high",
+                "train_low",
+                "ind",
+                "train_balanced",
+                "highMin",
+                "highMax",
+                "lowMax"
+    )
+    )
+  }
+  
+  ##------------------------------------------------------------------------------
+  ## test
+  ##------------------------------------------------------------------------------
+  
+  testData <- df_model[df_model$Date < testEnd
+                       & df_model$Date > testStart, ]
+  # Reduce test set to non-predictor beaches
+  testData <- testData[which(!testData$Client.ID %in% excludeBeaches),]
+  testData <- testData[complete.cases(testData),] #remove NAs from test data
+  test_vars <- ncol(testData)
+  
+}
 
 ##------------------------------------------------------------------------------
 ## modeling / curves / result pair (add to dataframe?)
@@ -77,8 +66,8 @@ test_vars <- ncol(testData)
 
 model <- randomForest(Escherichia.coli ~ .,
                       data = trainData[,
-                                       c(1:(train_vars - 1))])
-testData$predictionRF <- predict(model, testData[,c(1:(test_vars-2))])
+                                       c(1:(train_vars - 2))])
+testData$predictionRF <- predict(model, testData[,c(1:(test_vars-3))])
 
 tpr <- c()
 fpr <- c()
@@ -110,11 +99,11 @@ for (threshold in seq(threshBegin, threshEnd, 1)) {
   recallUSGS <- c(recallUSGS, (sum(testData$true_positiveUSGS) / (sum(testData$true_positiveUSGS) + sum(testData$false_negativeUSGS))))
 }
 
-#use following if looping over years
-#roc_curve_by_year <- data.frame(year, tpr, fpr)
+#use following if looping k-folds
+#roc_curve_by_fold <- data.frame(fold, tpr, fpr)
 #roc_curve <- rbind(roc_curve, roc_curve_by_year)
-#roc_curve_by_year <- data.frame(year, tpr, fpr)
-#ggplot(data=roc_curve, aes(x=fpr, y=tpr, color=year)) + geom_path()
+#roc_curve_by_fold <- data.frame(fold, tpr, fpr)
+#ggplot(data=roc_curve, aes(x=fpr, y=tpr, color=fold)) + geom_path()
 
 p <- ggplot() 
 p + 
@@ -144,8 +133,10 @@ p +
 
 ## cleanup after modelings
 rm(list=c("df_model",
+          "downsample",
           "fpr",
           "fprUSGS",
+          "kFolds",
           "model",
           "model_cols",
           "p",
