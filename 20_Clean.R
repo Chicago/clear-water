@@ -24,6 +24,28 @@ df<-merge(df,USGS_predictions_df,by.x=c("USGS","Year","Month","Day"),
 df<-merge(df,lock_data,by.x=c("Year","Month","Day"),
           by.y=c("Year","Month","Day"),all.x=TRUE)
 
+#The days the locks are open have information in their respective cells, all of
+#the other days have NA's, we want 0 in place of the NA.
+df[c("O.Brien",
+     "CRCW",
+     "Wilmette",
+     "total_volume",
+     "Obrien.Lock.Open",
+     "CRCW.Lock.Open",
+     "Wilmette.Lock.Open",
+     "Obrien.Lock.Volume",
+     "CRCW.Lock.Volume",       
+     "Wilmette.Lock.Volume")][is.na(df[c("O.Brien",
+                                         "CRCW",
+                                         "Wilmette",
+                                         "total_volume",
+                                         "Obrien.Lock.Open",
+                                         "CRCW.Lock.Open",
+                                         "Wilmette.Lock.Open",
+                                         "Obrien.Lock.Volume",
+                                         "CRCW.Lock.Volume",
+                                         "Wilmette.Lock.Volume")])]<-0
+
 #Merge in the Water Level data from 13_Beach_Water_Levels.R
 df<-merge(df,Beach_Water_Levels,by.x=c("Year","Month","Day"),
           by.y=c("Year","Month","Day"),all.x=TRUE)
