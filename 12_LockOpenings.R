@@ -10,6 +10,7 @@
 #actually opened.
 ################################################################################
 
+print("Importing Lock Opening Data")
 # Read in lock data
 lock_data<- read.csv("CSVs/lock_openings.csv", stringsAsFactors=FALSE)
 lock_data <- na.omit(lock_data)

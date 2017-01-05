@@ -1,3 +1,5 @@
+
+print("Importing Water Level Data")
 #Read in the Beach_Water_Levels.csv
 Beach_Water_Levels <- read.csv("CSVs/Beach_Water_Levels.csv", stringsAsFactors=FALSE, as.is=TRUE)
 
