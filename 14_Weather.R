@@ -1,6 +1,6 @@
 print("Importing Weather Data")
 #Load in the Weatherdata
-weather_data <- read.csv("weather_data.csv",
+weather_data <- read.csv("CSVs/weather_data.csv",
                          stringsAsFactors=FALSE)
 
 
