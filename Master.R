@@ -17,32 +17,32 @@ df_model <- df[, c("Escherichia.coli",
                    "precipProbability",
                    "Water.Level",
                    "Howard_Escherichia.coli",
-                   "n63rd_Escherichia.coli",
-                   "South_Shore_Escherichia.coli",
-                   "Montrose_Escherichia.coli",
-                   "Calumet_Escherichia.coli",
-                   "Rainbow_Escherichia.coli",
-                   # "n63rd_DNA.Geo.Mean", 
-                   # "South_Shore_DNA.Geo.Mean",
-                   # "Montrose_DNA.Geo.Mean",
-                   # "Calumet_DNA.Geo.Mean",
-                   # "Rainbow_DNA.Geo.Mean",
-                   "DayOfYear", #Must use for splitting data
+                   # "n57th_Escherichia.coli",
+                   # "n63rd_Escherichia.coli", 
+                   # # "South_Shore_Escherichia.coli",
+                   # "Montrose_Escherichia.coli",
+                   # "Calumet_Escherichia.coli",
+                   # "Rainbow_Escherichia.coli",
+                   "n63rd_DNA.Geo.Mean",
+                   "South_Shore_DNA.Geo.Mean",
+                   "Montrose_DNA.Geo.Mean",
+                   "Calumet_DNA.Geo.Mean",
+                   "Rainbow_DNA.Geo.Mean",
                    "Date", #Must use for splitting data
                    "Predicted.Level" #Must use for USGS model comparison
                    )]
 model_cols <- (ncol(df_model))
 
 #train/test split
-kFolds <- FALSE #If TRUE comment out the next 4 lines
-trainStart <- "2006-01-01"
-trainEnd <- "2014-12-31"
-testStart <- "2015-01-01"
+kFolds <- TRUE #If TRUE next 4 lines will not be used
+trainStart <- "2016-01-01"
+trainEnd <- "2016-07-31"
+testStart <- "2016-08-01"
 testEnd <- "2016-12-31"
 
 #downsample settings
 downsample <- FALSE #If FALSE comment out the next 3 lines
-# highMin <- 200 
+# highMin <- 200
 # highMax <- 2500
 # lowMax <- 200
 
@@ -68,11 +68,11 @@ excludeBeaches <- c(
                     # "Rogers",
                     "South Shore"
                     )
-threshBegin <- 0
+threshBegin <- 1
 threshEnd <- 1500
-title1 <- "2015-2016 Geomean Model ROC Curve"
-title2 <- "2015-2016 Geomean Model ROC Curve"
-title3 <- "2015-2016 Geomean Model PR Curve"
+title1 <- "2015-2016 DNAmean Model ROC Curve"
+title2 <- "2015-2016 DNAmean Model ROC Curve"
+title3 <- "2015-2016 DNAmean Model PR Curve"
 
 source("30_model.R", print.eval=TRUE)
 

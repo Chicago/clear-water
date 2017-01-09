@@ -1,22 +1,67 @@
-# takes in settings from Master.R and uses them to 1) create train/test sets
+ # takes in settings from Master.R and uses them to 1) create train/test sets
 # 2) model and 3) plot curves
 
 print("Modeling Data")
 
 if (kFolds) {
+  df_model <- df_model[complete.cases(df_model),] #remove NAs from df_model
   set.seed(111)
-  daysOfYear <- unique(df_model$DayOfYear)
-  testDays <- sample(daysOfYear, size = .1 * length(daysOfYear))
-  testData <- df_model[df_model$DayOfYear %in% testDays, ]
-  trainData <- df_model[!df_model$DayOfYear %in% testDays, c(1:ncol(df_model) - 1)]
-  train_vars <- ncol(trainData)
-  test_vars <- ncol(testData)
+  dates <- unique(df_model$Date)
+  fold_size <- .1 * length(dates)
+  dates_sample <- sample(dates, fold_size)
+  used_dates <- c()
+  plot_data <- data.frame()
+  for (fold in c(1:10)) {
+    print(paste0("Cross-validating fold # ", fold))
+    testDays <- dates_sample
+    testData <- df_model[df_model$Date %in% testDays, ]
+    trainData <- df_model[!df_model$Date %in% testDays, c(1:ncol(df_model) - 1)]
+    model <- modelEcoli(trainData, testData)
+    fold_data <- data.frame(fold, 
+                            "tpr" = model$tpr,
+                            "fpr" = model$fpr,
+                            "tprUSGS" = model$tprUSGS,
+                            "fprUSGS" = model$fprUSGS,
+                            "precision" = model$precision,
+                            "recall" = model$recall,
+                            "precisionUSGS" = model$precisionUSGS,
+                            "recallUSGS" = model$recallUSGS)
+    plot_data <- rbind(plot_data, fold_data)
+    used_dates <- c(used_dates, dates_sample)
+    remaining_dates <- dates[!dates %in% used_dates]
+    if (fold < 10) dates_sample <- sample(remaining_dates, fold_size)
+  }
+  plot_data$fold <- as.factor(plot_data$fold)
+  p <- ggplot() 
+  print(p + 
+          geom_path(data = plot_data,
+                    aes(x = fpr, y = tpr, 
+                    color = fold)) + 
+          ylim(0,1) + 
+          xlim(0,1) + 
+          ggtitle(title1))
+  print(p + 
+          geom_path(data = plot_data,
+                    aes(x = fprUSGS, y = tprUSGS, 
+                    color = fold)) + 
+          ylim(0,1) + 
+          xlim(0,1) +
+          ggtitle(title2))
+  print(p + 
+          geom_path(data = plot_data,
+                    aes(x = recall, y = precision,
+                    color = fold)) +
+          ylim(0,1) + 
+          xlim(0,1) +
+          ggtitle(title3))
+  print(p + 
+          geom_path(data = plot_data,
+                    aes(x = recallUSGS, y = precisionUSGS,
+                        color = fold)) +
+          ylim(0,1) + 
+          xlim(0,1) +
+          ggtitle(title3))
 } else {
-  
-  ##------------------------------------------------------------------------------
-  ## train 
-  ##------------------------------------------------------------------------------
-  
   trainData <- df_model[,
                         c(1:model_cols - 1)] #remove EPA prediction from training data
   # Reduce train set to non-predictor beaches
@@ -24,8 +69,6 @@ if (kFolds) {
   trainData <- trainData[trainData$Date < trainEnd
                          & trainData$Date > trainStart,]
   trainData <- trainData[complete.cases(trainData),] #remove NAs from train data
-  train_vars <- ncol(trainData)
-  
   if (downsample) {
     train_high <- trainData[trainData$Escherichia.coli >= highMin
                             & trainData$Escherichia.coli < highMax, ]
@@ -46,110 +89,48 @@ if (kFolds) {
     )
     )
   }
-  
-  ##------------------------------------------------------------------------------
-  ## test
-  ##------------------------------------------------------------------------------
-  
   testData <- df_model[df_model$Date < testEnd
                        & df_model$Date > testStart, ]
   # Reduce test set to non-predictor beaches
   testData <- testData[which(!testData$Client.ID %in% excludeBeaches),]
   testData <- testData[complete.cases(testData),] #remove NAs from test data
-  test_vars <- ncol(testData)
-  
+  print(paste0("Train set observations = ",nrow(trainData)))
+  print(paste0("Test set observations = ",nrow(testData)))
+  model <- modelEcoli(trainData, testData)
+  p <- ggplot() 
+  print(p + 
+          geom_path(aes(x = model$fpr, y = model$tpr), 
+                    color = "blue") + 
+          geom_path(aes(x = model$fprUSGS, y = model$tprUSGS), 
+                    color = "red") + 
+          ylim(0,1) + 
+          xlim(0,1) + 
+          ggtitle(title1))
+  print(p + 
+          geom_path(aes(x = model$fpr, y = model$tpr), 
+                    color = "blue") + 
+          geom_path(aes(x = model$fprUSGS, y = model$tprUSGS), 
+                    color = "red") + 
+          ylim(0,.75) + 
+          xlim(0,.1) + 
+          ggtitle(title2))
+  print(p + 
+          geom_path(aes(x = model$recall, y = model$precision),
+                    color = "blue") +
+          geom_path(aes(x = model$recallUSGS, y = model$precisionUSGS),
+                    color = "red") +
+          ylim(0,1) + 
+          xlim(0,1) +
+          ggtitle(title3))
 }
-
-##------------------------------------------------------------------------------
-## modeling / curves / result pair (add to dataframe?)
-##------------------------------------------------------------------------------
-
-model <- randomForest(Escherichia.coli ~ .,
-                      data = trainData[,
-                                       c(1:(train_vars - 2))])
-testData$predictionRF <- predict(model, testData[,c(1:(test_vars-3))])
-
-tpr <- c()
-fpr <- c()
-tprUSGS <- c()
-fprUSGS <- c()
-precision <- c()
-recall <- c()
-precisionUSGS <- c()
-recallUSGS <- c()
-testData$actual_binary <- ifelse(testData$Escherichia.coli >= 235, 1, 0)
-for (threshold in seq(threshBegin, threshEnd, 1)) {
-  testData$predictionRF_binary <- ifelse(testData$predictionRF >= threshold, 1, 0)
-  testData$USGS_binary <- ifelse(testData$Predicted.Level >= threshold, 1, 0)
-  testData$true_positive <- ifelse((testData$actual_binary == 1 & testData$predictionRF_binary  == 1), 1, 0)
-  testData$true_negative <- ifelse((testData$actual_binary == 0 & testData$predictionRF_binary  == 0), 1, 0)
-  testData$false_negative <- ifelse((testData$actual_binary == 1 & testData$predictionRF_binary  == 0), 1, 0)
-  testData$false_positive <- ifelse((testData$actual_binary == 0 & testData$predictionRF_binary  == 1), 1, 0)
-  testData$true_positiveUSGS <- ifelse((testData$actual_binary == 1 & testData$USGS_binary  == 1), 1, 0)
-  testData$true_negativeUSGS <- ifelse((testData$actual_binary == 0 & testData$USGS_binary  == 0), 1, 0)
-  testData$false_negativeUSGS <- ifelse((testData$actual_binary == 1 & testData$USGS_binary  == 0), 1, 0)
-  testData$false_positiveUSGS <- ifelse((testData$actual_binary == 0 & testData$USGS_binary  == 1), 1, 0)
-  tpr = c(tpr, (sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_negative))))
-  fpr = c(fpr, (sum(testData$false_positive) / (sum(testData$false_positive) + sum(testData$true_negative))))
-  tprUSGS <- c(tprUSGS, (sum(testData$true_positiveUSGS) / (sum(testData$true_positiveUSGS) + sum(testData$false_negativeUSGS))))
-  fprUSGS <- c(fprUSGS, (sum(testData$false_positiveUSGS) / (sum(testData$false_positiveUSGS) + sum(testData$true_negativeUSGS))))
-  precision = c(precision, (sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_positive))))
-  recall = c(recall, (sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_negative))))
-  precisionUSGS <- c(precisionUSGS, (sum(testData$true_positiveUSGS) / (sum(testData$true_positiveUSGS) + sum(testData$false_positiveUSGS))))
-  recallUSGS <- c(recallUSGS, (sum(testData$true_positiveUSGS) / (sum(testData$true_positiveUSGS) + sum(testData$false_negativeUSGS))))
-}
-
-#use following if looping k-folds
-#roc_curve_by_fold <- data.frame(fold, tpr, fpr)
-#roc_curve <- rbind(roc_curve, roc_curve_by_year)
-#roc_curve_by_fold <- data.frame(fold, tpr, fpr)
-#ggplot(data=roc_curve, aes(x=fpr, y=tpr, color=fold)) + geom_path()
-
-p <- ggplot() 
-p + 
-  geom_path(aes(x = fpr, y = tpr), 
-            color = "blue") + 
-  geom_path(aes(x = fprUSGS, y = tprUSGS), 
-            color = "red") + 
-  ylim(0,1) + 
-  xlim(0,1) + 
-  ggtitle(title1)
-p + 
-  geom_path(aes(x = fpr, y = tpr), 
-            color = "blue") + 
-  geom_path(aes(x = fprUSGS, y = tprUSGS), 
-            color = "red") + 
-  ylim(0,.75) + 
-  xlim(0,.1) + 
-  ggtitle(title2)
-p + 
-  geom_path(aes(x = recall, y = precision),
-            color = "blue") +
-  geom_path(aes(x = recallUSGS, y = precisionUSGS),
-            color = "red") +
-  ylim(0,1) + 
-  xlim(0,1) +
-  ggtitle(title3)
 
 ## cleanup after modelings
 rm(list=c("df_model",
           "downsample",
-          "fpr",
-          "fprUSGS",
           "kFolds",
           "model",
           "model_cols",
-          "p",
-          "precision",
-          "precisionUSGS",
-          "recall",
-          "recallUSGS",
-          "test_vars",
           "testData",
-          "threshold",
-          "tpr",
-          "tprUSGS",
-          "train_vars",
           "trainData",
           "trainStart",
           "trainEnd",
@@ -162,3 +143,4 @@ rm(list=c("df_model",
           "title2",
           "title3"
 ))
+
