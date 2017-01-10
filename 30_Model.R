@@ -25,39 +25,48 @@ if (kFolds) {
                             "precision" = model$precision,
                             "recall" = model$recall,
                             "precisionUSGS" = model$precisionUSGS,
-                            "recallUSGS" = model$recallUSGS)
+                            "recallUSGS" = model$recallUSGS,
+                            "tp" = model$tp,
+                            "fn" = model$fn,
+                            "tn" = model$tn,
+                            "fp" = model$fp,
+                            "tpUSGS" = model$tpUSGS,
+                            "fnUSGS" = model$fnUSGS,
+                            "tnUSGS" = model$tnUSGS,
+                            "fpUSGS" = model$fpUSGS, 
+                            "thresholds" = model$thresholds)
     plot_data <- rbind(plot_data, fold_data)
     used_dates <- c(used_dates, dates_sample)
     remaining_dates <- dates[!dates %in% used_dates]
     if (fold < 10) dates_sample <- sample(remaining_dates, fold_size)
   }
   plot_data$fold <- as.factor(plot_data$fold)
-  p <- ggplot() 
+  p <- ggplot(data = plot_data) 
   print(p + 
-          geom_path(data = plot_data,
-                    aes(x = fpr, y = tpr, 
-                    color = fold)) + 
+          geom_smooth(aes(x = fpr, y = tpr, 
+                          color = fold),
+                      span = .9) + 
           ylim(0,1) + 
           xlim(0,1) + 
           ggtitle(title1))
   print(p + 
-          geom_path(data = plot_data,
-                    aes(x = fprUSGS, y = tprUSGS, 
-                    color = fold)) + 
+          geom_smooth(aes(x = fprUSGS, y = tprUSGS, 
+                          color = fold),
+                      span = .9) + 
           ylim(0,1) + 
           xlim(0,1) +
           ggtitle(title2))
   print(p + 
-          geom_path(data = plot_data,
-                    aes(x = recall, y = precision,
-                    color = fold)) +
+          geom_smooth(aes(x = recall, y = precision,
+                          color = fold),
+                      span = .9) +
           ylim(0,1) + 
           xlim(0,1) +
           ggtitle(title3))
   print(p + 
-          geom_path(data = plot_data,
-                    aes(x = recallUSGS, y = precisionUSGS,
-                        color = fold)) +
+          geom_smooth(aes(x = recallUSGS, y = precisionUSGS,
+                          color = fold),
+                      span = .9) +
           ylim(0,1) + 
           xlim(0,1) +
           ggtitle(title3))
@@ -79,15 +88,6 @@ if (kFolds) {
                   replace = TRUE)
     train_balanced <- rbind(train_high, train_low[ind, ])
     trainData <- train_balanced
-    rm(list = c("train_high",
-                "train_low",
-                "ind",
-                "train_balanced",
-                "highMin",
-                "highMax",
-                "lowMax"
-    )
-    )
   }
   testData <- df_model[df_model$Date < testEnd
                        & df_model$Date > testStart, ]
@@ -123,24 +123,3 @@ if (kFolds) {
           xlim(0,1) +
           ggtitle(title3))
 }
-
-## cleanup after modelings
-rm(list=c("df_model",
-          "downsample",
-          "kFolds",
-          "model",
-          "model_cols",
-          "testData",
-          "trainData",
-          "trainStart",
-          "trainEnd",
-          "testStart",
-          "testEnd",
-          "excludeBeaches",
-          "threshBegin",
-          "threshEnd",
-          "title1",
-          "title2",
-          "title3"
-))
-

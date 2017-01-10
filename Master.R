@@ -11,6 +11,13 @@ source("20_Clean.R")
 ## Model settings
 ##------------------------------------------------------------------------------
 
+# remove prior modeling variables
+keep <- list("Beach_Water_Levels", "BeachNames", "df", "Lat", "lock_data", 
+             "Long", "modelCurves", "modelEcoli", "results_df", "sourceDir",
+             "usePackage", "USGS_predictions_df", "USGSid", "water_quality_df",
+             "weather_data")
+rm(list=ls()[!ls() %in% keep])
+
 # predictors
 df_model <- df[, c("Escherichia.coli",
                    "Client.ID",
@@ -75,6 +82,26 @@ title2 <- "2015-2016 DNAmean Model ROC Curve"
 title3 <- "2015-2016 DNAmean Model PR Curve"
 
 source("30_model.R", print.eval=TRUE)
+
+model_summary <- plot_data %>%
+  group_by(thresholds) %>%
+  summarize(tpr = mean(tpr),
+            fpr = mean(fpr),
+            tprUSGS = mean(tprUSGS),
+            fprUSGS = mean(fprUSGS),
+            precision = mean(precision, na.rm = TRUE),
+            recall = mean(recall),
+            precisionUSGS = mean(precisionUSGS, na.rm = TRUE),
+            recallUSGS = mean(recallUSGS),
+            tp = mean(tp),
+            fn = mean(fn),
+            tn = mean(tn),
+            fp = mean(fp),
+            tpUSGS = mean(tpUSGS),
+            fnUSGS = mean(fnUSGS),
+            tnUSGS = mean(tnUSGS),
+            fpUSGS = mean(fpUSGS)
+            )
 
 ## decide whether to keep the analysis below
 

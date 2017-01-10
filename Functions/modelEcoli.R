@@ -7,6 +7,14 @@ modelEcoli <- function(trainData, testData) {
                         data = trainData[,
                                          c(1:(train_vars - 1))])
   testData$predictionRF <- predict(model, testData[,c(1:(test_vars-2))])
+  tp <- c()
+  fn <- c()
+  tn <- c()
+  fp <- c()
+  tpUSGS <- c()
+  fnUSGS <- c()
+  tnUSGS <- c()
+  fpUSGS <- c()
   tpr <- c()
   fpr <- c()
   tprUSGS <- c()
@@ -15,6 +23,7 @@ modelEcoli <- function(trainData, testData) {
   recall <- c()
   precisionUSGS <- c()
   recallUSGS <- c()
+  thresholds <- c()
   testData$actual_binary <- ifelse(testData$Escherichia.coli >= 235, 1, 0)
   for (threshold in seq(threshBegin, threshEnd, 1)) {
     testData$predictionRF_binary <- ifelse(testData$predictionRF >= threshold, 1, 0)
@@ -27,14 +36,23 @@ modelEcoli <- function(trainData, testData) {
     testData$true_negativeUSGS <- ifelse((testData$actual_binary == 0 & testData$USGS_binary  == 0), 1, 0)
     testData$false_negativeUSGS <- ifelse((testData$actual_binary == 1 & testData$USGS_binary  == 0), 1, 0)
     testData$false_positiveUSGS <- ifelse((testData$actual_binary == 0 & testData$USGS_binary  == 1), 1, 0)
-    tpr = c(tpr, (sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_negative))))
-    fpr = c(fpr, (sum(testData$false_positive) / (sum(testData$false_positive) + sum(testData$true_negative))))
-    tprUSGS <- c(tprUSGS, (sum(testData$true_positiveUSGS) / (sum(testData$true_positiveUSGS) + sum(testData$false_negativeUSGS))))
-    fprUSGS <- c(fprUSGS, (sum(testData$false_positiveUSGS) / (sum(testData$false_positiveUSGS) + sum(testData$true_negativeUSGS))))
-    precision = c(precision, (sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_positive))))
-    recall = c(recall, (sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_negative))))
-    precisionUSGS <- c(precisionUSGS, (sum(testData$true_positiveUSGS) / (sum(testData$true_positiveUSGS) + sum(testData$false_positiveUSGS))))
-    recallUSGS <- c(recallUSGS, (sum(testData$true_positiveUSGS) / (sum(testData$true_positiveUSGS) + sum(testData$false_negativeUSGS))))
+    tp <- c(tp, sum(testData$true_positive))
+    fn <- c(fn, sum(testData$false_negative))
+    tn <- c(tn, sum(testData$true_negative))
+    fp <- c(fp, sum(testData$false_positive))
+    tpUSGS <- c(tpUSGS, sum(testData$true_positiveUSGS))
+    fnUSGS <- c(fnUSGS, sum(testData$false_negativeUSGS))
+    tnUSGS <- c(tnUSGS, sum(testData$true_negativeUSGS))
+    fpUSGS <- c(fpUSGS, sum(testData$false_positiveUSGS))
+    tpr = c(tpr, sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_negative)))
+    fpr = c(fpr, sum(testData$false_positive) / (sum(testData$false_positive) + sum(testData$true_negative)))
+    tprUSGS <- c(tprUSGS, sum(testData$true_positiveUSGS) / (sum(testData$true_positiveUSGS) + sum(testData$false_negativeUSGS)))
+    fprUSGS <- c(fprUSGS, sum(testData$false_positiveUSGS) / (sum(testData$false_positiveUSGS) + sum(testData$true_negativeUSGS)))
+    precision = c(precision, sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_positive)))
+    recall = c(recall, sum(testData$true_positive) / (sum(testData$true_positive) + sum(testData$false_negative)))
+    precisionUSGS <- c(precisionUSGS, sum(testData$true_positiveUSGS) / (sum(testData$true_positiveUSGS) + sum(testData$false_positiveUSGS)))
+    recallUSGS <- c(recallUSGS, sum(testData$true_positiveUSGS) / (sum(testData$true_positiveUSGS) + sum(testData$false_negativeUSGS)))
+    thresholds <- c(thresholds, threshold)
   }
   list("tpr"=tpr,
        "fpr"=fpr,
@@ -43,5 +61,14 @@ modelEcoli <- function(trainData, testData) {
        "precision"=precision,
        "recall"=recall,
        "precisionUSGS"=precisionUSGS,
-       "recallUSGS"=recallUSGS)
+       "recallUSGS"=recallUSGS,
+       "tp"=tp,
+       "fn"=fn,
+       "tn"=tn,
+       "fp"=fp,
+       "tpUSGS"=tpUSGS,
+       "fnUSGS"=fnUSGS,
+       "tnUSGS"=tnUSGS,
+       "fpUSGS"=fpUSGS,
+       "thresholds"=thresholds)
 }
