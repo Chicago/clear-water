@@ -30,3 +30,16 @@ results_df$DayOfWeek<-strftime(results_df$Date, format = '%A')
 #Normalize the Beach Names
 results_df$Client.ID<-as.character(results_df$Client.ID)
 results_df$Client.ID<-BeachNames(results_df$Client.ID)
+
+#Remove Beaches that don't have Eschercia.Coli readings
+results_df<-results_df[!is.na(results_df$Escherichia.coli),]
+
+#There are a couple outliers in Reading.2 so we will reassign it to 2420.0 and 
+#Replace the geometric mean in Eshcheria.Coli
+results_df[!is.na(results_df$Reading.2) 
+           & results_df$Reading.2>2420,"Reading.2"]<-2420.0
+
+#Geometric Mean Code
+results_df$Escherichia.coli<-sqrt(apply(results_df[c("Reading.1","Reading.2")],
+                                        1,prod,na.rm=TRUE))
+
