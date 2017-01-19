@@ -116,3 +116,5 @@ names(df)[names(df) == "63rd_Escherichia.coli"] <- "n63rd_Escherichia.coli"
 #add function to fix columns that have a space (or fix earlier in import)
 names(df)[names(df) == "South Shore_DNA.Geo.Mean"] <- "South_Shore_DNA.Geo.Mean"
 names(df)[names(df) == "South Shore_Escherichia.coli"] <- "South_Shore_Escherichia.coli"
+
+rm(beach)
