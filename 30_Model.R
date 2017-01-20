@@ -1,4 +1,4 @@
- # takes in settings from Master.R and uses them to 1) create train/test sets
+# takes in settings from Master.R and uses them to 1) create train/test sets
 # 2) model and 3) plot curves
 
 print("Modeling Data")
@@ -69,7 +69,7 @@ if (kFolds) {
                       span = .9) +
           ylim(0,1) + 
           xlim(0,1) +
-          ggtitle(title3))
+          ggtitle(title4))
 } else {
   trainData <- df_model[,
                         c(1:model_cols - 1)] #remove EPA prediction from training data

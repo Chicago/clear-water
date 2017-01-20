@@ -25,7 +25,7 @@ df_model <- df[, c("Escherichia.coli",
                    "Water.Level",
                    "Howard_Escherichia.coli",
                    # "n57th_Escherichia.coli",
-                   # "n63rd_Escherichia.coli", 
+                   # "n63rd_Escherichia.coli",
                    # # "South_Shore_Escherichia.coli",
                    # "Montrose_Escherichia.coli",
                    # "Calumet_Escherichia.coli",
@@ -38,14 +38,17 @@ df_model <- df[, c("Escherichia.coli",
                    "Date", #Must use for splitting data
                    "Predicted.Level" #Must use for USGS model comparison
                    )]
+# to run without USGS, comment out "Predicted.Level" above and uncomment next line
+# df_model$Predicted.Level <- 1 #meaningless value
+
 model_cols <- (ncol(df_model))
 
 #train/test split
 kFolds <- TRUE #If TRUE next 4 lines will not be used
-trainStart <- "2016-01-01"
-trainEnd <- "2016-07-31"
-testStart <- "2016-08-01"
-testEnd <- "2016-12-31"
+trainStart <- "2006-01-01"
+trainEnd <- "2011-12-31"
+testStart <- "2012-01-01"
+testEnd <- "2012-12-31"
 
 #downsample settings
 downsample <- FALSE #If FALSE comment out the next 3 lines
@@ -77,9 +80,10 @@ excludeBeaches <- c(
                     )
 threshBegin <- 1
 threshEnd <- 1500
-title1 <- "2015-2016 DNAmean Model ROC Curve"
-title2 <- "2015-2016 DNAmean Model ROC Curve"
-title3 <- "2015-2016 DNAmean Model PR Curve"
+title1 <- "2015-2016 DNA Model ROC"
+title2 <- "2015-2016 USGS Model ROC"
+title3 <- "2015-2016 DNA Model PR Curve"
+title4 <- "2015-2016 USGS Model PR Curve"
 
 source("30_model.R", print.eval=TRUE)
 
@@ -103,8 +107,6 @@ model_summary <- plot_data %>%
             fpUSGS = mean(fpUSGS)
             )
 
-## decide whether to keep the analysis below
-
 #-----------------------------------------------------------------------------------------------------------------
 # Look at Genetic Tests (need to change variable names)
 #-----------------------------------------------------------------------------------------------------------------
@@ -121,35 +123,3 @@ model_summary <- plot_data %>%
 #summary(llmodel)
 #par(mfrow=c(2,2));plot(llmodel);par(mfrow=c(1,1))
 #hist(dna$DNA.Reading.Mean)
-
-#-----------------------------------------------------------------------------------------------------------------
-# Calculate USGS Confusion Matrix (need to change variable names)
-#-----------------------------------------------------------------------------------------------------------------
-
-# df_2015 <- beach_readings[beach_readings$Year == "2015",]
-# df_2015 <- df_2015[!is.na(df_2015$Drek_elevated_levels_predicted_calculated),]
-# df_2015 <- df_2015[!is.na(df_2015$elevated_levels_actual_calculated),]
-# tp <- ifelse((df_2015$elevated_levels_actual_calculated == 1 & df_2015$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
-# tn <- ifelse((df_2015$elevated_levels_actual_calculated == 0 & df_2015$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
-# fn <- ifelse((df_2015$elevated_levels_actual_calculated == 1 & df_2015$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
-# fp <- ifelse((df_2015$elevated_levels_actual_calculated == 0 & df_2015$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
-# print(paste0("True Positives = ", sum(tp)))
-# print(paste0("True Negatives = ", sum(tn)))
-# print(paste0("False Positives = ", sum(fp)))
-# print(paste0("False Negatives = ", sum(fn)))
-# print(paste0("2015 True Positive Rate = ",(sum(tp)/(sum(tp)+sum(fn)))))
-# print(paste0("2015 False Positive Rate = ",(sum(fp)/(sum(fp)+sum(tn)))))
-# 
-# df_2016 <- beach_readings[beach_readings$Year == "2016",]
-# df_2016 <- df_2016[!is.na(df_2016$Drek_elevated_levels_predicted_calculated),]
-# df_2016 <- df_2016[!is.na(df_2016$elevated_levels_actual_calculated),]
-# tp <- ifelse((df_2016$elevated_levels_actual_calculated == 1 & df_2016$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
-# tn <- ifelse((df_2016$elevated_levels_actual_calculated == 0 & df_2016$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
-# fn <- ifelse((df_2016$elevated_levels_actual_calculated == 1 & df_2016$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
-# fp <- ifelse((df_2016$elevated_levels_actual_calculated == 0 & df_2016$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
-# print(paste0("True Positives = ", sum(tp)))
-# print(paste0("True Negatives = ", sum(tn)))
-# print(paste0("False Positives = ", sum(fp)))
-# print(paste0("False Negatives = ", sum(fn)))
-# print(paste0("2016 True Positive Rate = ",(sum(tp)/(sum(tp)+sum(fn)))))
-# print(paste0("2016 False Positive Rate = ",(sum(fp)/(sum(fp)+sum(tn)))))
