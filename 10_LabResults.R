@@ -4,6 +4,8 @@
 #so that we can combine with other things in the future.
 
 print("Importing E. Coli Lab Data")
+
+#Pull data in from the open portal and rename the columns
 results_df <- read.socrata("https://data.cityofchicago.org/resource/2ivx-z93u.csv")
 results_df<- data.frame( "Date" = results_df$Culture.Sample.1.Timestamp,
                  "Laboratory.ID" = results_df$Culture.Test.ID, 
