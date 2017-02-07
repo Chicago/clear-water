@@ -15,7 +15,9 @@ if (kFolds) {
     print(paste0("Cross-validating fold # ", fold))
     testDays <- dates_sample
     testData <- df_model[df_model$Date %in% testDays, ]
+    testData <- testData[which(!testData$Client.ID %in% excludeBeaches),]
     trainData <- df_model[!df_model$Date %in% testDays, c(1:ncol(df_model) - 1)]
+    trainData <- trainData[which(!trainData$Client.ID %in% excludeBeaches),]
     model <- modelEcoli(trainData, testData)
     fold_data <- data.frame(fold, 
                             "tpr" = model$tpr,

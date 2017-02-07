@@ -24,7 +24,7 @@ df_model <- df[, c("Escherichia.coli",
                    "precipProbability",
                    "Water.Level",
                    "Howard_Escherichia.coli",
-                   # "n57th_Escherichia.coli",
+                   # "n57th_Escherichia.coli", 
                    # "n63rd_Escherichia.coli",
                    # # "South_Shore_Escherichia.coli",
                    # "Montrose_Escherichia.coli",
@@ -46,9 +46,9 @@ model_cols <- (ncol(df_model))
 #train/test split
 kFolds <- TRUE #If TRUE next 4 lines will not be used
 trainStart <- "2006-01-01"
-trainEnd <- "2011-12-31"
-testStart <- "2012-01-01"
-testEnd <- "2012-12-31"
+trainEnd <- "2015-12-31"
+testStart <- "2016-01-01"
+testEnd <- "2016-12-31"
 
 #downsample settings
 downsample <- FALSE #If FALSE comment out the next 3 lines
@@ -79,11 +79,11 @@ excludeBeaches <- c(
                     "South Shore"
                     )
 threshBegin <- 1
-threshEnd <- 1500
-title1 <- "2015-2016 DNA Model ROC"
-title2 <- "2015-2016 USGS Model ROC"
-title3 <- "2015-2016 DNA Model PR Curve"
-title4 <- "2015-2016 USGS Model PR Curve"
+threshEnd <- 500
+title1 <- "2015-2016 DNA Model ROC - None Excluded"
+title2 <- "2015-2016 USGS Model ROC - None Excluded"
+title3 <- "2015-2016 DNA Model PR Curve - None Excluded"
+title4 <- "2015-2016 USGS Model PR Curve - None Excluded"
 
 source("30_model.R", print.eval=TRUE)
 
