@@ -61,22 +61,22 @@ excludeBeaches <- c(
                     # "31st",
                     # "39th",
                     # "57th",
-                    "63rd",
+                    # "63rd",
                     # "Albion",
-                    "Calumet",
+                    # "Calumet",
                     # "Foster",
-                    "Howard",
+                    # "Howard",
                     # "Jarvis",
                     # "Juneway",
                     # "Leone",
-                    "Montrose",
+                    # "Montrose",
                     # "North Avenue",
                     # "Oak Street",
                     # "Ohio",
                     # "Osterman",
-                    "Rainbow",
+                    # "Rainbow",
                     # "Rogers",
-                    "South Shore"
+                    # "South Shore"
                     )
 threshBegin <- 1
 threshEnd <- 500

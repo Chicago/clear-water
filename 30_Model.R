@@ -43,31 +43,42 @@ if (kFolds) {
     if (fold < 10) dates_sample <- sample(remaining_dates, fold_size)
   }
   plot_data$fold <- as.factor(plot_data$fold)
+  plot_data <- plot_data %>%
+    group_by(thresholds) %>%
+    summarize(tpr = mean(tpr),
+              fpr = mean(fpr),
+              tprUSGS = mean(tprUSGS),
+              fprUSGS = mean(fprUSGS),
+              precision = mean(precision, na.rm = TRUE),
+              recall = mean(recall),
+              precisionUSGS = mean(precisionUSGS, na.rm = TRUE),
+              recallUSGS = mean(recallUSGS),
+              tp = mean(tp),
+              fn = mean(fn),
+              tn = mean(tn),
+              fp = mean(fp),
+              tpUSGS = mean(tpUSGS),
+              fnUSGS = mean(fnUSGS),
+              tnUSGS = mean(tnUSGS),
+              fpUSGS = mean(fpUSGS)
+    )
   p <- ggplot(data = plot_data) 
   print(p + 
           geom_smooth(aes(x = fpr, y = tpr, 
-                          color = fold),
+                          color = "DNA Model"),
                       span = .9) + 
-          ylim(0,1) + 
-          xlim(0,1) + 
-          ggtitle(title1))
-  print(p + 
           geom_smooth(aes(x = fprUSGS, y = tprUSGS, 
-                          color = fold),
+                          color = "USGS Model"),
                       span = .9) + 
           ylim(0,1) + 
           xlim(0,1) +
           ggtitle(title2))
   print(p + 
           geom_smooth(aes(x = recall, y = precision,
-                          color = fold),
+                          color = "DNA Model"),
                       span = .9) +
-          ylim(0,1) + 
-          xlim(0,1) +
-          ggtitle(title3))
-  print(p + 
           geom_smooth(aes(x = recallUSGS, y = precisionUSGS,
-                          color = fold),
+                          color = "USGS Model"),
                       span = .9) +
           ylim(0,1) + 
           xlim(0,1) +
