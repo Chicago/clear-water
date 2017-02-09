@@ -1,9 +1,12 @@
 # takes in settings from Master.R and uses them to 1) create train/test sets
 # 2) model and 3) plot curves
 
-print("Modeling Data")
+
+
+model_cols <- (ncol(df_model))
 
 if (kFolds) {
+  print("Modeling with 10 folds validation")
   df_model <- df_model[complete.cases(df_model),] #remove NAs from df_model
   set.seed(111)
   dates <- unique(df_model$Date)
@@ -18,6 +21,17 @@ if (kFolds) {
     testData <- testData[which(!testData$Client.ID %in% excludeBeaches),]
     trainData <- df_model[!df_model$Date %in% testDays, c(1:ncol(df_model) - 1)]
     trainData <- trainData[which(!trainData$Client.ID %in% excludeBeaches),]
+    if (downsample) {
+      train_high <- trainData[trainData$Escherichia.coli >= highMin
+                              & trainData$Escherichia.coli < highMax, ]
+      train_low <- trainData[trainData$Escherichia.coli < lowMax, ]
+      # only use as many low days as you have high days
+      ind <- sample(c(1:nrow(train_low)),
+                    nrow(train_high),
+                    replace = TRUE)
+      train_balanced <- rbind(train_high, train_low[ind, ])
+      trainData <- train_balanced
+    }
     model <- modelEcoli(trainData, testData)
     fold_data <- data.frame(fold, 
                             "tpr" = model$tpr,
@@ -45,23 +59,25 @@ if (kFolds) {
   plot_data$fold <- as.factor(plot_data$fold)
   plot_data <- plot_data %>%
     group_by(thresholds) %>%
-    summarize(tpr = mean(tpr),
-              fpr = mean(fpr),
-              tprUSGS = mean(tprUSGS),
-              fprUSGS = mean(fprUSGS),
-              precision = mean(precision, na.rm = TRUE),
-              recall = mean(recall),
-              precisionUSGS = mean(precisionUSGS, na.rm = TRUE),
-              recallUSGS = mean(recallUSGS),
-              tp = mean(tp),
-              fn = mean(fn),
-              tn = mean(tn),
-              fp = mean(fp),
-              tpUSGS = mean(tpUSGS),
-              fnUSGS = mean(fnUSGS),
-              tnUSGS = mean(tnUSGS),
-              fpUSGS = mean(fpUSGS)
+    summarize(tp = sum(tp),
+              fn = sum(fn),
+              tn = sum(tn),
+              fp = sum(fp),
+              tpUSGS = sum(tpUSGS),
+              fnUSGS = sum(fnUSGS),
+              tnUSGS = sum(tnUSGS),
+              fpUSGS = sum(fpUSGS)
     )
+  plot_data <- mutate(plot_data,
+                      tpr = tp/(tp+fn),
+                      fpr = fp/(fp+tn),
+                      precision = tp/(tp+fp),
+                      recall = tp/(tp+fn),
+                      tprUSGS = tpUSGS/(tpUSGS+fnUSGS),
+                      fprUSGS = fpUSGS/(fpUSGS+tnUSGS),
+                      precisionUSGS = tpUSGS/(tpUSGS+fpUSGS),
+                      recallUSGS = tpUSGS/(tpUSGS+fnUSGS)
+                      )
   p <- ggplot(data = plot_data) 
   print(p + 
           geom_smooth(aes(x = fpr, y = tpr, 
@@ -72,7 +88,7 @@ if (kFolds) {
                       span = .9) + 
           ylim(0,1) + 
           xlim(0,1) +
-          ggtitle(title2))
+          ggtitle(title1))
   print(p + 
           geom_smooth(aes(x = recall, y = precision,
                           color = "DNA Model"),
@@ -82,8 +98,9 @@ if (kFolds) {
                       span = .9) +
           ylim(0,1) + 
           xlim(0,1) +
-          ggtitle(title4))
+          ggtitle(title2))
 } else {
+  print("Modeling with user-defined validation data")
   trainData <- df_model[,
                         c(1:model_cols - 1)] #remove EPA prediction from training data
   # Reduce train set to non-predictor beaches
@@ -112,27 +129,24 @@ if (kFolds) {
   model <- modelEcoli(trainData, testData)
   p <- ggplot() 
   print(p + 
-          geom_path(aes(x = model$fpr, y = model$tpr), 
-                    color = "blue") + 
-          geom_path(aes(x = model$fprUSGS, y = model$tprUSGS), 
-                    color = "red") + 
+          geom_smooth(aes(x = model$fpr, y = model$tpr, 
+                          color = "DNA Model"), 
+                      span = .9) + 
+          geom_smooth(aes(x = model$fprUSGS, y = model$tprUSGS, 
+                          color = "USGS Model"),
+                      span = .9) + 
           ylim(0,1) + 
           xlim(0,1) + 
           ggtitle(title1))
   print(p + 
-          geom_path(aes(x = model$fpr, y = model$tpr), 
-                    color = "blue") + 
-          geom_path(aes(x = model$fprUSGS, y = model$tprUSGS), 
-                    color = "red") + 
-          ylim(0,.75) + 
-          xlim(0,.1) + 
-          ggtitle(title2))
-  print(p + 
-          geom_path(aes(x = model$recall, y = model$precision),
-                    color = "blue") +
-          geom_path(aes(x = model$recallUSGS, y = model$precisionUSGS),
-                    color = "red") +
+          geom_smooth(aes(x = model$recall, y = model$precision,
+                          color = "DNA Model"),
+                      span = .9) +
+          geom_smooth(aes(x = model$recallUSGS, y = model$precisionUSGS,
+                          color = "USGS MOdel"),
+                      span = .9) +
           ylim(0,1) + 
           xlim(0,1) +
-          ggtitle(title3))
+          ggtitle(title2))
+  plot_data <- as.data.frame(model)
 }
