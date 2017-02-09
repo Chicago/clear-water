@@ -5,6 +5,7 @@
 
 model_cols <- (ncol(df_model))
 
+
 if (kFolds) {
   print("Modeling with 10 folds validation")
   df_model <- df_model[complete.cases(df_model),] #remove NAs from df_model
@@ -14,6 +15,7 @@ if (kFolds) {
   dates_sample <- sample(dates, fold_size)
   used_dates <- c()
   plot_data <- data.frame()
+  predictions <- data.frame()
   for (fold in c(1:10)) {
     print(paste0("Cross-validating fold # ", fold))
     testDays <- dates_sample
@@ -52,6 +54,7 @@ if (kFolds) {
                             "fpUSGS" = model$fpUSGS, 
                             "thresholds" = model$thresholds)
     plot_data <- rbind(plot_data, fold_data)
+    predictions <- rbind(predictions, testData)
     used_dates <- c(used_dates, dates_sample)
     remaining_dates <- dates[!dates %in% used_dates]
     if (fold < 10) dates_sample <- sample(remaining_dates, fold_size)
