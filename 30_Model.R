@@ -54,11 +54,13 @@ if (kFolds) {
                             "fpUSGS" = model$fpUSGS, 
                             "thresholds" = model$thresholds)
     plot_data <- rbind(plot_data, fold_data)
-    predictions <- rbind(predictions, testData)
+    predictions <- rbind(predictions, model$predictions)
     used_dates <- c(used_dates, dates_sample)
     remaining_dates <- dates[!dates %in% used_dates]
     if (fold < 10) dates_sample <- sample(remaining_dates, fold_size)
   }
+  names(predictions)[names(predictions) == "Predicted.Level"] <- "USGS.Prediction"
+  names(predictions)[names(predictions) == "predictionRF"] <- "DNAModel.Prediction"
   plot_data$fold <- as.factor(plot_data$fold)
   plot_data <- plot_data %>%
     group_by(thresholds) %>%

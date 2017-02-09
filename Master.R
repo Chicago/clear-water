@@ -103,6 +103,9 @@ title2 <- paste0("PR Curve",
 threshBegin <- 1
 threshEnd <- 500
 
+# change threshold for saving results into "predictions" data frame
+thresh <- 235
+
 # runs all modeling code
 source("30_model.R", print.eval=TRUE)
 

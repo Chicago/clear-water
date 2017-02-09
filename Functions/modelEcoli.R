@@ -24,6 +24,7 @@ modelEcoli <- function(trainData, testData) {
   precisionUSGS <- c()
   recallUSGS <- c()
   thresholds <- c()
+  predictions <- data.frame()
   testData$actual_binary <- ifelse(testData$Escherichia.coli >= 235, 1, 0)
   for (threshold in seq(threshBegin, threshEnd, 1)) {
     testData$predictionRF_binary <- ifelse(testData$predictionRF >= threshold, 1, 0)
@@ -53,6 +54,9 @@ modelEcoli <- function(trainData, testData) {
     precisionUSGS <- c(precisionUSGS, sum(testData$true_positiveUSGS) / (sum(testData$true_positiveUSGS) + sum(testData$false_positiveUSGS)))
     recallUSGS <- c(recallUSGS, sum(testData$true_positiveUSGS) / (sum(testData$true_positiveUSGS) + sum(testData$false_negativeUSGS)))
     thresholds <- c(thresholds, threshold)
+    if (threshold == thresh) {
+      predictions <- rbind(predictions, testData)
+    }
   }
   list("tpr"=tpr,
        "fpr"=fpr,
@@ -70,5 +74,6 @@ modelEcoli <- function(trainData, testData) {
        "fnUSGS"=fnUSGS,
        "tnUSGS"=tnUSGS,
        "fpUSGS"=fpUSGS,
-       "thresholds"=thresholds)
+       "thresholds"=thresholds,
+       "predictions"=predictions)
 }
