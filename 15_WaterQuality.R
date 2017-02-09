@@ -24,6 +24,10 @@ water_quality_df <- water_quality_df[!(is.na(water_quality_df$Date)| water_quali
 #Clean the beachnames to match with the rest of the project
 water_quality_df$Client.ID<-BeachNames(water_quality_df$Client.ID)
 
+#Get the negative Wave Heights and Periods to 0
+water_quality_df$Wave.Height[water_quality_df$Wave.Height < 0]<-0
+water_quality_df$Wave.Period[water_quality_df$Wave.Period < 0]<-0
+
 #Strip down the "Date" variable to pull out the Year, Day, and Month later
 water_quality_df$Date<-strptime(water_quality_df$Date,
                             format="%Y-%m-%d %H:%M:%S")

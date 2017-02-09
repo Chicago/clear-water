@@ -72,6 +72,9 @@ drek<- drek[,!(names(drek) %in% c("Date"))]
 #Add on the USGSid to `drek`
 drek$USGS<-USGSid(drek$Beach.Name)
 
+USGS_predictions_df[USGS_predictions_df$Predicted.Level < 0,
+                    c("Predicted.Level","Probability")]<-0
+
 #Combine the data from `USGS_predictions_df` and `drek` into one data frame
 USGS_predictions_df<-rbind(USGS_predictions_df,drek)
 
