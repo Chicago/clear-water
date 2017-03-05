@@ -18,30 +18,15 @@ results_df <- data.frame( "Date" = results_df$Culture.Sample.1.Timestamp,
                  "DNA.Reading.2" = results_df$DNA.Sample.2.Reading,
                  "DNA.Geo.Mean" = results_df$DNA.Reading.Mean)
 
-# Features omitted: "Culture.Note", "Culture.Sample.Interval", "DNA.Test.ID"               
-
-# #Split the Date column into Year, Month, and Day columns
-# results_df$Year  <- as.character(results_df$Date, format='%Y')
-# results_df$Month <- as.character(results_df$Date, format='%m')
-# results_df$Day   <- as.character(results_df$Date, format='%d')
-
 #Split the Date column into Year, Month, and Day columns
-results_df$mydate <- strptime(as.character(results_df$Date), "%m/%d/%Y %H:%M:%S %p")
-results_df$Year   <- results_df$mydate$year + 1900 # years since 1900
-results_df$Month  <- results_df$mydate$mon + 1     # month of year (zero-indexed)
-results_df$Day    <- results_df$mydate$mday        # day of month
-
-# #Add in the the number of day it is in the year, day of the week
-# results_df$DayOfYear<-strftime(results_df$Date, format = '%j')
-# results_df$DayOfWeek<-strftime(results_df$Date, format = '%A')
+results_df$Year  <- as.character(results_df$Date, format='%Y')
+results_df$Month <- as.character(results_df$Date, format='%m')
+results_df$Day   <- as.character(results_df$Date, format='%d')
 
 #Add in the the number of day it is in the year, day of the week
-results_df$DayOfYear  <- results_df$mydate$yday     # day of year
-results_df$DayOfWeek  <- results_df$mydate$wday + 1 # day of week (zero-indexed)
+results_df$DayOfYear<-strftime(results_df$Date, format = '%j')
+results_df$DayOfWeek<-strftime(results_df$Date, format = '%A')
 
-#Remove Date and mydate features as the values are extracted
-results_df$Date   <- NULL
-results_df$mydate <- NULL
 
 #Normalize the Beach Names
 results_df$Client.ID<-as.character(results_df$Client.ID)
