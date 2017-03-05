@@ -121,3 +121,6 @@ df_model <- df[, unlist(list(c("Escherichia.coli","Client.ID"),beaches_rename,
     )
   return(model_summary)
 }
+
+
+beach_choose(beaches = beaches)
