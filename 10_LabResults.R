@@ -5,7 +5,6 @@
 
 print("Importing E. Coli Lab Data")
 results_df <- read.socrata("https://data.cityofchicago.org/resource/2ivx-z93u.csv")
-
 results_df <- data.frame( "Date" = results_df$Culture.Sample.1.Timestamp,
                  "Laboratory.ID" = results_df$Culture.Test.ID, 
                  "Client.ID" = results_df$Beach, 
@@ -19,9 +18,9 @@ results_df <- data.frame( "Date" = results_df$Culture.Sample.1.Timestamp,
                  "DNA.Geo.Mean" = results_df$DNA.Reading.Mean)
 
 #Split the Date column into Year, Month, and Day columns
-results_df$Year  <- as.character(results_df$Date, format='%Y')
+results_df$Year <- as.character(results_df$Date, format='%Y')
 results_df$Month <- as.character(results_df$Date, format='%m')
-results_df$Day   <- as.character(results_df$Date, format='%d')
+results_df$Day <- as.character(results_df$Date, format='%d')
 
 #Add in the the number of day it is in the year, day of the week
 results_df$DayOfYear<-strftime(results_df$Date, format = '%j')
