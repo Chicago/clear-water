@@ -1,49 +1,66 @@
 source("00_startup.R")
-source("10_LabResults.R")
-source("11_USGSpredictions.R")
-source("12_LockOpenings.R")
-source("13_Beach_Water_Levels.R")
-source("14_Weather.R")
-source("15_WaterQuality.R")
-source("20_Clean.R")
+
+# source("10_LabResults.R")
+# source("11_USGSpredictions.R")
+# source("12_LockOpenings.R")
+# source("13_Beach_Water_Levels.R")
+# source("14_Weather.R")
+# source("15_WaterQuality.R")
+# source("20_Clean.R")
+# saveRDS(df, paste0(getwd(),"/Data/df.Rds"))
+df <- readRDS(paste0(getwd(),"/Data/df.Rds"))
+
 
 ##------------------------------------------------------------------------------
-## Model settings
+## MODEL SETTINGS
+##   Make changes to the settings below to tweak the model
+##   These settings determine how the model is built inside 30_Model.R
+##   The model itself is in /Functions/modelEcoli.R
 ##------------------------------------------------------------------------------
 
-# predictors
-df_model <- df[, c("Escherichia.coli",
+# remove prior modeling variables before starting up model
+keep <- list("df", "modelCurves", "modelEcoli")
+rm(list=ls()[!ls() %in% keep])
+
+# set predictors
+df_model <- df[, c("Escherichia.coli", #dependent variable
                    "Client.ID",
-                   "precipProbability",
-                   "Water.Level",
+                   # "precipProbability",
+                   # "Water.Level",
                    "Howard_Escherichia.coli",
-                   "n63rd_Escherichia.coli", 
-                   "South_Shore_Escherichia.coli",
-                   "Montrose_Escherichia.coli",
-                   "Calumet_Escherichia.coli",
-                   "Rainbow_Escherichia.coli",
-                   # "n63rd_DNA.Geo.Mean", 
-                   # "South_Shore_DNA.Geo.Mean",
-                   # "Montrose_DNA.Geo.Mean",
-                   # "Calumet_DNA.Geo.Mean",
-                   # "Rainbow_DNA.Geo.Mean",
-                   "Date",
-                   "Predicted.Level"
+                   # "n57th_Escherichia.coli", 
+                   # "n63rd_Escherichia.coli",
+                   # "South_Shore_Escherichia.coli",
+                   # "Montrose_Escherichia.coli",
+                   # "Calumet_Escherichia.coli",
+                   # "Rainbow_Escherichia.coli",
+                   # "Ohio_DNA.Geo.Mean",
+                   # "North_Avenue_DNA.Geo.Mean",
+                   "n63rd_DNA.Geo.Mean",
+                   "South_Shore_DNA.Geo.Mean",
+                   "Montrose_DNA.Geo.Mean",
+                   "Calumet_DNA.Geo.Mean",
+                   "Rainbow_DNA.Geo.Mean",
+                   "Date", #Must use for splitting data, not included in model
+                   "Predicted.Level" #Must use for USGS model comparison, not included in model
                    )]
-model_cols <- (ncol(df_model))
+# to run without USGS for comparison, comment out "Predicted.Level" above and uncomment next line
+# df_model$Predicted.Level <- 1 #meaningless value
 
-#train/test split
+# train/test data
+kFolds <- TRUE #If TRUE next 4 lines will not be used but cannot be commented out
 trainStart <- "2006-01-01"
-trainEnd <- "2014-12-31"
-testStart <- "2015-01-01"
+trainEnd <- "2015-12-31"
+testStart <- "2016-01-01"
 testEnd <- "2016-12-31"
 
-#downsample settings
+# downsample settings
 downsample <- FALSE #If FALSE comment out the next 3 lines
-# highMin <- 200 
+# highMin <- 200
 # highMax <- 2500
 # lowMax <- 200
 
+# these beaches will not be in test data
 excludeBeaches <- c(
                     # "12th",
                     # "31st",
@@ -66,61 +83,51 @@ excludeBeaches <- c(
                     # "Rogers",
                     "South Shore"
                     )
-threshBegin <- 0
-threshEnd <- 1500
-title1 <- "2015-2016 Geomean Model ROC Curve"
-title2 <- "2015-2016 Geomean Model ROC Curve"
-title3 <- "2015-2016 Geomean Model PR Curve"
 
+# change title names for plots
+title1 <- paste0("ROC", 
+                 if(kFolds == TRUE) " - kFolds",
+                 if(kFolds == FALSE) " - validate on ",
+                 if(kFolds == FALSE) testStart,
+                 if(kFolds == FALSE) " to ",
+                 if(kFolds == FALSE) testEnd)
+title2 <- paste0("PR Curve", 
+                 if(kFolds == TRUE) " - kFolds",
+                 if(kFolds == FALSE) " - validate on ",
+                 if(kFolds == FALSE) testStart,
+                 if(kFolds == FALSE) " to ",
+                 if(kFolds == FALSE) testEnd)
+
+
+# change threshold range for curve plots -- this is the E. Coli value for issuing a swim advisory
+threshBegin <- 1
+threshEnd <- 500
+
+# change threshold for saving results into "predictions" data frame
+thresh <- 235
+
+# runs all modeling code
 source("30_model.R", print.eval=TRUE)
 
-## decide whether to keep the analysis below
-
-#-----------------------------------------------------------------------------------------------------------------
-# Look at Genetic Tests (need to change variable names)
-#-----------------------------------------------------------------------------------------------------------------
-
-#dna <- df[,c(1:15)] # remove culture test columns
-#summary(dna)
-#plot(dna$DNA.Sample.1.Reading, dna$DNA.Sample.2.Reading)
-#plot(dna$DNA.Sample.1.Reading, dna$DNA.Sample.2.Reading, log=c('x', 'y'))
-#plot(log(dna$DNA.Sample.1.Reading)+1, log(dna$DNA.Sample.2.Reading)+1, log=c('x', 'y'))
-#plot(dna$Escherichia.coli, dna$DNA.Reading.Mean)
-#plot(dna$Escherichia.coli, dna$DNA.Reading.Mean, log=c('x', 'y'))
-#plot(log(dna$Escherichia.coli)+1, log(dna$DNA.Reading.Mean)+1, log=c('x', 'y'))
-#llmodel <- lm(log(log(Escherichia.coli)+1)~log(log(dna$DNA.Reading.Mean)+1), data=dna)
-#summary(llmodel)
-#par(mfrow=c(2,2));plot(llmodel);par(mfrow=c(1,1))
-#hist(dna$DNA.Reading.Mean)
-
-#-----------------------------------------------------------------------------------------------------------------
-# Calculate USGS Confusion Matrix (need to change variable names)
-#-----------------------------------------------------------------------------------------------------------------
-
-# df_2015 <- beach_readings[beach_readings$Year == "2015",]
-# df_2015 <- df_2015[!is.na(df_2015$Drek_elevated_levels_predicted_calculated),]
-# df_2015 <- df_2015[!is.na(df_2015$elevated_levels_actual_calculated),]
-# tp <- ifelse((df_2015$elevated_levels_actual_calculated == 1 & df_2015$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
-# tn <- ifelse((df_2015$elevated_levels_actual_calculated == 0 & df_2015$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
-# fn <- ifelse((df_2015$elevated_levels_actual_calculated == 1 & df_2015$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
-# fp <- ifelse((df_2015$elevated_levels_actual_calculated == 0 & df_2015$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
-# print(paste0("True Positives = ", sum(tp)))
-# print(paste0("True Negatives = ", sum(tn)))
-# print(paste0("False Positives = ", sum(fp)))
-# print(paste0("False Negatives = ", sum(fn)))
-# print(paste0("2015 True Positive Rate = ",(sum(tp)/(sum(tp)+sum(fn)))))
-# print(paste0("2015 False Positive Rate = ",(sum(fp)/(sum(fp)+sum(tn)))))
-# 
-# df_2016 <- beach_readings[beach_readings$Year == "2016",]
-# df_2016 <- df_2016[!is.na(df_2016$Drek_elevated_levels_predicted_calculated),]
-# df_2016 <- df_2016[!is.na(df_2016$elevated_levels_actual_calculated),]
-# tp <- ifelse((df_2016$elevated_levels_actual_calculated == 1 & df_2016$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
-# tn <- ifelse((df_2016$elevated_levels_actual_calculated == 0 & df_2016$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
-# fn <- ifelse((df_2016$elevated_levels_actual_calculated == 1 & df_2016$Drek_elevated_levels_predicted_calculated  == 0), 1, 0)
-# fp <- ifelse((df_2016$elevated_levels_actual_calculated == 0 & df_2016$Drek_elevated_levels_predicted_calculated  == 1), 1, 0)
-# print(paste0("True Positives = ", sum(tp)))
-# print(paste0("True Negatives = ", sum(tn)))
-# print(paste0("False Positives = ", sum(fp)))
-# print(paste0("False Negatives = ", sum(fn)))
-# print(paste0("2016 True Positive Rate = ",(sum(tp)/(sum(tp)+sum(fn)))))
-# print(paste0("2016 False Positive Rate = ",(sum(fp)/(sum(fp)+sum(tn)))))
+# creates a data frame with all model results
+# this aggregates the folds to generate one single curve
+# for user-defined test set, this doesn't have any effect
+model_summary <- plot_data %>%
+  group_by(thresholds) %>%
+  summarize(tpr = mean(tpr),
+            fpr = mean(fpr),
+            tprUSGS = mean(tprUSGS),
+            fprUSGS = mean(fprUSGS),
+            precision = mean(precision, na.rm = TRUE),
+            recall = mean(recall),
+            precisionUSGS = mean(precisionUSGS, na.rm = TRUE),
+            recallUSGS = mean(recallUSGS),
+            tp = mean(tp),
+            fn = mean(fn),
+            tn = mean(tn),
+            fp = mean(fp),
+            tpUSGS = mean(tpUSGS),
+            fnUSGS = mean(fnUSGS),
+            tnUSGS = mean(tnUSGS),
+            fpUSGS = mean(fpUSGS)
+            )

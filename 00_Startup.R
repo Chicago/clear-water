@@ -10,6 +10,7 @@ sourceDir <- function(path, trace = TRUE, ...) {
 }
 
 sourceDir(paste(getwd(),"/Functions",sep=""))
+usePackage("dplyr")
 usePackage("lubridate")
 usePackage("ggplot2")
 usePackage("RSocrata")

@@ -109,10 +109,24 @@ for (beach in unique(df$Client.ID)) {
 # Miscellaneous cleaning for modeling prep
 df$Client.ID <- as.factor(df$Client.ID)
 
+<<<<<<< HEAD
 # Add function to change columns that begin with a number
 names(df)[names(df) == "63rd_DNA.Geo.Mean"] <- "n63rd_DNA.Geo.Mean" 
+=======
+#add function to change columns that begin with a number
+names(df)[names(df) == "12th_Escherichia.coli"] <- "n12th_Escherichia.coli"
+names(df)[names(df) == "31st_Escherichia.coli"] <- "n31st_Escherichia.coli"
+names(df)[names(df) == "39th_Escherichia.coli"] <- "n39th_Escherichia.coli"
+names(df)[names(df) == "57th_Escherichia.coli"] <- "n57th_Escherichia.coli"
+>>>>>>> master
 names(df)[names(df) == "63rd_Escherichia.coli"] <- "n63rd_Escherichia.coli" 
+names(df)[names(df) == "12th_DNA.Geo.Mean"] <- "n12th_DNA.Geo.Mean" 
+names(df)[names(df) == "31st_DNA.Geo.Mean"] <- "n31st_DNA.Geo.Mean" 
+names(df)[names(df) == "39th_DNA.Geo.Mean"] <- "n39th_DNA.Geo.Mean" 
+names(df)[names(df) == "57th_DNA.Geo.Mean"] <- "n57th_DNA.Geo.Mean" 
+names(df)[names(df) == "63rd_DNA.Geo.Mean"] <- "n63rd_DNA.Geo.Mean" 
 
+<<<<<<< HEAD
 # Add function to fix columns that have a space (or fix earlier in import)
 names(df)[names(df) == "South Shore_DNA.Geo.Mean"] <- "South_Shore_DNA.Geo.Mean"
 names(df)[names(df) == "South Shore_Escherichia.coli"] <- "South_Shore_Escherichia.coli"
@@ -126,3 +140,17 @@ rm(
   water_quality_df,
   weather_data
 )
+=======
+#add function to fix columns that have a space (or fix earlier in import)
+names(df)[names(df) == "North Avenue_DNA.Geo.Mean"] <- "North_Avenue_DNA.Geo.Mean"
+names(df)[names(df) == "Oak Street_DNA.Geo.Mean"] <- "Oak_Street_DNA.Geo.Mean"
+names(df)[names(df) == "South Shore_DNA.Geo.Mean"] <- "South_Shore_DNA.Geo.Mean"
+names(df)[names(df) == "South Shore_Escherichia.coli"] <- "South_Shore_Escherichia.coli"
+
+
+#remove times from Date variable
+df$Date <- as.Date(df$Date, format="%Y-%m-%d")
+
+rm(beach)
+
+>>>>>>> master
