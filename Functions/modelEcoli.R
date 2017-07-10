@@ -1,6 +1,6 @@
 #This function is used to run a Random Forest model and return
 #TPR, FPR, recall, and precision
-modelEcoli <- function(trainData, testData) {
+modelEcoli <- function(trainData, testData, threshBegin, threshEnd, thresh) {
   train_vars <- ncol(trainData)
   test_vars <- ncol(testData)
   model <- randomForest(Escherichia.coli ~ .,
