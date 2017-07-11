@@ -1,5 +1,8 @@
 ####--------------------------------------------------------------------------------------------------
 ####    DOWNLOAD WEATHER FROM DARK SKY
+####    
+####    This file is not used as part of the modeling framework, but can be used
+####    to manually download data from darksky.net
 ####--------------------------------------------------------------------------------------------------
 
 library(jsonlite)

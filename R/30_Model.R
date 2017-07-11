@@ -4,7 +4,7 @@
 model_cols <- (ncol(df_model))
 
 
-if (kFolds) {
+if (kFolds & !productionMode) {
   print("Modeling with 10 folds validation")
   df_model <- df_model[complete.cases(df_model),] #remove NAs from df_model
   set.seed(111)
@@ -32,7 +32,7 @@ if (kFolds) {
       train_balanced <- rbind(train_high, train_low[ind, ])
       trainData <- train_balanced
     }
-    model <- modelEcoli(trainData, testData, threshBegin, threshEnd, thresh)
+    model <- modelEcoli(trainData, testData, threshBegin, threshEnd, thresh, productionMode)
     fold_data <- data.frame(fold, 
                             "tpr" = model$tpr,
                             "fpr" = model$fpr,
@@ -129,7 +129,7 @@ if (kFolds) {
   testData <- testData[complete.cases(testData),] #remove NAs from test data
   print(paste0("Train set observations = ",nrow(trainData)))
   print(paste0("Test set observations = ",nrow(testData)))
-  model <- modelEcoli(trainData, testData, threshBegin, threshEnd, thresh)
+  model <- modelEcoli(trainData, testData, threshBegin, threshEnd, thresh, productionMode)
   p <- ggplot() 
   print(p + 
           geom_smooth(aes(x = model$fpr, y = model$tpr, 

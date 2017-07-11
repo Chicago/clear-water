@@ -1,6 +1,6 @@
 #This function is used to run a Random Forest model and return
 #TPR, FPR, recall, and precision
-modelEcoli <- function(trainData, testData, threshBegin, threshEnd, thresh) {
+modelEcoli <- function(trainData, testData, threshBegin, threshEnd, thresh, productionMode) {
   train_vars <- ncol(trainData)
   test_vars <- ncol(testData)
   model <- randomForest(Escherichia.coli ~ .,
@@ -57,6 +57,10 @@ modelEcoli <- function(trainData, testData, threshBegin, threshEnd, thresh) {
     if (threshold == thresh) {
       predictions <- rbind(predictions, testData)
     }
+  }
+  if (productionMode) {
+    print("Saving model.Rds in your working directory")
+    saveRDS(model, "model.Rds")
   }
   list("tpr"=tpr,
        "fpr"=fpr,

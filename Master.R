@@ -76,6 +76,14 @@ trainEnd <- "2015-12-31"
 testStart <- "2016-01-01"
 testEnd <- "2016-12-31"
 
+# If productionMode is set to TRUE, a file named model.Rds will be generated
+# Its used is explained at https://github.com/Chicago/clear-water-app
+# Set trainStart and trainEnd to what you would like the model to train on
+# testStart and testEnd must still be specified, although not applicable
+# plots will not be accurate
+
+productionMode <- FALSE
+
 #-------------------------------------------------------------------------------
 #  DOWNSAMPLING
 #  If you set downsample to TRUE, choose the 3 variables below
@@ -148,7 +156,7 @@ title2 <- paste0("PR Curve",
 threshBegin <- 1
 threshEnd <- 500
 
-# change threshold for saving results into "predictions" data frame
+
 thresh <- 235
 
 #-------------------------------------------------------------------------------
