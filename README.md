@@ -1,30 +1,15 @@
 # Clear Water
 [![Stories in Ready](https://badge.waffle.io/Chicago/clear-water.svg?label=ready&title=Ready)](http://waffle.io/Chicago/clear-water) [![MIT License project](https://img.shields.io/github/license/mashape/apistatus.svg)](https://opensource.org/licenses/MIT)
 
-Attempting to predict e. coli readings at Chicago beaches. The project should be reproducible, relying on scripts and avoid any manual steps.
 
-* Repository: https://github.com/Chicago/clear-water
-* Issue tracker: https://github.com/Chicago/clear-water/issues 
-* Project management board: https://waffle.io/Chicago/clear-water 
-* Documentation and notes: https://github.com/Chicago/clear-water/wiki 
+The City of Chicago's Clear Water project brings an innovative approach to beach water quality monitoring. It uses a machine learning prediction technique to better forecast the bacteria levels at Chicago beaches. The model works by interpreting patterns in the results of DNA tests at a handful of beaches across the City, which are then extrapolated to forecast the water quality at other, untested beaches. This method provides a new way for beach managers to save money on expensive rapid water quality tests.
 
-## Required software
-
-This project uses [R](https://www.r-project.org/) and has the following package 
-dependencies:
-
-* dplyr
-* ggplot2
-* lubridate
-* RSocrata
-* stats
-* tidyr
-* randomForest
+Initial evaluation of the model has shown a significant improvement over current methods of predicting beach water quality. Testing is ongoing, and the 2017 beach season is being analyzed to further improve and evaluate the model's performance.
 
 ## Getting started with R
 
-You'll need to [install R](https://cran.r-project.org/), and we recommend you 
-[install RStudio](https://www.rstudio.com/products/rstudio/) as well. You can 
+This project uses [R](https://www.r-project.org/), which you can [download here](https://cran.r-project.org/). We recommend you also
+[install RStudio](https://www.rstudio.com/products/rstudio/). You can 
 open this project in RStudio by opening the ```clear-water.Rproj``` file. 
 
 If you are new to R, check out some basics [here](https://support.rstudio.com/hc/en-us/articles/201141096-Getting-Started-with-R).
@@ -42,32 +27,31 @@ the results of the model evaluation.
 
 This repo is one of two GitHub repos that make up the Clear Water project. The
 other one can be found [here](https://github.com/Chicago/clear-water-app) and 
-is an application the automatically generates water quality predictions based 
+is an application that automatically generates water quality predictions based 
 on daily DNA test results that are published on Chicago's Data Portal.
 
 ## Contributing
 
-Link to CONTRIBUTING.md
+If you are interested in contributing to this project, see our [Contribution Guide](https://github.com/Chicago/clear-water/blob/master/CONTRIBUTING.md).
 
 ## Notes
 
-### General organization
-
-- Data acquisition
-- Data cleaning
-- Functions
-- Special Functions
-- Master.R -> Model.R -> modelEColi.R
-
 ### A/B evaluation feature
 
-DNA Model vs. USGS
+This project began as an attempt to improve on a model that was produced by the United States Geological Survey (USGS). As part of model development, an embedded feature was engineered that provides a way to do an A/B model peformance comparison against the USGS's model performance. 
 
-### Chi Hack Night
+This feature can be switched on and off, and another model could be substituted for the USGS model to do an A/B evaluation. 
 
-- explain and link to branch
+### Collaboration with the Civic Tech Community
 
-### Wiki
+This project originated as a [breakout group](https://chihacknight.org/projects/2016/05/01/e-coli-predictions.html) at [Chi Hack Night](https://chihacknight.org/about.html).
+
+### Resources
+
+* Repository: https://github.com/Chicago/clear-water
+* Issue tracker: https://github.com/Chicago/clear-water/issues 
+* Project management board: https://waffle.io/Chicago/clear-water 
+* Documentation and notes: https://github.com/Chicago/clear-water/wiki 
 
 ### LICENSE
 
