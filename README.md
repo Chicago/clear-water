@@ -1,6 +1,6 @@
-# Food inspection evaluation webpage
+# Clear Water webpage
 
-This page provides a high-level overview of the City of Chicago's [food inspection optimization research](http://github.com/Chicago/food-inspections-evaluation).
+This page provides a high-level overview of the City of Chicago's [Clear Water Project](http://github.com/Chicago/clear-water).
 
 ## License
 
