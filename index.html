@@ -108,9 +108,9 @@
     <div class="row">
 
         <div class="col-md-7">
-        	All 26 miles of Chicago's shoreline along Lake Michigan belong to the public, including over 20 sand beaches. The beaches are open to nearly 10 million nearby residents and over 50 million annual visitors. During the summer months, the cool waters of Lake Michigan provide a respite from the heat.
-         	<p>Most of the time, the water quality at the beaches is acceptable. But sometimes, rates of bacteria elevate to a level where swimmers are at risk of contracting an infection and developing flu-like symptoms.</p>
-        	<p>Traditional testing methods do not return results quickly enough to provide realtime water quality readings. Rapid testing methods are available, but are costly when used daily at all beaches. Predictive modeling techniques have been developed, but do not yet provide accurate results reliably.</p>
+        	All 26 miles of Chicago's shoreline along Lake Michigan belong to the public. Over twenty public beaches are open to 60 million annual visitors and residents. During the summer months, the cool waters of Lake Michigan provide a respite from the heat.
+         	<p>Most of the time, beach water quality is acceptable. But sometimes, rates of bacteria elevate to a level where swimmers are at risk of contracting an infection and developing flu-like symptoms.</p>
+        	<p>Traditional testing methods do not return results quickly enough to provide realtime water quality notifications. Rapid testing methods are available, but are costly when used daily at all beaches. Predictive modeling techniques have been developed, but do not yet provide accurate results reliably.</p>
         	<p>The City partnered with the Chicago Park District, volunteer data scientists, and students at local universities to build a better predictive model for forecasting beach water quality. In the process, the team developed an innovative new approach to water quality modeling. </p>
         </div>
 
@@ -141,10 +141,7 @@
     <!-- Better Forecasts Row -->
     <div class="row">
         <div class="col-lg-12">
-            If water quality indicators exceed acceptable levels, the Park District issues advisory flags at beaches and places notifications on its website. When the indicators are measured by labratory tests, the advisories are issued immediately after the results are obtained. 
-            Importance of forecasts, and a bit about forecasting beach water quality.
-            <p>What does it mean to issue an advisory</p>
-            <p>Explain balance between hits and false alarms, in laymans terms.</p>
+            Despite much effort by scientists and water quality experts, forecasting beach water quality remains a difficult and complex endeavor. There are dozens of suspected contributors to contamination. Our team of data scientists developed machine learning models to explore environmental patterns that lead to elevated bacterial contamination. Through this research, the team better understood the limits of forecasting water quality this way. 
         </div>
     </div>
     <!-- /.row -->
@@ -154,26 +151,39 @@
         <div class="col-md-5">
             <div id="left-list">
                 <div class="caption">
-                    Map of beaches?
+                    Predictors of Beach Water Quality 
                 </div>
                 <ul class="predictions">
-                    <li>List item</li>
-                    <li>List item</li>
-                    <li>List item</li>
-                    <li>List item</li>
-                    <li>List item</li>
-                    <li>List item</li>
-                    <li>List item</li>
-                    <li>List item</li>
-                    <li>List item</li>
+                    <li>Air Temperature</li>
+                    <li>Rain Intensity</li>
+                    <li>Rainfall Total</li>
+                    <li>Barometric Pressure</li>
+                    <li>Humidity</li>
+                    <li>Dew Point</li>
+                    <li>Wind Direction</li>
+                    <li>Wind Speed</li>
+                    <li>Water Temperature</li>
+                    <li>Water Level</li>
+                    <li>Wave Height</li>
+                    <li>Turbidity</li>
+                    <li>Cloud Cover</li>
+                    <li>Moon Phase</li>
+                    <li>Day of Year</li>
+                    <li>Day of Week</li>
+                    <li>Month</li>
+                    <li>Sunrise/Sunset Times</li>
+                    <li>Solar Radiation</li>
+                    <li>Lock Openings</li>
                 </ul>
             </div>
         </div>
 
         <div class="col-md-7">
-            Talk about the kinds of data collected
-            <p>Talk about predictors and model iterations</p>
-            <p>Describe how forecasts will be used</p>
+            During the 2015 and 2016 swim seasons, the Park District used a model developed by the USGS for public notification of water quality. Our team's analysis of that model showed that when water quality was below acceptable levels, the model only issued a public notification between 6% and 11% of the time. In other words, it mostly failed to warn the public when water quality was poor.
+            <p>We initially set out to better predict water quality using a similar model with more data and the latest data science techniques. After exploring relationships among variables, we piloted a model in 2016 to predict water quality. Simulations showed that our model would have issued notifications about 10% of the time.</p>
+            <p>Lessons learned while exploring variables led the team to experiment with a new approach to forecasting water quality. The new approach takes advantage of new rapid testing technology. By using rapid results for a handful of beaches, our simulations show that our model would issue public notifications about 23% of the time, a twofold improvement on prior models.</p>
+            [put a bar chart here]
+            <p>Our new modeling approach, coupled with a data-driven strategy for selecting beaches for rapid testing, has resulted in a cost-sensitive hybrid method for monitoring beach water quality. We are conducting a pilot of the method for 2017, and so far it would have notified the public of 58 beach days that prior modeling techniques would have missed.
         </div>
     </div>
 
@@ -188,15 +198,14 @@
     <!-- Innovative Science Row -->
     <div class="row">
         <div class="col-md-6">
-        	Explain the quality models used by USGS and in prior literature
-            <p>New modeling approach -- how it sprang from research into prior approach</p>
-            <p>Details of new approach</p>
-            <p>Could be replicated in any regional system with beach-to-beach variation</p>
+        	Prior modeling efforts around beach water quality took a similar approach. They collected enviromental data near a swimming site, and then predicted the contamination levels based on historical data. Our team's exhaustive efforts resulted in our conclusion that this approach to modeling is limited by the complexity of causes of poor water quality.
+            <p>Our new approach takes advantage of the lessons learned from our data exploration efforts. First, about 5 beaches contribute to about [X]% of poor water quality beach days. We propose that these beaches should always be rapid tested, due to their unpredictability. Second, water quality patterns at the remaining beaches are loosely clustered. In our approach, one beach from each of these clusters would be rapid tested as a predictor for the model. The remaining beaches would be predicted by the model.
+            <p>A key feature of our approach is that it does not seem to be any more costly than the prior approach of ordering daily culture tests, which take nearly a day to complete. Yet it performs better and provides more accurate notifications to the public.
         </div>
 
         <div class="col-md-6">
             <div class="caption">
-                Innovative Predictive Modeling Approach
+                Innovative Modeling Approach
             </div>
            <iframe width="100%" height="620" frameborder="0" src="https://chicago.carto.com/builder/c2b6567c-d9b0-4fe6-97cf-f7134baf3fd4/embed" allowfullscreen webkitallowfullscreen mozallowfullscreen oallowfullscreen msallowfullscreen></iframe>
         </div>
@@ -214,8 +223,11 @@
     <!-- Evaluating the effectiveness of the model Row -->
     <div class="row">
         <div class="col-md-7">
-            Current pilots
-            <p>Model simulation results to date</p>
+            Simulations were conducted with data from 2006 through 2016, using cross-validation and leave-one-year-out validation. Pilots were conducted with models trained and tuned prior to the start of the pilot, allowing the model to be tested against actual future data.
+            <p>For the 2017 summer, the Park District used limited grant funding to order a rapid test for each beach on each day. Due to the availability of rapid testing, no predictive model was used for notifications in 2017. Therefore, the 2017 pilot was evaluated againt the prior model's peformance in 2015 and 2016.</p>
+            <p>By mid-summer 2017, [x] days of swimming had occurred at [20] beaches, for a total of [x] beach days. Poor water quality conditions existed on [x] of those beach days. The hybrid testing-modeling process would have issued warning notifications on [x] days.</p>
+            <p>The piloted model would have issued warnings at substantially better rate than in prior years. On average, in 2015 and 2016 the model would have warned for [x] out of [x] days by mid-summer.</p>
+            <p>The new model also has a better accuracy of predicting poor water quality. In 2017, the piloted model has an accuracy rate of 12%, which is 200% higher than the USGS's accuracy rate of %4 under similar conditions</p>
         </div>
 
         <div class="col-md-5">
