@@ -197,17 +197,17 @@
 
     <!-- Innovative Science Row -->
     <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-7">
         	Prior modeling efforts around beach water quality have adopted a similar approach. They collected enviromental data near a swimming site, and then predicted the contamination levels based on historical data. Our team's exhaustive efforts resulted in our conclusion that this approach to modeling is limited by the complexity of causes of poor water quality.
             <p>Our new approach takes advantage of the lessons learned from our data exploration efforts. First, about 5 beaches contribute to about [X]% of poor water quality beach days. These beaches should routinely be rapid tested, due to their unpredictability. Second, water quality patterns at the remaining beaches are loosely clustered. In our approach, one beach from each of these clusters would be rapid tested as predictors. The remaining beaches would be predicted by the model.
             <p>A key feature of our approach is that it should not be any more costly than the prior approach of ordering daily culture tests, which take nearly a day to complete. Yet it performs better and provides more accurate notifications to the public.
         </div>
 
-        <div class="col-md-6">
+        <div class="col-md-5">
             <div class="caption">
                 Innovative Modeling Approach
             </div>
-           <iframe width="100%" height="620" frameborder="0" src="https://chicago.carto.com/builder/c2b6567c-d9b0-4fe6-97cf-f7134baf3fd4/embed" allowfullscreen webkitallowfullscreen mozallowfullscreen oallowfullscreen msallowfullscreen></iframe>
+           <img class="img-responsive" src="img/modeling-approach.PNG" title="Innovative Modeling Approach">
         </div>
     </div>
     <!-- /.row -->
@@ -226,8 +226,6 @@
             Simulations were conducted with data from 2006 through 2016, using cross-validation and leave-one-year-out validation. Pilots were conducted with models trained and tuned prior to the start of the pilot, allowing the model to be tested against actual future data.
             <p>For the 2017 summer, the Park District used limited grant funding to order a rapid test for each beach on each day. Due to the availability of rapid testing, no predictive model was used for notifications in 2017. Therefore, the 2017 pilot was evaluated againt the prior model's peformance in 2015 and 2016.</p>
             <p>By mid-summer 2017, [x] days of swimming had occurred at [20] beaches, for a total of [x] beach days. Poor water quality conditions existed on [x] of those beach days. The hybrid testing-modeling process would have issued warning notifications on [x] days.</p>
-            <p>The piloted model would have issued warnings at substantially better rate than in prior years. On average, in 2015 and 2016 the model would have warned for [x] out of [x] days by mid-summer. Further, as more data on rapid testing is accumulated, the model's performance should perform even better. By performing clustering algorithms to optimize the selection of predictor beaches, simulations show it might be possible to warn for [x] days, an improvement of over [x] on the prior method.</p>
-            <p>The new model also has better overall accuracy of predicting poor water quality. In 2017, the piloted model has an accuracy rate of 12%, which is 200% higher than the USGS's accuracy rate of %4 under similar conditions</p>
         </div>
 
         <div class="col-md-5">
@@ -247,7 +245,11 @@
         </div>
 
         <div class="col-md-5">
-           This new approach requires a choice to be made: which beaches are tested, and which beaches are predicted. Of course, the team takes a data-driven approach to this decision, and has run clustering algorithms to make the best choice. To help illustrate the tradeoffs involved in the choice, the team developed a visualization app that allows you to make your own choice. Can you build a better model? Try it out here.
+            The piloted model would have issued warnings at substantially better rate than in prior years. On average, in 2015 and 2016 the model would have warned for [x] out of [x] days by mid-summer. Further, as more data on rapid testing is accumulated, the model's performance should perform even better. By performing clustering algorithms to optimize the selection of predictor beaches, simulations show it might be possible to warn for [x] days, an improvement of over [x] on the prior method.
+            <p>The new model also has better overall accuracy of predicting poor water quality. In 2017, the piloted model has an accuracy rate of 12%, which is 200% higher than the USGS's accuracy rate of %4 under similar conditions</p>
+        </div>
+        <div class="col-md-12">
+            <p>This new approach requires a choice to be made: which beaches are tested, and which beaches are predicted. Of course, the team takes a data-driven approach to this decision, and has run clustering algorithms to make the best choice. To help illustrate the tradeoffs involved in the choice, the team developed a visualization app that allows you to make your own choice. Can you build a better model? Try it out here.</p>
         </div>
     </div>
     <!-- Tech Plan Row -->
