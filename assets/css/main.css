@@ -1534,6 +1534,7 @@ ul {
   ul.icons {
     cursor: default;
     list-style: none;
+    text-decoration: none;
     padding-left: 0; }
     ul.icons li {
       display: inline-block;
@@ -1547,6 +1548,9 @@ ul {
         @media screen and (max-width: 736px) {
           ul.icons.major li {
             padding: 0 1em !important; } }
+    ul.icons a {
+        border-bottom: none;
+    }
   ul.actions {
     cursor: default;
     list-style: none;
