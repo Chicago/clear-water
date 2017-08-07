@@ -1,26 +1,20 @@
-/* Import fonts */
 @import url(font-awesome.min.css);
-@@font-face {
-    font-family: 'Poppins';
-    src: url('../fonts/poppins/Poppins-Bold.ttf') format('truetype');
-    font-weight: 700;
-    font-style: normal;
-}
-
-@@font-face {
-    font-family: 'Poppins';
-    src: url('../fonts/poppins/Poppins-Regular.ttf') format('truetype');
-    font-weight: 400;
-    font-style: normal;
-}
-
-@@font-face {
+@import url("https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,600,600italic,800,800italic");
+@font-face {
   font-family: 'Poppins';
-    src: url('../fonts/poppins/Poppins-Light.ttf') format('truetype');
-    font-weight: 200;
-    font-style: normal;
-}
-
+  src: url("../fonts/poppins/Poppins-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal; }
+@font-face {
+  font-family: 'Poppins';
+  src: url("../fonts/poppins/Poppins-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal; }
+@font-face {
+  font-family: 'Poppins';
+  src: url("../fonts/poppins/Poppins-Light.ttf") format("truetype");
+  font-weight: 200;
+  font-style: normal; }
 /*
 	Spectral by HTML5 UP
 	html5up.net | @ajlkn
@@ -1170,7 +1164,8 @@ h1, h2, h3, h4, h5, h6 {
 
 h2 {
   font-size: 1.35em;
-  line-height: 1.75em; }
+  line-height: 1.75em;
+  margin: 0 0 0 0; }
   @media screen and (max-width: 736px) {
     h2 {
       font-size: 1.1em;
@@ -1555,8 +1550,9 @@ ul {
   ul.icons {
     cursor: default;
     list-style: none;
-    text-decoration: none;
     padding-left: 0; }
+    ul.icons a {
+      border-bottom: none; }
     ul.icons li {
       display: inline-block;
       padding: 0 1em 0 0; }
@@ -1569,9 +1565,6 @@ ul {
         @media screen and (max-width: 736px) {
           ul.icons.major li {
             padding: 0 1em !important; } }
-    ul.icons a {
-        border-bottom: none;
-    }
   ul.actions {
     cursor: default;
     list-style: none;
@@ -1937,12 +1930,6 @@ button,
   @media screen and (max-width: 736px) {
     .spotlight .content {
       padding: 3em 2em 1em 2em ; } }
-
-iframe {
-  width: 100%;
-  height: 940px;
-  border: none; 
-}
 
 /* Wrapper */
 .wrapper {
@@ -2436,9 +2423,8 @@ body.is-menu-visible #menu {
     -ms-transition: -ms-transform 0.5s ease, opacity 0.5s ease;
     transition: transform 0.5s ease, opacity 0.5s ease;
     display: inline-block;
-    font-size: 1.75em;
+    font-size: 5em;
     opacity: 1;
-    padding: 0.35em 1em;
     position: relative;
     z-index: 1; }
     #banner h2:before, #banner h2:after {
@@ -2451,7 +2437,6 @@ body.is-menu-visible #menu {
       -ms-transition-delay: 0.25s;
       transition-delay: 0.25s;
       background: #fff;
-      content: '';
       display: block;
       height: 2px;
       position: absolute;
@@ -2464,7 +2449,8 @@ body.is-menu-visible #menu {
       right: 0; }
   #banner p {
     letter-spacing: 0.225em;
-    text-transform: uppercase; }
+    text-transform: uppercase;
+    font-size: 1.5em; }
     #banner p a {
       color: inherit; }
   #banner .more {
@@ -2537,7 +2523,9 @@ body.is-menu-visible #menu {
       height: auto;
       min-height: 0; }
       #banner h2 {
-        font-size: 1.25em; }
+        font-size: 2em; }
+      #banner p {
+        font-size: 1.0em; }
       #banner br {
         display: none; }
       #banner .more {

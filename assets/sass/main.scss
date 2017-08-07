@@ -3,6 +3,26 @@
 @import 'libs/mixins';
 @import 'font-awesome.min.css';
 @import url('https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,600,600italic,800,800italic');
+@font-face {
+    font-family: 'Poppins';
+    src: url('../fonts/poppins/Poppins-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Poppins';
+    src: url('../fonts/poppins/Poppins-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+}
+
+@font-face {
+  font-family: 'Poppins';
+    src: url('../fonts/poppins/Poppins-Light.ttf') format('truetype');
+    font-weight: 200;
+    font-style: normal;
+}
 
 /*
 	Spectral by HTML5 UP
@@ -106,6 +126,7 @@
 	h2 {
 		font-size: 1.35em;
 		line-height: 1.75em;
+		margin: 0 0 0 0;
 
 		@include breakpoint(small) {
 			font-size: 1.1em;
@@ -582,6 +603,10 @@
 			cursor: default;
 			list-style: none;
 			padding-left: 0;
+
+			a {
+				border-bottom: none;
+			}
 
 			li {
 				display: inline-block;
@@ -1487,9 +1512,9 @@
 			@include vendor('transform', 'scale(1)');
 			@include vendor('transition', ('transform 0.5s ease', 'opacity 0.5s ease'));
 			display: inline-block;
-			font-size: 1.75em;
+			font-size: 5em;
 			opacity: 1;
-			padding: 0.35em 1em;
+
 			position: relative;
 			z-index: 1;
 
@@ -1497,7 +1522,6 @@
 				@include vendor('transition', 'width 0.85s ease');
 				@include vendor('transition-delay', '0.25s');
 				background: _palette(fg-bold);
-				content: '';
 				display: block;
 				height: 2px;
 				position: absolute;
@@ -1518,7 +1542,7 @@
 		p {
 			letter-spacing: _size(letter-spacing-alt);
 			text-transform: uppercase;
-
+			font-size: 1.5em;
 			a {
 				color: inherit;
 			}
@@ -1582,7 +1606,11 @@
 			min-height: 0;
 
 			h2 {
-				font-size: 1.25em;
+				font-size: 2em;
+			}
+
+			p {
+				font-size: 1.0em;
 			}
 
 			br {
