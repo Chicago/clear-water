@@ -1,12 +1,10 @@
 # takes in settings from Master.R and uses them to 1) create train/test sets
 # 2) model and 3) plot curves
 
-
-
 model_cols <- (ncol(df_model))
 
 
-if (kFolds) {
+if (kFolds & !productionMode) {
   print("Modeling with 10 folds validation")
   df_model <- df_model[complete.cases(df_model),] #remove NAs from df_model
   set.seed(111)
@@ -34,7 +32,7 @@ if (kFolds) {
       train_balanced <- rbind(train_high, train_low[ind, ])
       trainData <- train_balanced
     }
-    model <- modelEcoli(trainData, testData)
+    model <- modelEcoli(trainData, testData, threshBegin, threshEnd, thresh, productionMode)
     fold_data <- data.frame(fold, 
                             "tpr" = model$tpr,
                             "fpr" = model$fpr,
@@ -131,7 +129,7 @@ if (kFolds) {
   testData <- testData[complete.cases(testData),] #remove NAs from test data
   print(paste0("Train set observations = ",nrow(trainData)))
   print(paste0("Test set observations = ",nrow(testData)))
-  model <- modelEcoli(trainData, testData)
+  model <- modelEcoli(trainData, testData, threshBegin, threshEnd, thresh, productionMode)
   p <- ggplot() 
   print(p + 
           geom_smooth(aes(x = model$fpr, y = model$tpr, 
@@ -148,7 +146,7 @@ if (kFolds) {
                           color = "DNA Model"),
                       span = .9) +
           geom_smooth(aes(x = model$recallUSGS, y = model$precisionUSGS,
-                          color = "USGS MOdel"),
+                          color = "USGS Model"),
                       span = .9) +
           ylim(0,1) + 
           xlim(0,1) +
