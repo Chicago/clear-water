@@ -48,9 +48,14 @@
 									<a href="#menu" class="menuToggle"><span>Menu</span></a>
 									<div id="menu">
 										<ul>
-											<li><a href="/index.html">Home</a></li>
-											<li><a href="/challenge/index.html">Beat the model</a></li>
-											<li><a href="https://github.com/Chicago/clear-water">Get the code</a></li>
+											<li><a href="../index.html">Home</a></li>
+											<li><a href="http://cpdbeaches.com">Current beach statuses</a></li>
+											<li><a href="https://data.cityofchicago.org/Parks-Recreation/Beach-Lab-Data/2ivx-z93u">Historical lab results</a></li>
+								<li><a href="https://data.cityofchicago.org/Parks-Recreation/Beach-Swim-Advisories/9n93-6cmv">Historical advisories</a></li>
+								<li><a href="https://data.cityofchicago.org/Parks-Recreation/Beach-E-coli-Predictions/xvsz-3xcj">E. coli prediction data</a></li>
+											<li><a href="https://github.com/Chicago/clear-water">Get the code on <i class="fa fa-github" aria-hidden="true"></i></a></li>
+											<li><a href="http://chicagoparkdistrict.com">Chicago Park District</a></li>
+											<li><a href="https://www.cityofchicago.org">City of Chicago</a></li>
 										</ul>
 									</div>
 								</li>
@@ -65,8 +70,12 @@
 						<p>Can you beat our model? Guess which combination of beaches outperforms the city model</p>
 					</header>
 					<section class="wrapper style5">
-						<div class="inner iframe">
-							<iframe src="http://ec2-52-54-246-48.compute-1.amazonaws.com:443/" width="100%" height="100%"></iframe>
+						<div class="inner">
+							<p>Try your hand at building a model by choosing a few beaches in the box below. The more beaches you choose, the more expensive your model becomes. Our model uses five beaches and scores about 38% on accuracy. Can you do any better?</p>
+							<p>Once you press the Build Model button, you'll see results and a map showing how you did on individual beaches. You can also adjust the false alarm rate, or days when unncessary warnings were issued. To compete with our model, keep it below 2%.</p>
+						</div>
+						<div class="iframe">
+							<iframe src="http://ec2-52-54-246-48.compute-1.amazonaws.com:443/"></iframe>
 						</div>
 					</section>
 				</article>
@@ -74,11 +83,9 @@
 				<!-- Footer -->
 					<footer id="footer">
 						<ul class="icons">
-							<li><a href="#" class="icon fa-twitter"><span class="label">Twitter</span></a></li>
-							<li><a href="#" class="icon fa-facebook"><span class="label">Facebook</span></a></li>
-							<li><a href="#" class="icon fa-instagram"><span class="label">Instagram</span></a></li>
-							<li><a href="#" class="icon fa-dribbble"><span class="label">Dribbble</span></a></li>
-							<li><a href="#" class="icon fa-envelope-o"><span class="label">Email</span></a></li>
+							<li><a href="https://twitter.com/ChicagoCDO" class="icon fa-twitter"><span class="label">Twitter</span></a></li>
+							<li><a href="https://github.com/Chicago/clear-water" class="icon fa-github"><span class="label">GitHub</span></a></li>
+							<li><a href="mailto:datascience@cityofchicago.org" class="icon fa-envelope-o"><span class="label">Email</span></a></li>
 						</ul>
 						<ul class="copyright">
 							<li>&copy;2017 <a href="https://www.cityofchicago.org">City of Chicago</a> and licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0</a></li>
