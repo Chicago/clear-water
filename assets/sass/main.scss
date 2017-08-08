@@ -563,6 +563,18 @@
 		}
 	}
 
+/* iFrame */
+
+	iframe {
+		width: 100%;
+		height: _size(shiny-app-height);
+		border: none;
+
+		@include breakpoint(medium) {
+			height: _size(shiny-app-height-mobile);
+		}
+	}
+
 /* List */
 
 	ol {
