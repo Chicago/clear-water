@@ -89,8 +89,9 @@
 					<section id="one" class="wrapper style1 special">
 						<div class="inner">
 							<header class="major">
-								<h2>60 <br />
-								More beach days per year with accurate water quality advisories.</h2>
+								<h2>Water quality advisories issued with <br />
+								3 times more accuracy <br />
+								then previous model</h2>
 								<p>Advisories protect beach visitors from contracting illnesses from waterborne pathogens.</p>
 							</header>
 							<ul class="icons major">
@@ -115,71 +116,32 @@
 						<section class="spotlight">
 							<div class="image"><img src="images/modeling-approach.png" alt="" /></div><div class="content">
 								<h2>Innovative Science</h2>
-								<p>Prior efforts to forecast beach water quality have adopted a similar approach. They collected meteorological data near a swimming site, and then predicted contamination levels in the water. The team's exhaustive efforts resulted in a conclusion that there are limits to this approach.</p>
-								<p>The team developed a new approach that takes advantage of rapid DNA testing and the lessons learned from data exploration. First, just five beaches contribute to about 56% of poor water quality beach days. These beaches, which are some of the hardest to predict, should be routinely rapid tested due to their volatility. Second, water quality patterns at the remaining beaches are correlated into clusters. In the new approach, one beach from each of these clusters would be rapid tested to get an immediate result. The remaining beaches would be predicted by the model.</p>
-								<p>A key feature of the new approach is its cost effectivness. The increased cost of rapid testing would be offset because only half the beaches would be tested. Yet it performs better and provides more accurate notifications to the public.</p>
+								<p>Prior efforts to forecast beach water quality in Chicago and elsewhere have adopted similar approaches. Researchers would collect meteorological data near a swimming site, and then predict contamination levels in the water. However, this methodology can be unreliable and often does not identify days with high <em>E. coli</em> levels.</p>
+								<p>This project developed a new approach that takes advantage of rapid DNA testing and the lessons learned from data exploration. That approach begins by acknowledging that just five beaches contribute to about 56% of poor water quality beach days. These beaches, which are some of the hardest to predict, should be routinely rapid tested due to their volatility. Water quality patterns at the remaining beaches can then be separated into clusters. In the new approach, one beach from each of these clusters would be rapid tested to get an immediate result. The remaining beaches would be predicted by the model.</p>
+								<p>A key feature of the new approach is its cost effectiveness. The increased cost of rapid testing would be offset because only half the beaches would be tested. Yet it performs better and provides more accurate notifications to the public.</p>
 							</div>
 						</section>
 						<section class="spotlight">
 							<div class="image"><img src="images/code-computer.png" alt="" /></div><div class="content">
 								<h2>Collaboration &amp; Open Science</h2>
-								<p>Clear Water is a collaborative work, and began as a <a href="https://chihacknight.org/projects/2016/05/01/e-coli-predictions.html">breakout group</a> at Chi Hack Night, a weekly meetup of people interested in civic tech. Data scientists volunteered over 1000 hours, and the City also partnered with students at DePaul University to develop data visualizations.</p>
-								<p>Clear Water is also made available as an open source project. An <a href="https://github.com/chicago/clear-water/">open source approach</a> helps build a foundation for other models attempting to forecast violations at food establishments. The analytic code is written in <a href="http://r-project.org/">R</a>, an open source, widely-known programming language for statisticians. There is no need for expensive software licenses to view and run this code.</p>
-								<p>Open sourcing the code also allows for collective advancement. The open source code contains the necessary data to let others test and try to improve upon the current analytic method. The project is also documented in a reproducible format, allowing researchers to read a description of the research and view its underlying calculations. The repository contains everything that is needed to let a community of researchers refine and derive better models.</p>
+								<p>Clear Water is a collaborative, open source project that was developed by the City of Chicago, civic tech volunteers, and graduate students. The City of Chicago adopted approaches from open science to allow "citizen scientists" to contribute to research projects. As a result, the project can also be shared with others and improved by a network of scientists and researchers.</p>
+								<p>Volunteers donated over 1,000 hours to the project. Volunteers at <a href="https://chihacknight.org/projects/2016/05/01/e-coli-predictions.html">Chi Hack Night</a> developed the initial statistical model. Interns from DePaul University's Masters in Predictive Analytics helped evaluate the effectiveness of the statistical model. In addition, students from DePaul's Data Visualization course <a href="challenge/index.html">visualized how the predictive model operates</a>.</p>
+								<p> Clear Water is also made available as an open source project. The code is written in <a href="http://r-project.org/">R</a>, an open source, widely-known programming language for statisticians. There is no need for expensive software licenses to view and run this code. Open sourcing the code also allows for collective advancement. The open source code contains the necessary data to let others test and try to improve upon the current analytic method.</p>
 							</div>
 						</section>
 						<section class="spotlight">
 							<div id="chart"><script src="assets/js/chart.js"></script></div><div class="content">
 								<h2>Evaluating the Effectiveness of the Model</h2>
-								<p>Data from 2006 through 2016 were used to conduct simulations. The 2017 Pilot was evaluated with actual results, collected after the model was developed.</p>
+								<p>Data from 2006 through 2016 were used to conduct simulations. The 2017 pilot was evaluated with actual results, collected after the model was developed. The model used measurements from Rainbow, Calumet, South Shore, 63rd, and Montrose beaches to predict water quality at the 15 other beaches.</p>
 								<p>By mid-summer 2017, poor water quality conditions were detected 121 times at different beaches. The piloted model, paired with selective rapid testing, would have issued advisories for 69 of those occurances.</p>
 								<p>Typically, the prior model would have issued advisories for only 9 out of 112 occurances by mid-summer. The new approach so far has detected 60 more occurances than the prior model. Further, as more data on rapid testing is accumulated, the new model's performance should perform even better.</p>
-								<p>The new model also has better overall accuracy of predicting poor water quality. In 2017, the piloted model so far has an accuracy rate of 12%, which is 200% higher than the prior model's accuracy rate of 4% under similar conditions. By performing clustering algorithms to optimize the selection of predictor beaches, simulations consistently show accuracy rates of over 20 percent.</p>
+								<p>The new model also has better overall accuracy of predicting poor water quality. In 2017, the piloted model so far has an accuracy rate of 12%, which is 3 times higher than the prior model's accuracy rate of 4% under similar conditions. By performing clustering algorithms to optimize the selection of predictor beaches, simulations consistently show accuracy rates of over 20 percent.</p>
 								<p>This new approach to beach water quality forecasting requires a choice to be made: which beaches are tested and which are predicted. You can try making your own model to see if it can outperform ours.</p>
 								<ul class="actions vertical">
 									<li><a href="challenge/index.html" class="button special fit">Beat the model</a></li>
 								</ul>
 							</div>
 						</section>
-					</section>
-
-				<!-- Collaboration and Open Science -->
-					<section id="three" class="wrapper style3">
-						<div class="inner">
-							<header class="major">
-								<h2>Better Forecasts of Water Quality</h2>
-								<p>Despite much effort by scientists and water quality experts, forecasting beach water quality remains a difficult and complex endeavor. There are dozens of suspected contributors to contamination. Our team of data scientists developed machine learning models to explore environmental patterns that lead to elevated bacterial contamination. Through this research, the team better understood the limits of forecasting water quality this way.</p>
-								<p>During the 2015 and 2016 swim seasons, the Park District used a model developed by the USGS for beach advisories. Our team's analysis of that model showed that when water quality was poor, the model only issued an advisory between 6% and 11% of the time.</p>
-								<p>The team initially developed a similar model, with more data and the latest data science techniques. After exploring relationships among variables, the team piloted the model in 2016. Simulations showed this model would have issued advisories about 10% of the time.</p>
-								<p>Lessons learned while exploring environmental variables led the team to experiment with its new approach to forecasting water quality. The new modeling approach, coupled with a data-driven strategy for selecting beaches for rapid testing, has resulted in a cost-sensitive hybrid method for better forecasts of beach water quality.</p>
-							</header>
-							<ul class="features">
-								<li class="icon fa-thermometer-three-quarters">
-									<h3>Weather</h3>
-									<p>Air temperature, humidity, dew point, and barometric pressure</p>
-								</li>
-								<li class="icon fa-tint">
-									<h3>Rainfall</h3>
-									<p>Rain intensity and rainfall total</p>
-								</li>
-								<li class="icon fa-flag-o">
-									<h3>Wind</h3>
-									<p>Wind speed and wind direction</p>
-								</li>
-								<li class="icon fa-life-ring">
-									<h3>Water Conditions</h3>
-									<p>Water temperature, water level, wave height, and turbidity</p>
-								</li>
-								<li class="icon fa-calendar">
-									<h3>Time of year</h3>
-									<p>Day of year, the day of week, month, and moon phase</p>
-								</li>
-								<li class="icon fa-sun-o">
-									<h3>Solar</h3>
-									<p>The sunrise/sunset times, amount of solar radiation, and cloud cover</p>
-								</li>
-							</ul>
-						</div>
 					</section>
 
 				<!-- CTA -->
