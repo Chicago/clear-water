@@ -1407,7 +1407,7 @@
 	#header {
 		@include vendor('transition', 'background-color #{_duration(transitions)} ease');
 		background: _palette(bg);
-		height: 3em;
+		height: 4em;
 		left: 0;
 		line-height: 3em;
 		position: fixed;
@@ -1421,7 +1421,23 @@
 			left: 1.25em;
 			line-height: inherit;
 			position: absolute;
-			top: 0;
+			margin-top: 8.66px;
+			display: inline-block;
+
+			@include breakpoint(small) {
+				left: 0.75em;
+			}
+			
+			&:after {
+				content: "City of Chicago";
+				position: absolute;
+				padding-left: 10px;
+				width: 250px;
+
+				@include breakpoint(small) {
+					content: url('');
+				}
+			}
 
 			a {
 				border: 0;
@@ -1446,6 +1462,7 @@
 				list-style: none;
 				margin: 0;
 				padding: 0;
+				margin-top: 0.5em;
 				white-space: nowrap;
 
 				> li {
