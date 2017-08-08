@@ -1,27 +1,50 @@
 $(function () {
     $('#chart').highcharts({
         chart: {
-            type: 'column'
+            type: 'column',
+            height: 600,
+            backgroundColor: '#242C33',
+            style: {
+                fontFamily: 'Poppins, sans-serif',
+            }
         },
+        colors: ['#21B2A6'],
         title: {
             text: 'Beach days when public<br /> is advised of poor water quality',
-            style: {fontFamily: 'Rockwell, Rokkitt, Courier Bold, Courier, Georgia, Times, Times New Roman, serif',
-                    fontWeight: 'bold'}
+            style: {
+                    color: "#fff"
+            }
         },
         xAxis: {
             type: 'category',
             labels: {
                 style: {
                     fontSize: '13px',
-                    fontFamily: 'Futura, Futura-Medium, Futura Medium, Century Gothic, CenturyGothic, Apple Gothic, AppleGothic, URW Gothic L, Avant Garde, Questrial, sans-serif'
+                    color: '#fff'
                 }
-            }
+            },
+            title: {
+                style: {
+                    color: '#fff'
+                }
+            },
         },
         yAxis: {
             min: 0,
             title: {
                 text: 'Beach Days',
-                style: {fontFamily: 'Futura, Futura-Medium, Futura Medium, Century Gothic, CenturyGothic, Apple Gothic, AppleGothic, URW Gothic L, Avant Garde, Questrial, sans-serif'}
+                lineColor: "#fff",
+                style: {
+                    color: '#fff'
+                },
+                plotLines: [{
+                    color: '#fff'
+                }]
+            },
+            labels: {
+                style: {
+                    color: '#fff'
+                }
             }
         },
         legend: {
@@ -29,6 +52,18 @@ $(function () {
         },
         tooltip: {
             pointFormat: 'Number of beach days <br />an advisory was issued: <b>{point.y:f}</b>'
+        },
+        plotOptions: {
+            column: {
+                borderColor: 'none'
+            }
+        },
+        exporting: {
+            buttons: {
+                contextButton: {
+                    symbolStroke: '#242C33'
+                }
+            }
         },
         series: [{
             name: 'Number of beach days',
@@ -45,7 +80,6 @@ $(function () {
                 y: 10,
                 style: {
                     fontSize: '13px',
-                    fontFamily: 'Futura, Futura-Medium, Futura Medium, Century Gothic, CenturyGothic, Apple Gothic, AppleGothic, URW Gothic L, Avant Garde, Questrial, sans-serif',
                     textShadow: '0 0 3px black'
                 }
             }
