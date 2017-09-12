@@ -9,7 +9,7 @@
 #-------------------------------------------------------------------------------
 
 # Load libraries and functions
-source("R/00_startup.R")
+source("R/00_Startup.R")
 
 #-------------------------------------------------------------------------------
 #  Ingest Data
@@ -165,7 +165,7 @@ thresh <- 235
 #-------------------------------------------------------------------------------
 
 # runs all modeling code
-source("R/30_model.R", print.eval=TRUE)
+source("R/30_Model.R", print.eval=TRUE)
 
 # creates a data frame with all model results
 # this aggregates the folds to generate one single curve
@@ -189,3 +189,4 @@ model_summary <- plot_data %>%
             tnUSGS = mean(tnUSGS),
             fpUSGS = mean(fpUSGS)
             )
+
