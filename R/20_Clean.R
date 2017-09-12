@@ -129,6 +129,8 @@ names(df)[names(df) == "North Avenue_DNA.Geo.Mean"] <- "North_Avenue_DNA.Geo.Mea
 names(df)[names(df) == "Oak Street_DNA.Geo.Mean"] <- "Oak_Street_DNA.Geo.Mean"
 names(df)[names(df) == "South Shore_DNA.Geo.Mean"] <- "South_Shore_DNA.Geo.Mean"
 names(df)[names(df) == "South Shore_Escherichia.coli"] <- "South_Shore_Escherichia.coli"
+names(df)[names(df) == "North Avenue_Escherichia.coli"] <- "North_Avenue_Escherichia.coli"
+
 
 
 #remove times from Date variable
