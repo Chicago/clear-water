@@ -25,9 +25,9 @@ if (kFolds & !productionMode) {
       train_high <- trainData[trainData$Escherichia.coli >= highMin
                               & trainData$Escherichia.coli < highMax, ]
       train_low <- trainData[trainData$Escherichia.coli < lowMax, ]
-      # only use as many low days as you have high days
+      # use 1:5 ratio of high days to total days
       ind <- sample(c(1:nrow(train_low)),
-                    nrow(train_high),
+                    nrow(train_high) * 4,
                     replace = TRUE)
       train_balanced <- rbind(train_high, train_low[ind, ])
       trainData <- train_balanced
@@ -114,9 +114,9 @@ if (kFolds & !productionMode) {
     train_high <- trainData[trainData$Escherichia.coli >= highMin
                             & trainData$Escherichia.coli < highMax, ]
     train_low <- trainData[trainData$Escherichia.coli < lowMax, ]
-    # only use as many low days as you have high days
+    # use 1:5 ratio of high days to total days
     ind <- sample(c(1:nrow(train_low)),
-                  nrow(train_high),
+                  nrow(train_high) * 4,
                   replace = TRUE)
     train_balanced <- rbind(train_high, train_low[ind, ])
     trainData <- train_balanced

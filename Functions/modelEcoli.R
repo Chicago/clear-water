@@ -5,7 +5,8 @@ modelEcoli <- function(trainData, testData, threshBegin, threshEnd, thresh, prod
   test_vars <- ncol(testData)
   model <- randomForest(Escherichia.coli ~ .,
                         data = trainData[,
-                                         c(1:(train_vars - 1))])
+                                         c(1:(train_vars - 1))],
+                        ntree = 64)
   testData$predictionRF <- predict(model, testData[,c(1:(test_vars-2))])
   tp <- c()
   fn <- c()

@@ -46,12 +46,12 @@ df_model <- df[, c("Escherichia.coli", #dependent variable
                    "Foster_Escherichia.coli",
                    "Ohio_Escherichia.coli",
                    # "North_Avenue_Escherichia.coli",
-                   "n31st_Escherichia.coli",
+                   "n39th_Escherichia.coli",
                    # "Albion_Escherichia.coli",
                    # "Rogers_Escherichia.coli",
                    # "Howard_Escherichia.coli",
                    # "n57th_Escherichia.coli",
-                   "n63rd_Escherichia.coli",
+                   # "n63rd_Escherichia.coli",
                    # "South_Shore_Escherichia.coli",
                    # "Montrose_Escherichia.coli",
                    # "Calumet_Escherichia.coli",
@@ -70,7 +70,7 @@ df_model <- df[, c("Escherichia.coli", #dependent variable
 df_model$Predicted.Level <- 1 #meaningless value
 
 finaltest <- df_model[df_model$Year == "2016",]
-df_model <- df_model[df_model$Year %in% c("2012", "2013", "2014", "2015"),]
+
 #-------------------------------------------------------------------------------
 #  CHOOSE TEST/TRAIN SETS
 #  You can decide whether to use kFolds cross validation or define your own sets
@@ -79,8 +79,8 @@ df_model <- df_model[df_model$Year %in% c("2012", "2013", "2014", "2015"),]
 #-------------------------------------------------------------------------------
 
 kFolds <- FALSE #If TRUE next 2 lines will not be used but cannot be commented out
-trainYears <- c("2013", "2014", "2015")
-testYears <- c("2012")
+trainYears <- c("2010", "2011", "2012", "2013", "2014", "2015")
+testYears <- c("2009")
 
 # If productionMode is set to TRUE, a file named model.Rds will be generated
 # Its used is explained at https://github.com/Chicago/clear-water-app
@@ -88,7 +88,7 @@ testYears <- c("2012")
 # testYears must still be specified, although not applicable
 # plots will not be accurate
 
-productionMode <- FALSE
+productionMode <- TRUE
 
 #-------------------------------------------------------------------------------
 #  DOWNSAMPLING
@@ -99,9 +99,9 @@ productionMode <- FALSE
 
 # downsample settings
 downsample <- FALSE #If FALSE comment out the next 3 lines
-# highMin <- 200
-# highMax <- 2500
-# lowMax <- 200
+highMin <- 235
+highMax <- 2500
+lowMax <- 235
 
 
 #-------------------------------------------------------------------------------
@@ -115,8 +115,8 @@ downsample <- FALSE #If FALSE comment out the next 3 lines
 excludeBeaches <- c(
                     # "12th",
                     "31st",
-                    # "39th",
-                    # "57th",
+                    "39th",
+                    "57th",
                     "63rd",
                     # "Albion",
                     "Calumet",
@@ -156,7 +156,7 @@ title2 <- paste0("PR Curve",
 #-------------------------------------------------------------------------------
 
 threshBegin <- 1
-threshEnd <- 500
+threshEnd <- 1000
 
 
 thresh <- 235
@@ -195,7 +195,7 @@ model_summary <- plot_data %>%
 ## final holdout validation
 
 model <- readRDS("model.Rds")
-finalthresh <- 320
+finalthresh <- 383
 finaltest <- finaltest[!finaltest$Client.ID %in% excludeBeaches,]
 finaltest <- finaltest[complete.cases(finaltest),]
 finaltest$prediction <- predict(model, finaltest)
