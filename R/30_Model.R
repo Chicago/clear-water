@@ -108,8 +108,7 @@ if (kFolds & !productionMode) {
                         c(1:model_cols - 1)] #remove EPA prediction from training data
   # Reduce train set to non-predictor beaches
   trainData <- trainData[which(!trainData$Client.ID %in% excludeBeaches),]
-  trainData <- trainData[trainData$Date < trainEnd
-                         & trainData$Date > trainStart,]
+  trainData <- trainData[trainData$Year %in% trainYears,]
   trainData <- trainData[complete.cases(trainData),] #remove NAs from train data
   if (downsample) {
     train_high <- trainData[trainData$Escherichia.coli >= highMin
@@ -122,8 +121,7 @@ if (kFolds & !productionMode) {
     train_balanced <- rbind(train_high, train_low[ind, ])
     trainData <- train_balanced
   }
-  testData <- df_model[df_model$Date < testEnd
-                       & df_model$Date > testStart, ]
+  testData <- df_model[df_model$Year %in% testYears, ]
   # Reduce test set to non-predictor beaches
   testData <- testData[which(!testData$Client.ID %in% excludeBeaches),]
   testData <- testData[complete.cases(testData),] #remove NAs from test data

@@ -63,8 +63,7 @@ df_model <- df[, c("Escherichia.coli", #dependent variable
                    # "Montrose_DNA.Geo.Mean",
                    # "Calumet_DNA.Geo.Mean",
                    # "Rainbow_DNA.Geo.Mean",
-                   "Date", #Must use for splitting data, not included in model
-                   "Year" #used for creating final holdout set
+                   "Year" #used for splitting data
                    # "Predicted.Level" #Must use for USGS model comparison, not included in model
                    )]
 # to run without USGS for comparison, comment out "Predicted.Level" above and uncomment next line
@@ -79,19 +78,17 @@ df_model <- df_model[df_model$Year %in% c("2012", "2013", "2014", "2015"),]
 #  If you set kFolds to FALSE, the model will use trainStart, trainEnd, etc. (see below)
 #-------------------------------------------------------------------------------
 
-kFolds <- FALSE #If TRUE next 4 lines will not be used but cannot be commented out
-trainStart <- "2013-01-01"
-trainEnd <- "2015-12-31"
-testStart <- "2012-01-01"
-testEnd <- "2012-12-31"
+kFolds <- FALSE #If TRUE next 2 lines will not be used but cannot be commented out
+trainYears <- c("2013", "2014", "2015")
+testYears <- c("2012")
 
 # If productionMode is set to TRUE, a file named model.Rds will be generated
 # Its used is explained at https://github.com/Chicago/clear-water-app
-# Set trainStart and trainEnd to what you would like the model to train on
-# testStart and testEnd must still be specified, although not applicable
+# Set trainYears to what you would like the model to train on
+# testYears must still be specified, although not applicable
 # plots will not be accurate
 
-productionMode <- TRUE
+productionMode <- FALSE
 
 #-------------------------------------------------------------------------------
 #  DOWNSAMPLING
@@ -146,15 +143,11 @@ excludeBeaches <- c(
 title1 <- paste0("ROC", 
                  if(kFolds == TRUE) " - kFolds",
                  if(kFolds == FALSE) " - validate on ",
-                 if(kFolds == FALSE) testStart,
-                 if(kFolds == FALSE) " to ",
-                 if(kFolds == FALSE) testEnd)
+                 if(kFolds == FALSE) testYears)
 title2 <- paste0("PR Curve", 
                  if(kFolds == TRUE) " - kFolds",
                  if(kFolds == FALSE) " - validate on ",
-                 if(kFolds == FALSE) testStart,
-                 if(kFolds == FALSE) " to ",
-                 if(kFolds == FALSE) testEnd)
+                 if(kFolds == FALSE) testYears)
 
 
 #-------------------------------------------------------------------------------
@@ -202,7 +195,7 @@ model_summary <- plot_data %>%
 ## final holdout validation
 
 model <- readRDS("model.Rds")
-finalthresh <- 340
+finalthresh <- 320
 finaltest <- finaltest[!finaltest$Client.ID %in% excludeBeaches,]
 finaltest <- finaltest[complete.cases(finaltest),]
 finaltest$prediction <- predict(model, finaltest)
