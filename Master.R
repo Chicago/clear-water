@@ -37,23 +37,21 @@ rm(list=ls()[!ls() %in% keep])
 #  Comment out the predictors that you do not want to use
 #-------------------------------------------------------------------------------
 
-# remove older years
-df <- df[df$Year %in% c("2012", "2013", "2014", "2015", "2016"),]
-
 # set predictors
 df_model <- df[, c("Escherichia.coli", #dependent variable
                    "Client.ID",
                    # "precipProbability",
                    # "Water.Level",
-                   "n12th_Escherichia.coli",
+                   # "n12th_Escherichia.coli",
                    "Foster_Escherichia.coli",
-                   "North_Avenue_Escherichia.coli",
-                   "n39th_Escherichia.coli",
-                   "Albion_Escherichia.coli",
+                   "Ohio_Escherichia.coli",
+                   # "North_Avenue_Escherichia.coli",
+                   "n31st_Escherichia.coli",
+                   # "Albion_Escherichia.coli",
                    # "Rogers_Escherichia.coli",
                    # "Howard_Escherichia.coli",
-                   # "n57th_Escherichia.coli", 
-                   # "n63rd_Escherichia.coli",
+                   # "n57th_Escherichia.coli",
+                   "n63rd_Escherichia.coli",
                    # "South_Shore_Escherichia.coli",
                    # "Montrose_Escherichia.coli",
                    # "Calumet_Escherichia.coli",
@@ -65,12 +63,15 @@ df_model <- df[, c("Escherichia.coli", #dependent variable
                    # "Montrose_DNA.Geo.Mean",
                    # "Calumet_DNA.Geo.Mean",
                    # "Rainbow_DNA.Geo.Mean",
-                   "Date" #Must use for splitting data, not included in model
+                   "Date", #Must use for splitting data, not included in model
+                   "Year" #used for creating final holdout set
                    # "Predicted.Level" #Must use for USGS model comparison, not included in model
                    )]
 # to run without USGS for comparison, comment out "Predicted.Level" above and uncomment next line
 df_model$Predicted.Level <- 1 #meaningless value
 
+finaltest <- df_model[df_model$Year == "2016",]
+df_model <- df_model[df_model$Year %in% c("2012", "2013", "2014", "2015"),]
 #-------------------------------------------------------------------------------
 #  CHOOSE TEST/TRAIN SETS
 #  You can decide whether to use kFolds cross validation or define your own sets
@@ -79,10 +80,10 @@ df_model$Predicted.Level <- 1 #meaningless value
 #-------------------------------------------------------------------------------
 
 kFolds <- FALSE #If TRUE next 4 lines will not be used but cannot be commented out
-trainStart <- "2012-01-01"
+trainStart <- "2013-01-01"
 trainEnd <- "2015-12-31"
-testStart <- "2016-01-01"
-testEnd <- "2016-12-31"
+testStart <- "2012-01-01"
+testEnd <- "2012-12-31"
 
 # If productionMode is set to TRUE, a file named model.Rds will be generated
 # Its used is explained at https://github.com/Chicago/clear-water-app
@@ -90,7 +91,7 @@ testEnd <- "2016-12-31"
 # testStart and testEnd must still be specified, although not applicable
 # plots will not be accurate
 
-productionMode <- FALSE
+productionMode <- TRUE
 
 #-------------------------------------------------------------------------------
 #  DOWNSAMPLING
@@ -115,12 +116,12 @@ downsample <- FALSE #If FALSE comment out the next 3 lines
 #-------------------------------------------------------------------------------
 
 excludeBeaches <- c(
-                    "12th",
-                    # "31st",
-                    "39th",
+                    # "12th",
+                    "31st",
+                    # "39th",
                     # "57th",
                     "63rd",
-                    "Albion",
+                    # "Albion",
                     "Calumet",
                     "Foster",
                     # "Howard",
@@ -128,9 +129,9 @@ excludeBeaches <- c(
                     # "Juneway",
                     # "Leone",
                     "Montrose",
-                    "North Avenue",
+                    # "North Avenue",
                     # "Oak Street",
-                    # "Ohio",
+                    "Ohio",
                     # "Osterman",
                     "Rainbow",
                     # "Rogers",
@@ -198,3 +199,20 @@ model_summary <- plot_data %>%
             fpUSGS = mean(fpUSGS)
             )
 
+## final holdout validation
+
+model <- readRDS("model.Rds")
+finalthresh <- 340
+finaltest <- finaltest[!finaltest$Client.ID %in% excludeBeaches,]
+finaltest <- finaltest[complete.cases(finaltest),]
+finaltest$prediction <- predict(model, finaltest)
+finaltest$actualbin <- ifelse(finaltest$Escherichia.coli >= 235, 1, 0)
+finaltest$predbin <- ifelse(finaltest$prediction >= finalthresh, 1, 0)
+finaltest$tp <- ifelse(finaltest$actualbin == 1 & finaltest$predbin == 1, 1, 0)
+finaltest$tn <- ifelse(finaltest$actualbin == 0 & finaltest$predbin == 0, 1, 0)
+finaltest$fp <- ifelse(finaltest$actualbin == 0 & finaltest$predbin == 1, 1, 0)
+finaltest$fn <- ifelse(finaltest$actualbin == 1 & finaltest$predbin == 0, 1, 0)
+sum(finaltest$tp)
+sum(finaltest$fn)
+sum(finaltest$tn)
+sum(finaltest$fp)
