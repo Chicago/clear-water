@@ -44,15 +44,16 @@ df_model <- df[, c("Escherichia.coli", #dependent variable
                    # "Water.Level",
                    # "n12th_Escherichia.coli",
                    "Foster_Escherichia.coli",
-                   "Ohio_Escherichia.coli",
-                   # "North_Avenue_Escherichia.coli",
-                   "n39th_Escherichia.coli",
+                   # "Ohio_Escherichia.coli",
+                   "North_Avenue_Escherichia.coli",
+                   "n31st_Escherichia.coli",
+                   "Leone_Escherichia.coli",
                    # "Albion_Escherichia.coli",
                    # "Rogers_Escherichia.coli",
                    # "Howard_Escherichia.coli",
                    # "n57th_Escherichia.coli",
                    # "n63rd_Escherichia.coli",
-                   # "South_Shore_Escherichia.coli",
+                   "South_Shore_Escherichia.coli",
                    # "Montrose_Escherichia.coli",
                    # "Calumet_Escherichia.coli",
                    # "Rainbow_Escherichia.coli",
@@ -79,8 +80,9 @@ finaltest <- df_model[df_model$Year == "2016",]
 #-------------------------------------------------------------------------------
 
 kFolds <- FALSE #If TRUE next 2 lines will not be used but cannot be commented out
-trainYears <- c("2010", "2011", "2012", "2013", "2014", "2015")
-testYears <- c("2009")
+testYears <- c("2015")
+trainYears <- c("2006", "2007", "2008", "2009","2010", "2011", "2012", "2013", "2014", "2015")
+# trainYears <- trainYears[! trainYears %in% testYears]
 
 # If productionMode is set to TRUE, a file named model.Rds will be generated
 # Its used is explained at https://github.com/Chicago/clear-water-app
@@ -115,8 +117,8 @@ lowMax <- 235
 excludeBeaches <- c(
                     # "12th",
                     "31st",
-                    "39th",
-                    "57th",
+                    # "39th",
+                    # "57th",
                     "63rd",
                     # "Albion",
                     "Calumet",
@@ -124,9 +126,9 @@ excludeBeaches <- c(
                     # "Howard",
                     # "Jarvis",
                     # "Juneway",
-                    # "Leone",
+                    "Leone",
                     "Montrose",
-                    # "North Avenue",
+                    "North Avenue",
                     # "Oak Street",
                     "Ohio",
                     # "Osterman",
@@ -195,7 +197,7 @@ model_summary <- plot_data %>%
 ## final holdout validation
 
 model <- readRDS("model.Rds")
-finalthresh <- 383
+finalthresh <- 381
 finaltest <- finaltest[!finaltest$Client.ID %in% excludeBeaches,]
 finaltest <- finaltest[complete.cases(finaltest),]
 finaltest$prediction <- predict(model, finaltest)

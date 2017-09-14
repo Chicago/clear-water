@@ -2,12 +2,11 @@
 # 2) model and 3) plot curves
 
 model_cols <- (ncol(df_model))
-
+set.seed(111)
 
 if (kFolds & !productionMode) {
   print("Modeling with 10 folds validation")
   df_model <- df_model[complete.cases(df_model),] #remove NAs from df_model
-  set.seed(111)
   dates <- unique(df_model$Date)
   fold_size <- .1 * length(dates)
   dates_sample <- sample(dates, fold_size)
