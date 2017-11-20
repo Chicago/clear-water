@@ -2,6 +2,8 @@ library(ggplot2)
 library(data.table)
 library(RSocrata)
 library(ROCR)
+library(heatmaply)
+library(corrplot)
 
 ## read in data
 
@@ -27,9 +29,9 @@ beachCor <- dcast(dt, Date ~ Client.ID, fun.aggregate = mean, value.var = "Esche
 beachCor <- na.omit(beachCor)
 beachCor <- log(beachCor[,c(2:21)])
 corTable <- cor(beachCor)
-View(corTable[,c(1:10)])
-View(corTable[,c(11:20)])
-plot(beachCor, cex = .02)
+corTable <- round(corTable, 2)
+heatmaply_cor(corTable)
+corrplot(corTable, method = "circle")
 
 ## build USGS ROC
 
@@ -70,5 +72,3 @@ ggplot() +
   scale_colour_manual("", 
                       breaks = c("Hybrid Model", "Prior-day Model"),
                       values = c("blue", "red")) 
-
-
