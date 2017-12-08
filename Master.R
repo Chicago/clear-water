@@ -29,8 +29,8 @@ source("R/00_Startup.R")
 df <- readRDS(paste0(getwd(),"/Data/df.Rds"))
 
 # remove prior modeling variables before starting up a new model
-keep <- list("df", "modelCurves", "modelEcoli")
-rm(list=ls()[!ls() %in% keep])
+# keep <- list("df", "modelCurves", "modelEcoli")
+# rm(list=ls()[!ls() %in% keep])
 
 #-------------------------------------------------------------------------------
 #  CHOOSE PREDICTORS
