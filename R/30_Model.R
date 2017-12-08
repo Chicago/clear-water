@@ -18,7 +18,7 @@ if (kFolds & !productionMode) {
     testDays <- dates_sample
     testData <- df_model[df_model$Date %in% testDays, ]
     testData <- testData[which(!testData$Client.ID %in% excludeBeaches),]
-    trainData <- df_model[!df_model$Date %in% testDays, c(1:ncol(df_model) - 1)]
+    trainData <- df_model[!df_model$Date %in% testDays, c(1:(ncol(df_model) - 2))]
     trainData <- trainData[which(!trainData$Client.ID %in% excludeBeaches),]
     if (downsample) {
       train_high <- trainData[trainData$Escherichia.coli >= highMin
@@ -35,20 +35,12 @@ if (kFolds & !productionMode) {
     fold_data <- data.frame(fold, 
                             "tpr" = model$tpr,
                             "fpr" = model$fpr,
-                            "tprUSGS" = model$tprUSGS,
-                            "fprUSGS" = model$fprUSGS,
                             "precision" = model$precision,
                             "recall" = model$recall,
-                            "precisionUSGS" = model$precisionUSGS,
-                            "recallUSGS" = model$recallUSGS,
                             "tp" = model$tp,
                             "fn" = model$fn,
                             "tn" = model$tn,
                             "fp" = model$fp,
-                            "tpUSGS" = model$tpUSGS,
-                            "fnUSGS" = model$fnUSGS,
-                            "tnUSGS" = model$tnUSGS,
-                            "fpUSGS" = model$fpUSGS, 
                             "thresholds" = model$thresholds)
     plot_data <- rbind(plot_data, fold_data)
     predictions <- rbind(predictions, model$predictions)
@@ -56,7 +48,6 @@ if (kFolds & !productionMode) {
     remaining_dates <- dates[!dates %in% used_dates]
     if (fold < 10) dates_sample <- sample(remaining_dates, fold_size)
   }
-  names(predictions)[names(predictions) == "Predicted.Level"] <- "USGS.Prediction"
   names(predictions)[names(predictions) == "predictionRF"] <- "DNAModel.Prediction"
   plot_data$fold <- as.factor(plot_data$fold)
   plot_data <- plot_data %>%
@@ -64,47 +55,30 @@ if (kFolds & !productionMode) {
     summarize(tp = sum(tp),
               fn = sum(fn),
               tn = sum(tn),
-              fp = sum(fp),
-              tpUSGS = sum(tpUSGS),
-              fnUSGS = sum(fnUSGS),
-              tnUSGS = sum(tnUSGS),
-              fpUSGS = sum(fpUSGS)
+              fp = sum(fp)
     )
   plot_data <- mutate(plot_data,
                       tpr = tp/(tp+fn),
                       fpr = fp/(fp+tn),
                       precision = tp/(tp+fp),
-                      recall = tp/(tp+fn),
-                      tprUSGS = tpUSGS/(tpUSGS+fnUSGS),
-                      fprUSGS = fpUSGS/(fpUSGS+tnUSGS),
-                      precisionUSGS = tpUSGS/(tpUSGS+fpUSGS),
-                      recallUSGS = tpUSGS/(tpUSGS+fnUSGS)
+                      recall = tp/(tp+fn)
                       )
   p <- ggplot(data = plot_data) 
   print(p + 
-          geom_smooth(aes(x = fpr, y = tpr, 
-                          color = "DNA Model"),
-                      span = .9) + 
-          geom_smooth(aes(x = fprUSGS, y = tprUSGS, 
-                          color = "USGS Model"),
-                      span = .9) + 
+          geom_line(aes(x = fpr, y = tpr, 
+                          color = "DNA Model")) + 
           ylim(0,1) + 
           xlim(0,1) +
           ggtitle(title1))
   print(p + 
-          geom_smooth(aes(x = recall, y = precision,
-                          color = "DNA Model"),
-                      span = .9) +
-          geom_smooth(aes(x = recallUSGS, y = precisionUSGS,
-                          color = "USGS Model"),
-                      span = .9) +
+          geom_line(aes(x = recall, y = precision,
+                          color = "DNA Model")) +
           ylim(0,1) + 
           xlim(0,1) +
           ggtitle(title2))
 } else {
   print("Modeling with user-defined validation data")
-  trainData <- df_model[,
-                        c(1:model_cols - 1)] #remove EPA prediction from training data
+  trainData <- df_model[, c(1:model_cols)]
   # Reduce train set to non-predictor beaches
   trainData <- trainData[which(!trainData$Client.ID %in% excludeBeaches),]
   trainData <- trainData[trainData$Year %in% trainYears,]
@@ -129,22 +103,14 @@ if (kFolds & !productionMode) {
   model <- modelEcoli(trainData, testData, threshBegin, threshEnd, thresh, productionMode)
   p <- ggplot() 
   print(p + 
-          geom_smooth(aes(x = model$fpr, y = model$tpr, 
-                          color = "DNA Model"), 
-                      span = .9) + 
-          geom_smooth(aes(x = model$fprUSGS, y = model$tprUSGS, 
-                          color = "USGS Model"),
-                      span = .9) + 
+          geom_line(aes(x = model$fpr, y = model$tpr, 
+                          color = "DNA Model")) + 
           ylim(0,1) + 
           xlim(0,1) + 
           ggtitle(title1))
   print(p + 
-          geom_smooth(aes(x = model$recall, y = model$precision,
-                          color = "DNA Model"),
-                      span = .9) +
-          geom_smooth(aes(x = model$recallUSGS, y = model$precisionUSGS,
-                          color = "USGS Model"),
-                      span = .9) +
+          geom_line(aes(x = model$recall, y = model$precision,
+                          color = "DNA Model")) +
           ylim(0,1) + 
           xlim(0,1) +
           ggtitle(title2))

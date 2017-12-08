@@ -36,12 +36,6 @@ If you are interested in contributing to this project, see our [Contribution Gui
 
 ## Notes
 
-### A/B evaluation feature
-
-This project began as an attempt to improve on a model that was produced by the United States Geological Survey (USGS). As part of model development, an embedded feature was engineered that provides a way to do an A/B model peformance comparison against the USGS's model performance. 
-
-This feature can be switched on and off, and another model could be substituted for the USGS model to do an A/B evaluation. 
-
 ### Collaboration with the Civic Tech Community
 
 This project originated as a [breakout group](https://chihacknight.org/projects/2016/05/01/e-coli-predictions.html) at [Chi Hack Night](https://chihacknight.org/about.html).
