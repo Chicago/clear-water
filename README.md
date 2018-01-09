@@ -1,5 +1,5 @@
 # Clear Water
-[![Stories in Ready](https://badge.waffle.io/Chicago/clear-water.svg?label=ready&title=Ready)](http://waffle.io/Chicago/clear-water) [![MIT License project](https://img.shields.io/github/license/mashape/apistatus.svg)](https://opensource.org/licenses/MIT)
+[![DOI](https://zenodo.org/badge/41771713.svg)](https://zenodo.org/badge/latestdoi/41771713) [![MIT License project](https://img.shields.io/github/license/mashape/apistatus.svg)](https://opensource.org/licenses/MIT)
 
 
 The City of Chicago's Clear Water project brings an innovative approach to beach water quality monitoring. It uses a machine learning prediction technique to better forecast the bacteria levels at Chicago beaches. The model works by interpreting patterns in the results of DNA tests at a handful of beaches across the City, which are then extrapolated to forecast the water quality at other, untested beaches. This method provides a new way for beach managers to save money on expensive rapid water quality tests.
