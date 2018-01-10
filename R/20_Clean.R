@@ -83,7 +83,7 @@ for(i in 1:length(beach_dup$Year)){
     if ( is.na(prod(as.numeric(check$Escherichia.coli,na.rm=TRUE)))){
       df[row.names(check)[1],]$Escherichia.coli<-NA
     }
-    else{
+    else if (!is.na(df[row.names(check)[1],]$Escherichia.coli)){
       #Produce a geomean of all the duplicated beaches and assign it to the first
       #beach in a datafr),]
       df[row.names(check)[1],]$Escherichia.coli <-prod(as.numeric(check$Escherichia.coli,na.rm=TRUE))^(1/length(check$Escherichia.coli))
@@ -96,6 +96,9 @@ rm(beach_dup,daily_beach_obs,mult_obs_beach,check,drop_list,i,j)
 
 #Get rid of the duplicated rows
 df<-df[!duplicated(df[,1:4]),]
+
+#remove artifact NA rows
+df <- df[!is.na(df$DayOfYear),]
 
 #add new columns for predictor beaches.
 #We will use the same-day test results for these beaches to predict other beaches
@@ -126,6 +129,8 @@ names(df)[names(df) == "North Avenue_DNA.Geo.Mean"] <- "North_Avenue_DNA.Geo.Mea
 names(df)[names(df) == "Oak Street_DNA.Geo.Mean"] <- "Oak_Street_DNA.Geo.Mean"
 names(df)[names(df) == "South Shore_DNA.Geo.Mean"] <- "South_Shore_DNA.Geo.Mean"
 names(df)[names(df) == "South Shore_Escherichia.coli"] <- "South_Shore_Escherichia.coli"
+names(df)[names(df) == "North Avenue_Escherichia.coli"] <- "North_Avenue_Escherichia.coli"
+
 
 
 #remove times from Date variable

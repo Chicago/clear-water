@@ -29,8 +29,8 @@ source("R/00_Startup.R")
 df <- readRDS(paste0(getwd(),"/Data/df.Rds"))
 
 # remove prior modeling variables before starting up a new model
-keep <- list("df", "modelCurves", "modelEcoli")
-rm(list=ls()[!ls() %in% keep])
+# keep <- list("df", "modelCurves", "modelEcoli")
+# rm(list=ls()[!ls() %in% keep])
 
 #-------------------------------------------------------------------------------
 #  CHOOSE PREDICTORS
@@ -42,44 +42,51 @@ df_model <- df[, c("Escherichia.coli", #dependent variable
                    "Client.ID",
                    # "precipProbability",
                    # "Water.Level",
-                   "Rogers_Escherichia.coli",
+                   # "n12th_Escherichia.coli",
+                   "Foster_Escherichia.coli",
+                   # "Ohio_Escherichia.coli",
+                   "North_Avenue_Escherichia.coli",
+                   "n31st_Escherichia.coli",
+                   "Leone_Escherichia.coli",
+                   # "Albion_Escherichia.coli",
+                   # "Rogers_Escherichia.coli",
                    # "Howard_Escherichia.coli",
-                   # "n57th_Escherichia.coli", 
+                   # "n57th_Escherichia.coli",
                    # "n63rd_Escherichia.coli",
-                   # "South_Shore_Escherichia.coli",
+                   "South_Shore_Escherichia.coli",
                    # "Montrose_Escherichia.coli",
                    # "Calumet_Escherichia.coli",
                    # "Rainbow_Escherichia.coli",
                    # "Ohio_DNA.Geo.Mean",
                    # "North_Avenue_DNA.Geo.Mean",
-                   "n63rd_DNA.Geo.Mean",
-                   "South_Shore_DNA.Geo.Mean",
-                   "Montrose_DNA.Geo.Mean",
-                   "Calumet_DNA.Geo.Mean",
-                   "Rainbow_DNA.Geo.Mean",
-                   "Date", #Must use for splitting data, not included in model
-                   "Predicted.Level" #Must use for USGS model comparison, not included in model
-                   )]
-# to run without USGS for comparison, comment out "Predicted.Level" above and uncomment next line
-# df_model$Predicted.Level <- 1 #meaningless value
+                   # "n63rd_DNA.Geo.Mean",
+                   # "South_Shore_DNA.Geo.Mean",
+                   # "Montrose_DNA.Geo.Mean",
+                   # "Calumet_DNA.Geo.Mean",
+                   # "Rainbow_DNA.Geo.Mean",
+                   "Year", #used for splitting data
+                   "Date" #used for splitting data
+)]
+
+finaltest <- df_model[df_model$Year == "2016",]
 
 #-------------------------------------------------------------------------------
 #  CHOOSE TEST/TRAIN SETS
 #  You can decide whether to use kFolds cross validation or define your own sets
 #  If you set kFolds to TRUE, the data will be separated into 10 sets
 #  If you set kFolds to FALSE, the model will use trainStart, trainEnd, etc. (see below)
+#  CANNOT BE USED IF productionMode = TRUE
 #-------------------------------------------------------------------------------
 
-kFolds <- TRUE #If TRUE next 4 lines will not be used but cannot be commented out
-trainStart <- "2006-01-01"
-trainEnd <- "2015-12-31"
-testStart <- "2016-01-01"
-testEnd <- "2016-12-31"
+kFolds <- FALSE #If TRUE next 2 lines will not be used but cannot be commented out
+testYears <- c("2016")
+trainYears <- c("2006", "2007", "2008", "2009","2010", "2011", "2012", "2013", "2014", "2015")
+# trainYears <- trainYears[! trainYears %in% testYears]
 
 # If productionMode is set to TRUE, a file named model.Rds will be generated
 # Its used is explained at https://github.com/Chicago/clear-water-app
-# Set trainStart and trainEnd to what you would like the model to train on
-# testStart and testEnd must still be specified, although not applicable
+# Set trainYears to what you would like the model to train on
+# testYears must still be specified, although not applicable
 # plots will not be accurate
 
 productionMode <- FALSE
@@ -93,9 +100,9 @@ productionMode <- FALSE
 
 # downsample settings
 downsample <- FALSE #If FALSE comment out the next 3 lines
-# highMin <- 200
-# highMax <- 2500
-# lowMax <- 200
+highMin <- 235
+highMax <- 2500
+lowMax <- 235
 
 
 #-------------------------------------------------------------------------------
@@ -108,24 +115,24 @@ downsample <- FALSE #If FALSE comment out the next 3 lines
 
 excludeBeaches <- c(
                     # "12th",
-                    # "31st",
+                    "31st",
                     # "39th",
                     # "57th",
                     "63rd",
                     # "Albion",
                     "Calumet",
-                    # "Foster",
+                    "Foster",
                     # "Howard",
                     # "Jarvis",
                     # "Juneway",
-                    # "Leone",
+                    "Leone",
                     "Montrose",
-                    # "North Avenue",
+                    "North Avenue",
                     # "Oak Street",
-                    # "Ohio",
+                    "Ohio",
                     # "Osterman",
                     "Rainbow",
-                    "Rogers",
+                    # "Rogers",
                     "South Shore"
                     )
 
@@ -137,15 +144,11 @@ excludeBeaches <- c(
 title1 <- paste0("ROC", 
                  if(kFolds == TRUE) " - kFolds",
                  if(kFolds == FALSE) " - validate on ",
-                 if(kFolds == FALSE) testStart,
-                 if(kFolds == FALSE) " to ",
-                 if(kFolds == FALSE) testEnd)
+                 if(kFolds == FALSE) testYears)
 title2 <- paste0("PR Curve", 
                  if(kFolds == TRUE) " - kFolds",
                  if(kFolds == FALSE) " - validate on ",
-                 if(kFolds == FALSE) testStart,
-                 if(kFolds == FALSE) " to ",
-                 if(kFolds == FALSE) testEnd)
+                 if(kFolds == FALSE) testYears)
 
 
 #-------------------------------------------------------------------------------
@@ -154,18 +157,18 @@ title2 <- paste0("PR Curve",
 #-------------------------------------------------------------------------------
 
 threshBegin <- 1
-threshEnd <- 500
+threshEnd <- 1000
 
 
 thresh <- 235
 
 #-------------------------------------------------------------------------------
 #  RUN MODEL
-#  Plots will generate and results will be saved in "model_summary)
+#  Plots will generate and results will be saved in "model_summary"
 #-------------------------------------------------------------------------------
 
 # runs all modeling code
-source("R/30_model.R", print.eval=TRUE)
+source("R/30_Model.R", print.eval=TRUE)
 
 # creates a data frame with all model results
 # this aggregates the folds to generate one single curve
@@ -174,18 +177,31 @@ model_summary <- plot_data %>%
   group_by(thresholds) %>%
   summarize(tpr = mean(tpr),
             fpr = mean(fpr),
-            tprUSGS = mean(tprUSGS),
-            fprUSGS = mean(fprUSGS),
             precision = mean(precision, na.rm = TRUE),
             recall = mean(recall),
-            precisionUSGS = mean(precisionUSGS, na.rm = TRUE),
-            recallUSGS = mean(recallUSGS),
             tp = mean(tp),
             fn = mean(fn),
             tn = mean(tn),
-            fp = mean(fp),
-            tpUSGS = mean(tpUSGS),
-            fnUSGS = mean(fnUSGS),
-            tnUSGS = mean(tnUSGS),
-            fpUSGS = mean(fpUSGS)
-            )
+            fp = mean(fp)
+  )
+
+# saveRDS(model_summary, paste0("model_results/y", testYears, ".Rds"))
+
+## final holdout validation
+
+model <- readRDS("model.Rds")
+finalthresh <- 381
+finaltest <- finaltest[!finaltest$Client.ID %in% excludeBeaches,]
+finaltest <- finaltest[complete.cases(finaltest),]
+finaltest$prediction <- predict(model, finaltest)
+finaltest$actualbin <- ifelse(finaltest$Escherichia.coli >= 235, 1, 0)
+finaltest$predbin <- ifelse(finaltest$prediction >= finalthresh, 1, 0)
+finaltest$tp <- ifelse(finaltest$actualbin == 1 & finaltest$predbin == 1, 1, 0)
+finaltest$tn <- ifelse(finaltest$actualbin == 0 & finaltest$predbin == 0, 1, 0)
+finaltest$fp <- ifelse(finaltest$actualbin == 0 & finaltest$predbin == 1, 1, 0)
+finaltest$fn <- ifelse(finaltest$actualbin == 1 & finaltest$predbin == 0, 1, 0)
+sum(finaltest$tp)
+sum(finaltest$fn)
+sum(finaltest$tn)
+sum(finaltest$fp)
+
