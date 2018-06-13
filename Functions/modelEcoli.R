@@ -54,5 +54,6 @@ modelEcoli <- function(trainData, testData, threshBegin, threshEnd, thresh, prod
        "tn"=tn,
        "fp"=fp,
        "thresholds"=thresholds,
-       "predictions"=predictions)
+       "predictions"=predictions,
+       "model"=model)
 }

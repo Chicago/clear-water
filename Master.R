@@ -40,30 +40,13 @@ df <- readRDS(paste0(getwd(),"/Data/df.Rds"))
 # set predictors
 df_model <- df[, c("Escherichia.coli", #dependent variable
                    "Client.ID",
-                   # "precipProbability",
-                   # "Water.Level",
-                   # "n12th_Escherichia.coli",
+
                    "Foster_Escherichia.coli",
-                   # "Ohio_Escherichia.coli",
                    "North_Avenue_Escherichia.coli",
                    "n31st_Escherichia.coli",
                    "Leone_Escherichia.coli",
-                   # "Albion_Escherichia.coli",
-                   # "Rogers_Escherichia.coli",
-                   # "Howard_Escherichia.coli",
-                   # "n57th_Escherichia.coli",
-                   # "n63rd_Escherichia.coli",
                    "South_Shore_Escherichia.coli",
-                   # "Montrose_Escherichia.coli",
-                   # "Calumet_Escherichia.coli",
-                   # "Rainbow_Escherichia.coli",
-                   # "Ohio_DNA.Geo.Mean",
-                   # "North_Avenue_DNA.Geo.Mean",
-                   # "n63rd_DNA.Geo.Mean",
-                   # "South_Shore_DNA.Geo.Mean",
-                   # "Montrose_DNA.Geo.Mean",
-                   # "Calumet_DNA.Geo.Mean",
-                   # "Rainbow_DNA.Geo.Mean",
+                   
                    "Year", #used for splitting data
                    "Date" #used for splitting data
 )]
@@ -185,23 +168,5 @@ model_summary <- plot_data %>%
             fp = mean(fp)
   )
 
-# saveRDS(model_summary, paste0("model_results/y", testYears, ".Rds"))
-
-## final holdout validation
-
-model <- readRDS("model.Rds")
-finalthresh <- 381
-finaltest <- finaltest[!finaltest$Client.ID %in% excludeBeaches,]
-finaltest <- finaltest[complete.cases(finaltest),]
-finaltest$prediction <- predict(model, finaltest)
-finaltest$actualbin <- ifelse(finaltest$Escherichia.coli >= 235, 1, 0)
-finaltest$predbin <- ifelse(finaltest$prediction >= finalthresh, 1, 0)
-finaltest$tp <- ifelse(finaltest$actualbin == 1 & finaltest$predbin == 1, 1, 0)
-finaltest$tn <- ifelse(finaltest$actualbin == 0 & finaltest$predbin == 0, 1, 0)
-finaltest$fp <- ifelse(finaltest$actualbin == 0 & finaltest$predbin == 1, 1, 0)
-finaltest$fn <- ifelse(finaltest$actualbin == 1 & finaltest$predbin == 0, 1, 0)
-sum(finaltest$tp)
-sum(finaltest$fn)
-sum(finaltest$tn)
-sum(finaltest$fp)
+saveRDS(model, paste0("models/", "model-hybrid-only-2016-holdout", ".Rds"))
 

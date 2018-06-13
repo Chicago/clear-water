@@ -114,5 +114,5 @@ if (kFolds & !productionMode) {
           ylim(0,1) + 
           xlim(0,1) +
           ggtitle(title2))
-  plot_data <- as.data.frame(model[-which(names(model) == "predictions")])
+  plot_data <- as.data.frame(model[-which(names(model) == "predictions" | names(model) == "model")])
 }

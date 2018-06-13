@@ -72,6 +72,9 @@ drek<- drek[,!(names(drek) %in% c("Date"))]
 #Add on the USGSid to `drek`
 drek$USGS<-USGSid(drek$Beach.Name)
 
+#remove NAs
+USGS_predictions_df <- na.omit(USGS_predictions_df)
+
 USGS_predictions_df[USGS_predictions_df$Predicted.Level < 0,
                     c("Predicted.Level","Probability")]<-0
 

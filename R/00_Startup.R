@@ -17,4 +17,5 @@ usePackage("RSocrata")
 usePackage("tidyr")
 usePackage("stats")
 usePackage("randomForest")
+usePackage("pROC")
 
