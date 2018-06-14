@@ -24,21 +24,49 @@ source("R/00_Startup.R")
 # source("R/14_Weather.R")
 # source("R/15_WaterQuality.R")
 # source("R/20_Clean.R")
+
+# Transform wind variables for modeling
+
+# df$windDirectionMath <- 270 - df$windBearing
+# df$windU <- df$windSpeed * cos(df$windDirectionMath)
+# df$windV <- df$windSpeed * sin(df$windDirectionMath)
+# 
+# df$windDirectionMath_hourly_1 <- 270 - df$windBearing_hourly_1
+# df$windU_hourly_1 <- df$windSpeed_hourly_1 * cos(df$windDirectionMath_hourly_1)
+# df$windV_hourly_1 <- df$windSpeed_hourly_1 * sin(df$windDirectionMath_hourly_1)
+# df$windDirectionMath_hourly_2 <- 270 - df$windBearing_hourly_2
+# df$windU_hourly_2 <- df$windSpeed_hourly_2 * cos(df$windDirectionMath_hourly_2)
+# df$windV_hourly_2 <- df$windSpeed_hourly_2 * sin(df$windDirectionMath_hourly_2)
+# df$windDirectionMath_hourly_3 <- 270 - df$windBearing_hourly_3
+# df$windU_hourly_3 <- df$windSpeed_hourly_3 * cos(df$windDirectionMath_hourly_3)
+# df$windV_hourly_3 <- df$windSpeed_hourly_3 * sin(df$windDirectionMath_hourly_3)
+# df$windDirectionMath_hourly_4 <- 270 - df$windBearing_hourly_4
+# df$windU_hourly_4 <- df$windSpeed_hourly_4 * cos(df$windDirectionMath_hourly_4)
+# df$windV_hourly_4 <- df$windSpeed_hourly_4 * sin(df$windDirectionMath_hourly_4)
+# df$windDirectionMath_hourly_5 <- 270 - df$windBearing_hourly_5
+# df$windU_hourly_5 <- df$windSpeed_hourly_5 * cos(df$windDirectionMath_hourly_5)
+# df$windV_hourly_5 <- df$windSpeed_hourly_5 * sin(df$windDirectionMath_hourly_5)
+# df$windDirectionMath_hourly_6 <- 270 - df$windBearing_hourly_6
+# df$windU_hourly_6 <- df$windSpeed_hourly_6 * cos(df$windDirectionMath_hourly_6)
+# df$windV_hourly_6 <- df$windSpeed_hourly_6 * sin(df$windDirectionMath_hourly_6)
+# df$windDirectionMath_hourly_7 <- 270 - df$windBearing_hourly_7
+# df$windU_hourly_7 <- df$windSpeed_hourly_7 * cos(df$windDirectionMath_hourly_7)
+# df$windV_hourly_7 <- df$windSpeed_hourly_7 * sin(df$windDirectionMath_hourly_7)
+# df$windDirectionMath_hourly_8 <- 270 - df$windBearing_hourly_8
+# df$windU_hourly_8 <- df$windSpeed_hourly_8 * cos(df$windDirectionMath_hourly_8)
+# df$windV_hourly_8 <- df$windSpeed_hourly_8 * sin(df$windDirectionMath_hourly_8)
 # 
 # df_shift_1 <- shift_previous_data(1, df)
 # df_shift_2 <- shift_previous_data(2, df)
 # df_shift_3 <- shift_previous_data(3, df)
-# df <- cbind(df, df_shift_1[,557:1026])
-# df <- cbind(df, df_shift_2[,557:1026])
-# df <- cbind(df, df_shift_3[,557:1026])
-
+# 
+# df <- cbind(df, df_shift_1[,584:1080])
+# df <- cbind(df, df_shift_2[,584:1080])
+# df <- cbind(df, df_shift_3[,584:1080])
+# 
 # saveRDS(df, paste0(getwd(),"/Data/df-3-day.Rds"))
 
 df <- readRDS(paste0(getwd(),"/Data/df-3-day.Rds"))
-
-# remove prior modeling variables before starting up a new model
-# keep <- list("df", "modelCurves", "modelEcoli")
-# rm(list=ls()[!ls() %in% keep])
 
 #-------------------------------------------------------------------------------
 #  ADD   PREDICTORS
@@ -76,23 +104,31 @@ df$windSpeed.by.8am <- df$windSpeed_hourly_1 +
   df$windSpeed_hourly_7 +
   df$windSpeed_hourly_8
 
-### need to redo wind bearing with this
-df$windDirectionMath <- 270 - df$windBearing
-df$windU <- df$windSpeed * cos(df$windDirectionMath)
-df$windV <- df$windSpeed * sin(df$windDirectionMath)
+df$windU.3.day.total <- df$windU.1.daysPrior +
+  df$windU.2.daysPrior +
+  df$windU.3.daysPrior
 
-df$windBearing.3.day.total <- df$windBearing.1.daysPrior +
-  df$windBearing.2.daysPrior +
-  df$windBearing.3.daysPrior
+df$windU.by.8am <- df$windU_hourly_1 +
+  df$windU_hourly_2 +
+  df$windU_hourly_3 +
+  df$windU_hourly_4 +
+  df$windU_hourly_5 +
+  df$windU_hourly_6 +
+  df$windU_hourly_7 +
+  df$windU_hourly_8
 
-df$windBearing.by.8am <- df$windBearing_hourly_1 +
-  df$windBearing_hourly_2 +
-  df$windBearing_hourly_3 +
-  df$windBearing_hourly_4 +
-  df$windBearing_hourly_5 +
-  df$windBearing_hourly_6 +
-  df$windBearing_hourly_7 +
-  df$windBearing_hourly_8
+df$windV.3.day.total <- df$windV.1.daysPrior +
+  df$windV.2.daysPrior +
+  df$windV.3.daysPrior
+
+df$windV.by.8am <- df$windV_hourly_1 +
+  df$windV_hourly_2 +
+  df$windV_hourly_3 +
+  df$windV_hourly_4 +
+  df$windV_hourly_5 +
+  df$windV_hourly_6 +
+  df$windV_hourly_7 +
+  df$windV_hourly_8
 
 df$Water.Level.3.day.total <- df$Water.Level.1.daysPrior +
   df$Water.Level.1.daysPrior +
@@ -139,9 +175,12 @@ df_model <- df[, c("Escherichia.coli", #dependent variable
                    "windSpeed.1.daysPrior",
                    "windSpeed.3.day.total",
                    "windSpeed.by.8am",
-                   "windBearing.1.daysPrior",
-                   "windBearing.3.day.total",
-                   "windBearing.by.8am",
+                   "windU.1.daysPrior",
+                   "windU.3.day.total",
+                   "windU.by.8am",
+                   "windV.1.daysPrior",
+                   "windV.3.day.total",
+                   "windV.by.8am",
                    
                    ## Tidal levels
                    
