@@ -36,8 +36,8 @@ beaches <- beaches[!duplicated(beaches),]
 weather_data <- data.frame()
 
 # Enter date range (date = beginning date)
-date <- as.Date("2016/05/01")
-end_date <- as.Date("2016/09/30")
+date <- as.Date("2017/05/01")
+end_date <- as.Date("2017/09/30")
 
 ## Maximum 1000 free API requests allowed per day, use counter to enforce 1000 max (here and for loop)
 #counter <- 1
@@ -69,9 +69,20 @@ while (date <= end_date) {
     darksky_response <- fromJSON(darksky_url)
     #counter <- counter + 1
     temp_df <- cbind(beach, darksky_response$daily$data)
+    temp_df$windGust <- NULL
+    temp_df$windGustTime <- NULL
+    temp_df$temperatureHigh <- NULL
+    temp_df$temperatureHighTime <- NULL
+    temp_df$temperatureLow <- NULL
+    temp_df$temperatureLowTime <- NULL
+    temp_df$apparentTemperatureHigh <- NULL
+    temp_df$apparentTemperatureHighTime <- NULL
+    temp_df$apparentTemperatureLow <- NULL
+    temp_df$apparentTemperatureLowTime <- NULL
     hourly_weather <- darksky_response$hourly$data
     for (row in c(1:nrow(hourly_weather))) {
       dat <- hourly_weather[row,]
+      dat$windGust <- NULL
       names(dat) <- paste(names(dat),"hourly",row,sep="_")
       temp_df <- cbind(temp_df, dat)
     }
