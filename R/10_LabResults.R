@@ -16,6 +16,7 @@ results_df<- data.frame( "Date" = results_df$Culture.Sample.1.Timestamp,
                  "DNA.Reading.1" = results_df$DNA.Sample.1.Reading,
                  "DNA.Reading.2" = results_df$DNA.Sample.2.Reading,
                  "DNA.Geo.Mean" = results_df$DNA.Reading.Mean)
+results_df[is.na(results_df$Date),"Date"] <- results_df[is.na(results_df$Date),"DNA.Sample.Timestamp"]
 
 #Split the Date column into Year, Month, and Day columns
 results_df$Year <- as.character(results_df$Date, format='%Y')
