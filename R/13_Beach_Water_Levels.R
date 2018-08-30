@@ -4,8 +4,7 @@ print("Importing Water Level Data")
 Beach_Water_Levels <- read.csv("CSVs/Beach_Water_Levels.csv", stringsAsFactors=FALSE, as.is=TRUE)
 
 #Strip down the "Date.Time" variable to pull out the Year, Day, and Month later
-Beach_Water_Levels$Date.Time<-strptime(Beach_Water_Levels$Date.Time,
-                                       format="%m/%d/%Y %H:%M")
+Beach_Water_Levels$Date.Time<-as.POSIXlt(Beach_Water_Levels$Date.Time)
 #Pull out the "Year", "Day", and "Month" variables
 Beach_Water_Levels$Year<-strftime(Beach_Water_Levels$Date.Time,"%Y")
 Beach_Water_Levels$Month<-strftime(Beach_Water_Levels$Date.Time,format="%m")
